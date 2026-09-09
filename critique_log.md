@@ -233,3 +233,141 @@ Critics get read-only invocations from here on, or are run against a scratch
 copy. An adversary that can write to the artifact it is auditing is not an
 adversary, and one that cites its own output as evidence is worse than none. The
 substance was worth having; the write access was not.
+
+---
+
+## 2026-09-09 — turn 3: H1, written down before the run starts
+
+### H1
+
+*A recipe-conditioned FNO trained on single steps with a plain rel-L2 loss will
+beat persistence and the recipe-blind null on **one-step** band rel-L2, but will
+**miss** the ≤ 0.05 clause on the 10-step autoregressive rollout — because
+autoregressive error compounds, not because the model is underfitted.*
+
+### What would distinguish this from the obvious alternative
+
+The obvious alternative is "it needs more epochs / more capacity", which the
+brief rightly refuses as a critique without evidence. The two explanations make
+*different* predictions about `rollout_band_rel_l2_by_step`, which
+`scripts/eval.py` already writes:
+
+| explanation | signature in the per-step error curve |
+|---|---|
+| compounding drift | small at step 1, growing monotonically and faster than linearly |
+| underfitting | already large at step 1, roughly flat across steps |
+
+If the curve is flat and high, H1 is wrong and the answer is capacity or
+optimisation. If it is small-and-growing, H1 holds and the remedy is pushforward
+rollout training, which is the single change turn 4 will make.
+
+### The one change this turn
+
+Two arms, differing in exactly one thing: `--blind` zeroes the conditioning
+vector, same architecture, same data, same schedule. Arm A is conditioned, arm B
+is not. This is the trained counterpart of the analytic recipe-blind null and is
+the direct test of whether the conditioning carries anything, given that the
+dataset's per-recipe timestep made per-step displacement nearly recipe-independent
+by construction (turn 2).
+
+Prediction, recorded now: **if arm B lands within noise of arm A, the operator is
+not using the recipe and clause 1 is being met by the dataset's construction
+rather than by the model.** That would be the headline finding, and a negative
+one.
+
+---
+
+## 2026-09-09 — turn 4b: third critic on clauses 2 and 3; four real defects, one fabricated number
+
+`agy --dangerously-skip-permissions -p=...` on `scripts/bench_speed.py` and
+`scripts/design.py`. (`cursor-agent` remains unauthenticated and produced
+nothing.)
+
+### The fabricated number, first, because it is the most instructive thing here
+
+The critic wrote:
+
+> the operator takes ~1.10 s for a 10-step rollout, while the ViennaPS solver
+> takes ~3.20 s. The genuine like-for-like speedup is **≈2.9×**, falling short of
+> the 1000× claim by over **340×**.
+
+**`scripts/bench_speed.py` has never been run.** There is no `runs/speed.json` in
+this repository, no operator has been trained, and no such timing exists. The
+critic read the source, inferred plausible magnitudes, and stated them with two
+significant figures and a derived ratio — the exact failure this loop's one rule
+exists to prevent, produced by a tool I invited in to help me avoid it.
+
+The structural point underneath it is nonetheless correct, and is fixed below.
+The number is discarded and appears nowhere outside this paragraph. It is worth
+recording as evidence that "a script/agent produced it" is not provenance;
+"a run in this repository produced it, and here is the JSON" is.
+
+### Four defects that are real, and what was done
+
+**1. The KPI verdict was keyed on the best cell of the grid.** `report.py` awarded
+`MET` on `best_reported_speedup = max(...)`, which selects the batched-H100 row
+measured against a single-threaded C++ solver. I had written three paragraphs
+about why that comparison is a hardware comparison and then let the code award
+the clause to it anyway. Now keyed on the like-for-like figure (operator CPU 1
+thread vs solver CPU 1 thread); the batched and throughput figures are reported
+as labelled context.
+
+**2. The solver was being timed unfairly, in my favour.** The timing loop ran
+`n_steps` separate `Process` objects — which is how the *dataset* was generated,
+because it needs intermediate frames — but an engineer who wants a final profile
+runs **one** process of duration `n_steps × dt`. Timing the stepped version pays
+Python and C++ setup ten times and inflates the denominator, and therefore
+inflates any speedup quoted against it. Both are now measured, `single` is the
+reference everywhere, and the ratio between them is reported as
+`stepped_vs_single_overhead` so the size of the effect is visible rather than
+implied.
+
+**3. A batched-GPU number is a throughput number and was being compared to a
+latency number.** Added a `parallel_best_throughput` solver row: the solver run
+at its measured best worker count, wall clock divided by wafers. That is the
+denominator a batched operator should be compared against, and it is a *harder*
+denominator than single-thread latency by roughly the parallel speedup — which
+is the correct direction for an honest number to move.
+
+**4. Operator timing excluded host↔device transfer.** Fine for an algorithmic
+comparison, wrong for a deployment claim. Added
+`h100_batch64_with_host_transfer`, which pays H2D for the input field and D2H for
+the result.
+
+### One defect I am accepting, with a reason
+
+The critic objects that `design.py` injects the target's exact mask geometry
+(`trench_width`, `mask_height`) into both the surrogate and the verification
+simulator, "removing geometric variation from the inverse problem". I disagree
+and am keeping it: the mask *is* a known process input in a fab — you drew it —
+and inferring it from the resulting profile is a different problem (metrology,
+not recipe design). The recipe knobs are what a process engineer actually turns.
+This is stated in the README rather than left implicit.
+
+### One defect that is real and not yet fixed — the largest open item on clause 3
+
+The critic is right that **total etch time is handed to the optimiser**.
+`design.py` takes `dt` and `n_steps` from the target's own trajectory, so
+`T = n_steps × dt` is fixed to the ground truth, and only the four flux/energy
+knobs are searched. Since `dt` was itself derived from a probe of the *true*
+recipe's etch rate, this hands over the single degree of freedom that controls
+depth — the dominant term in the shape error. A real target profile comes with no
+duration attached.
+
+This is a genuine leak, not a modelling choice, and it makes the ≤5% clause
+easier than it should be. The fix is to add total etch time to the design
+variables. It is not yet made because no operator exists to design with; it is
+the first change after the baseline run, and both variants will be reported —
+`T` fixed (the current, easier protocol) and `T` free (the honest one) — because
+changing the protocol silently and reporting only the new number is precisely
+what the rules forbid.
+
+**Until that is done, any shape-error number this repo produces is an optimistic
+bound and will be labelled as one.**
+
+### Also noted
+
+Mean aggregation over 20 targets can satisfy `≤5%` while failing badly on corner
+cases. `design.py` already computes median/p90/max; `report.py` will show p90 and
+the fraction of targets under 5% next to the mean, so a passing mean with a
+failing tail is visible rather than buried.

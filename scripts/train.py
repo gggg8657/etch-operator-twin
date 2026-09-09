@@ -27,7 +27,7 @@ from eot.data import PairDataset, TrajDataset, band_mask, fit_norm  # noqa: E402
 from eot.operator import EtchOperator, band_rel_l2, rel_l2  # noqa: E402
 
 
-def evaluate(model, loader, device, scale, band_um, rollout=True):
+def evaluate(model, loader, device, scale, band_um, rollout=True, blind=False):
     """One-step and full-rollout error, against the persistence null.
 
     Persistence -- predict no change at all -- is reported next to every number
@@ -41,6 +41,8 @@ def evaluate(model, loader, device, scale, band_um, rollout=True):
     with torch.no_grad():
         for phi0, cond, traj in loader:
             phi0, cond, traj = phi0.to(device), cond.to(device), traj.to(device)
+            if blind:
+                cond = torch.zeros_like(cond)
             T = traj.shape[1]
             # --- one step, teacher-forced over every t
             ins = torch.cat([phi0[:, None], traj[:, :-1]], dim=1)  # (B,T,1,H,W)
@@ -84,6 +86,11 @@ def main():
                     help="0 = one-step training; k>0 = pushforward over k steps")
     ap.add_argument("--band-weight", type=float, default=0.0,
                     help="extra loss weight on the narrow band; 0 = plain rel-L2")
+    ap.add_argument("--blind", action="store_true",
+                    help="zero the conditioning vector: same capacity, no recipe "
+                         "and no dt. The ablation arm for 'does the conditioning "
+                         "carry anything', differing from the main arm in exactly "
+                         "this one thing.")
     ap.add_argument("--init-from", default=None)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--device", default="cuda:0")
@@ -136,6 +143,8 @@ def main():
             opt.zero_grad(set_to_none=True)
             if a.rollout_steps > 0:
                 phi0, cond, traj = [x.to(device, non_blocking=True) for x in batch]
+                if a.blind:
+                    cond = torch.zeros_like(cond)
                 k = min(a.rollout_steps, traj.shape[1])
                 with torch.autocast("cuda", dtype=torch.bfloat16):
                     pred = model.rollout(phi0, cond, k).float()
@@ -147,6 +156,8 @@ def main():
                         pred.flatten(0, 1), tgt.flatten(0, 1), m.flatten(0, 1))
             else:
                 x, cond, y = [t.to(device, non_blocking=True) for t in batch]
+                if a.blind:
+                    cond = torch.zeros_like(cond)
                 with torch.autocast("cuda", dtype=torch.bfloat16):
                     pred = model(x, cond).float()
                 loss = rel_l2(pred, y)
@@ -161,7 +172,7 @@ def main():
         rec = {"epoch": ep, "train_loss": float(np.mean(losses)),
                "lr": sched.get_last_lr()[0], "epoch_s": time.perf_counter() - t0}
         if ep % 5 == 4 or ep == a.epochs - 1:
-            rec.update(evaluate(model, va_loader, device, scale, band_um))
+            rec.update(evaluate(model, va_loader, device, scale, band_um, blind=a.blind))
             if rec["roll_band"] is not None and rec["roll_band"] < best:
                 best = rec["roll_band"]
                 torch.save(model.state_dict(), run / "best.pt")
@@ -170,7 +181,7 @@ def main():
         print(json.dumps(rec), flush=True)
 
     torch.save(model.state_dict(), run / "last.pt")
-    final = evaluate(model, va_loader, device, scale, band_um)
+    final = evaluate(model, va_loader, device, scale, band_um, blind=a.blind)
     final.update({"best_val_roll_band": best, "train_wall_s": time.perf_counter() - t_start,
                   "params": model.param_count()})
     (run / "val_eval.json").write_text(json.dumps(final, indent=2))

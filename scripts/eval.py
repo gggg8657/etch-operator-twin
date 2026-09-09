@@ -61,6 +61,8 @@ def main():
     ap.add_argument("--split", default="test")
     ap.add_argument("--device", default="cuda:0")
     ap.add_argument("--ckpt", default="best.pt")
+    ap.add_argument("--blind", action="store_true",
+                    help="zero the conditioning, to score a model trained with --blind")
     a = ap.parse_args()
 
     run = Path(a.run)
@@ -87,6 +89,8 @@ def main():
     with torch.no_grad():
         for phi0, cond, traj in loader:
             phi0, cond, traj = phi0.to(device), cond.to(device), traj.to(device)
+            if a.blind:
+                cond = torch.zeros_like(cond)
             B, T = traj.shape[0], traj.shape[1]
             ins = torch.cat([phi0[:, None], traj[:, :-1]], dim=1)
             fi = ins.reshape(B * T, *ins.shape[2:])

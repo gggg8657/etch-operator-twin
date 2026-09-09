@@ -72,11 +72,16 @@ def main():
          f(rl["value"]) if rl else NM,
          ("MET" if rl["met"] else "NOT MET") if rl else NM,
          "rollout band rel-L2, test split" if rl else "—"],
+        # Keyed on the like-for-like number. Keying it on the best cell of the
+        # grid would award the clause to a batched H100 measured against a
+        # single-threaded C++ solver.
         ["speedup ≥ 1000×",
-         (g(sp["best_reported_speedup"]) + "×") if sp else NM,
-         ("MET" if sp and sp["best_reported_speedup"] >= 1000 else "NOT MET") if sp else NM,
-         (f"best config `{sp['best_configuration']}`; like-for-like "
-          f"{g(sp['like_for_like_speedup'])}×") if sp else "—"],
+         (g(sp["value"]) + "×") if sp else NM,
+         ("MET" if sp and sp["value"] >= 1000 else "NOT MET") if sp else NM,
+         (f"{sp['basis']}; throughput-vs-throughput "
+          f"{g(sp.get('context_throughput_speedup'))}×, "
+          f"largest cell in grid {g(sp.get('context_naive_best_cell'))}× "
+          f"(`{sp.get('context_naive_configuration')}`, different hardware)") if sp else "—"],
         ["shape error ≤ 5%",
          (f(sh["value"] * 100, 2) + "%") if sh else NM,
          ("MET" if sh["met"] else "NOT MET") if sh else NM,
