@@ -34,7 +34,8 @@ operator from a flattering metric:
 
 A **crossed test split** (`scripts/gen_data.py --dt-mode independent`) draws dt
 without reference to the recipe, so per-step displacement varies across the box
-by the full range of the rate law. A model that learned "advance ~0.7 µm"
+by the full range of the rate law. A model that learned "advance by the
+middle of the 0.4-1.0 µm/step design range"
 collapses there; one that learned `rate(recipe) × dt` does not. It is
 out-of-distribution by construction and is reported separately, never merged into
 the in-distribution number.
