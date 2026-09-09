@@ -202,15 +202,35 @@ def main():
               f"One 'wafer' = {speed['n_steps_per_wafer']} timesteps from initial trench to final profile. "
               "Rasterisation excluded from both sides.", ""]
         rows = []
+        base_s = speed["solver"]["1_thread_single"]["seconds_per_wafer_median"]
         for k, v in speed["solver"].items():
-            rows.append([f"ViennaPS, {v['threads']} thread(s)", "CPU", "—",
-                         f"{v['seconds_per_wafer_median']:.3f}", "1.0×"])
+            # the mode must be in the label: 'stepped' re-instantiates the process
+            # every timestep and is ~3x slower than the single process an engineer
+            # would actually run. Two rows reading 'ViennaPS, 1 thread' with a 3x
+            # gap between them is how a reader ends up quoting the wrong one.
+            mode = v.get("mode", "")
+            lbl = f"ViennaPS, {v['threads']} thread(s)" + (f", {mode}" if mode else "")
+            rows.append([lbl, "CPU", "—", f"{v['seconds_per_wafer_median']:.3f}",
+                         f"{base_s / v['seconds_per_wafer_median']:.2f}×"])
         for k, v in speed["operator"].items():
             rows.append([f"operator, `{k}`", v["device"], v.get("batch", "—"),
                          f"{v['seconds_per_wafer_median']:.2e}",
                          g(speed["speedup"][k]) + "×"])
         L += [table(rows, ["configuration", "device", "batch", "s / wafer (median)",
                            "speedup vs solver 1-thread"]), ""]
+        kc = speed.get("kpi_clause", {})
+        if "stepped_vs_single_overhead" in kc:
+            naive = (speed["solver"]["1_thread_stepped"]["seconds_per_wafer_median"]
+                     / min(v["seconds_per_wafer_median"] for v in speed["operator"].values()
+                           if v.get("device") == "cuda"))
+            L += [f"**The denominator matters more than the model does.** Timing the solver as "
+                  f"{speed['n_steps_per_wafer']} separate processes rather than one process of "
+                  f"the full duration inflates it by "
+                  f"**{kc['stepped_vs_single_overhead']:.2f}×**. Against that inflated "
+                  f"denominator the best GPU cell would read **{naive:.0f}×** — i.e. the clause "
+                  f"would have been recorded as MET, at 1000×, purely from how the reference "
+                  f"was timed. Against the honest denominator the same cell reads "
+                  f"**{kc['context_naive_best_cell']:.0f}×**.", ""]
         L += [f"**Like-for-like** (CPU 1 thread on both sides): "
               f"**{g(speed['speedup_like_for_like_cpu1_vs_cpu1'])}×**. "
               "The batched-H100 row is a hardware comparison as much as an algorithmic one and is "

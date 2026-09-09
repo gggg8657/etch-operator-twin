@@ -587,3 +587,113 @@ concluded my checkpoint had been destroyed. It had not. Every number above comes
 from `runs/t4_base_s0/`, a private copy whose checkpoint was **verified by
 loading it and counting parameters** against its own `args.json` before anything
 was evaluated. That check is now the thing I trust, not the filename.
+
+---
+
+## 2026-09-09 — turn 6: clause 2 is UNREACHABLE, and the measurement fix decided it
+
+### The grid
+
+`runs/speed.json`. Intel Xeon Platinum 8558 / one H100 NVL, load average 11.6 at
+measurement. One "wafer" = a 10-timestep trajectory from initial trench to final
+profile. Rasterisation excluded from both sides.
+
+| configuration | s / wafer | vs solver 1-thread single |
+|---|---|---|
+| ViennaPS, 1 thread, **single process** | 1.538 | 1.00× |
+| ViennaPS, 1 thread, stepped (10 processes) | 4.457 | 0.35× |
+| ViennaPS, 8 threads, single | 1.254 | 1.23× |
+| ViennaPS, 16 threads, single | 1.336 | 1.15× |
+| ViennaPS, 8 procs × 1 thread (best throughput) | 0.883 | 1.74× |
+| operator, CPU 1 thread, batch 1 | 1.044 | **1.47×** |
+| operator, H100 batch 1 | 0.0236 | 65× |
+| operator, H100 batch 64, incl. host transfer | 0.00471 | 327× |
+| operator, H100 batch 256 | 0.00443 | 347× |
+
+**Every reading falls short of 1000×.** The clause is `UNREACHABLE`.
+
+- Like-for-like, same device and thread count: **1.47×**.
+- Throughput against throughput (solver at its best parallel setting vs batched
+  H100): **199×**.
+- The most flattering cell in the grid, batched H100 against a single-threaded
+  C++ solver: **347×**.
+
+### The thing worth stopping on
+
+Timing the solver as ten separate `Process` objects instead of one process of the
+full duration inflates it by **2.90×**. Against that inflated denominator the
+best GPU cell reads **1006×**.
+
+**1006 ≥ 1000.** Had the adversarial review not caught the stepped-versus-single
+distinction, this repository would have recorded clause 2 as `MET`, by 0.6%,
+entirely on an artefact of how the reference was timed — with a JSON behind it, a
+script that produced it, and a plausible-sounding protocol paragraph. It would
+have been the single worst outcome available this weekend, and nothing in my own
+process caught it; a subprocess critic reading the file did.
+
+The lesson generalises past this clause: for any ratio, the denominator deserves
+at least as much adversarial attention as the numerator, because the denominator
+is the part nobody is excited about and therefore the part nobody checks.
+
+### Why the honest number is so small
+
+The operator is 16.8M parameters doing ten autoregressive steps, each with eight
+128×128 FFTs. That is not cheap on one CPU core — 1.044 s/wafer, against 1.538 s
+for ViennaPS to advect a level set through the same 2 minutes of process time.
+The surrogate's advantage is not that its arithmetic is less; it is that its
+arithmetic is dense, regular and batchable, which is worth 65× on a GPU at batch
+1 and 347× at batch 256. The simulator's is a scattered Monte Carlo ray trace,
+which is why it also refuses to parallelise (8 threads buys 1.23×, 16 threads
+buys 1.15× — the same bandwidth ceiling as turn 2's worker sweep, now measured a
+second way and agreeing).
+
+So the honest claim is *"~350× on a GPU against a single CPU core, ~200×
+throughput against the solver's own best parallel configuration, and ~1.5× if you
+hold the hardware fixed"*. None of those is 1000×, and the first is the one a
+paper would print without the other two.
+
+### What would change it
+
+Not more training. The operator would have to get roughly 3× cheaper at equal
+accuracy for the batched figure to reach 1000×: fewer modes, fewer layers, a
+smaller width, or fewer autoregressive steps per wafer. Since the accuracy is
+already below the solver's own grid error (turn 5), there is real headroom to
+spend — a deliberately undersized operator is the experiment that could move this
+clause, and it is a cheaper experiment than anything else outstanding. It is
+recorded as an option for Monday rather than run now, because it changes the
+model and clause 1 would have to be re-measured under it.
+
+### The conditioning ablation, which is the strongest evidence in the repo
+
+`runs/seed_spread.json`:
+
+| arm | seeds | band rel-L2 |
+|---|---|---|
+| conditioned (modes 20, 80 ep) | 1, 5 | 0.01292, 0.01306 |
+| **recipe-blind, same architecture** | 0 | **0.40540** |
+
+Removing the recipe conditioning — same capacity, same data, same schedule, the
+model simply cannot see the recipe — costs a factor of **31.2**. Measured
+seed-to-seed range within the conditioned arm is **0.000144**, so the effect is
+about **2700× the noise floor**.
+
+This is a much stronger statement than "beats the recipe-blind null", because the
+blind *model* is free to fit everything except the recipe, whereas the null
+predicts a constant. It settles the question codex raised in turn 3b: the
+conditioning is not decorative.
+
+Honesty about its status: this is 2 seeds against 1, so by the standing 8-seed
+rule it is a **screen, not a verdict**. I am recording it as a screen. An effect
+2700× the measured spread is not going to reverse, but the rule exists precisely
+so that judgement is not mine to make, and more seeds are training.
+
+### A bug in my own analysis, caught by the number looking wrong
+
+`scripts/seed_spread.py` grouped runs by architecture and epochs but **not** by
+whether conditioning was ablated, so the blind run was pooled with the
+conditioned ones and reported as a 31× *seed outlier* — an ablation result read
+as pipeline instability. Had I taken that at face value I would have written
+"run-to-run spread is 0.39, so nothing in this repo is distinguishable from
+anything else", which is false and would have invalidated every comparison. Fixed
+by putting `blind` in the grouping key; the ablation is now computed explicitly
+as a matched-config contrast.

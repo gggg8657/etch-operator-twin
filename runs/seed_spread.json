@@ -10,6 +10,7 @@
       "epochs": 60,
       "params": 16810841,
       "rollout_steps": 0,
+      "blind": false,
       "band_rel_l2": 0.012994742768630385,
       "terminal": 0.019474668784067034,
       "one_step_band": 0.0037603885283693673
@@ -23,6 +24,7 @@
       "epochs": 60,
       "params": 16810841,
       "rollout_steps": 0,
+      "blind": false,
       "band_rel_l2": 0.012994742768630385,
       "terminal": 0.019474668784067034,
       "one_step_band": 0.0037603885283693673
@@ -36,6 +38,7 @@
       "epochs": 80,
       "params": 26248025,
       "rollout_steps": 0,
+      "blind": true,
       "band_rel_l2": 0.40539760846793654,
       "terminal": 0.6678845371305943,
       "one_step_band": 0.06468839588835835
@@ -49,6 +52,7 @@
       "epochs": 80,
       "params": 26248025,
       "rollout_steps": 0,
+      "blind": false,
       "band_rel_l2": 0.012918633725959808,
       "terminal": 0.019352013520896435,
       "one_step_band": 0.003628409615298733
@@ -62,6 +66,7 @@
       "epochs": 80,
       "params": 26248025,
       "rollout_steps": 0,
+      "blind": false,
       "band_rel_l2": 0.013063077450636774,
       "terminal": 0.019768870061263443,
       "one_step_band": 0.0037500549959018827
@@ -74,7 +79,8 @@
         "width": 64,
         "layers": 4,
         "epochs": 60,
-        "rollout_steps": 0
+        "rollout_steps": 0,
+        "blind": false
       },
       "n_seeds": 2,
       "seeds": [
@@ -98,30 +104,68 @@
         "width": 64,
         "layers": 4,
         "epochs": 80,
-        "rollout_steps": 0
+        "rollout_steps": 0,
+        "blind": true
       },
-      "n_seeds": 3,
+      "n_seeds": 1,
       "seeds": [
-        0,
+        0
+      ],
+      "band_rel_l2": [
+        0.40539760846793654
+      ]
+    },
+    {
+      "config": {
+        "modes": 20,
+        "width": 64,
+        "layers": 4,
+        "epochs": 80,
+        "rollout_steps": 0,
+        "blind": false
+      },
+      "n_seeds": 2,
+      "seeds": [
         1,
         5
       ],
       "band_rel_l2": [
-        0.40539760846793654,
         0.012918633725959808,
         0.013063077450636774
       ],
-      "mean": 0.1437931065481777,
-      "std": 0.22655615591837538,
+      "mean": 0.012990855588298291,
+      "std": 0.00010213713721892482,
       "min": 0.012918633725959808,
-      "max": 0.40539760846793654,
-      "range": 0.39247897474197674,
-      "cv": 1.5755703549145315
+      "max": 0.013063077450636774,
+      "range": 0.0001444437246769653,
+      "cv": 0.007862233285922013
+    }
+  ],
+  "conditioning_ablation": [
+    {
+      "config": {
+        "epochs": 80,
+        "layers": 4,
+        "modes": 20,
+        "rollout_steps": 0,
+        "width": 64
+      },
+      "conditioned_mean": 0.012990855588298291,
+      "conditioned_seeds": [
+        1,
+        5
+      ],
+      "blind_mean": 0.40539760846793654,
+      "blind_seeds": [
+        0
+      ],
+      "ratio": 31.20638249824781,
+      "note": "Same architecture and capacity, recipe conditioning removed. This is a far stronger test than beating the recipe-blind *null*, because the blind model is free to fit everything except the recipe."
     }
   ],
   "verdict": {
-    "largest_within_config_range": 0.39247897474197674,
-    "max_seeds_in_any_config": 3,
+    "largest_within_config_range": 0.0001444437246769653,
+    "max_seeds_in_any_config": 2,
     "across_all_runs_range": 0.39247897474197674,
     "across_all_runs_spread_note": "This pools configurations, so it is an upper bound on seed noise and a lower bound on nothing. It is reported because if even the pooled range is tiny, no configuration in the set is distinguishable from any other.",
     "eight_seed_rule": "The standing rule is 8 seeds per arm plus an exact test before a comparison is a verdict. Below that, a difference is a screen."

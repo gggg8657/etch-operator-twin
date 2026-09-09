@@ -95,8 +95,12 @@ def main():
               f"recipe-blind null by {kx['recipe_blind_null']/kx['value']:.1f}×, so it learned the "
               f"rate law, not a constant advance.", ""]
 
-    if cf:
-        rows = {s["split"]: s for s in cf["splits"]}
+    # `runs/confound.json` is written by two different scripts in this repo with
+    # two different shapes; take the one we understand and fall through otherwise
+    # rather than aborting the whole file for one optional paragraph.
+    cf_splits = (cf or {}).get("splits") or []
+    if cf and all(isinstance(x, dict) for x in cf_splits) and cf_splits:
+        rows = {s["split"]: s for s in cf_splits}
         t, c = rows.get("test"), rows.get("test_crossed")
         if t and c:
             L += [f"Displacement spread across recipes: **"

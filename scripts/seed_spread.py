@@ -39,20 +39,26 @@ def main():
             "width": c.get("width"), "layers": c.get("layers"),
             "epochs": c.get("epochs"), "params": c.get("params"),
             "rollout_steps": c.get("rollout_steps"),
+            "blind": bool(c.get("blind", False)),
             "band_rel_l2": k.get("value"), "terminal": k.get("value_terminal_step"),
             "one_step_band": e.get("one_step", {}).get("op", {}).get("band", {}).get("mean"),
         })
     # group by everything except seed
     groups = {}
     for r in runs:
-        key = (r["modes"], r["width"], r["layers"], r["epochs"], r["rollout_steps"])
+        # `blind` MUST be in the key. It was not, and the recipe-blind ablation
+        # (0.405) was pooled with the conditioned runs (0.013) and reported as a
+        # 31x seed outlier -- an ablation result read as instability.
+        key = (r["modes"], r["width"], r["layers"], r["epochs"], r["rollout_steps"],
+               r["blind"])
         groups.setdefault(key, []).append(r)
 
     out = {"n_runs": len(runs), "runs": runs, "groups": []}
     for key, g in groups.items():
         vals = [r["band_rel_l2"] for r in g if r["band_rel_l2"] is not None]
         entry = {
-            "config": dict(zip(["modes", "width", "layers", "epochs", "rollout_steps"], key)),
+            "config": dict(zip(["modes", "width", "layers", "epochs", "rollout_steps",
+                                "blind"], key)),
             "n_seeds": len(g), "seeds": [r["seed"] for r in g],
             "band_rel_l2": vals,
         }
@@ -64,6 +70,29 @@ def main():
                 "cv": float(np.std(vals, ddof=1) / np.mean(vals)),
             })
         out["groups"].append(entry)
+
+    # the conditioning ablation, if both arms are present at matched config
+    cond = {}
+    for g in out["groups"]:
+        c = dict(g["config"])
+        b = c.pop("blind")
+        cond.setdefault(tuple(sorted(c.items())), {})[b] = g
+    for cfg, arms in cond.items():
+        if True in arms and False in arms and arms[True]["band_rel_l2"] and arms[False]["band_rel_l2"]:
+            import numpy as _np
+            out.setdefault("conditioning_ablation", []).append({
+                "config": dict(cfg),
+                "conditioned_mean": float(_np.mean(arms[False]["band_rel_l2"])),
+                "conditioned_seeds": arms[False]["seeds"],
+                "blind_mean": float(_np.mean(arms[True]["band_rel_l2"])),
+                "blind_seeds": arms[True]["seeds"],
+                "ratio": float(_np.mean(arms[True]["band_rel_l2"])
+                               / _np.mean(arms[False]["band_rel_l2"])),
+                "note": ("Same architecture and capacity, recipe conditioning removed. "
+                         "This is a far stronger test than beating the recipe-blind "
+                         "*null*, because the blind model is free to fit everything "
+                         "except the recipe."),
+            })
 
     multi = [g for g in out["groups"] if g["n_seeds"] >= 2]
     allv = [r["band_rel_l2"] for r in runs if r["band_rel_l2"] is not None]
