@@ -46,6 +46,10 @@ ViennaPS 4.6.2 / ViennaLS 5.8.5, 1 OpenMP thread.
 
 [not measured]
 
+## Clause 3b — what the surrogate is worth, in simulator calls
+
+[not measured]
+
 ## Appendix — generation throughput vs worker count
 
 Recorded because it changes the solver's seconds-per-wafer by a factor of 40 and therefore changes clause 2 if it is not controlled.

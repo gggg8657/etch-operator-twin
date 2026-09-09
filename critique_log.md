@@ -221,3 +221,66 @@ records the box load average alongside, and `scripts/report.py` never reads
 
 No operator trained yet. `RESULTS.md` currently reads `[not measured]` for all
 three KPI clauses, which is the correct state.
+
+---
+
+## 2026-09-09 — turn 3: two of everything, and a note on my own orchestration
+
+### What happened
+
+The loop's previous turn ended while its work was in flight. This turn started,
+read the repo, and wrote its own `scripts/report.py`, `scripts/eval.py` and an
+inverse-design driver — then discovered the previous turn had committed *its*
+versions of the same three files at 03:14–03:15, and that a `git add -A` had
+swept the collision into a single commit. For a few minutes the tree carried
+`scripts/design.py` and `scripts/inverse_design.py`, two scripts solving the same
+problem with different output schemas, and a `report.py` that read one of them.
+
+Nothing was lost and no measured number was affected — both versions were
+consistent with the same JSONs, and there were no results in the repo yet. But it
+would have become a genuine problem the moment a number existed, because
+`report.py` reads a fixed set of paths: two design scripts writing two schemas
+means one of them silently produces a file nothing reads, and the KPI cell for
+clause 3 quietly stays `[not measured]` while a JSON full of numbers sits next to
+it.
+
+### Resolution, and why in this direction
+
+Kept the previous turn's `scripts/design.py` and deleted this turn's
+`scripts/inverse_design.py`. Not seniority — `design.py` is genuinely better on
+one point I had missed:
+
+- It carries a **`true_resim` tripwire**: re-simulate the recipe that generated
+  the target and check the shape error is ≈0. If it is not, the pipeline is
+  non-deterministic and every other row in the table is noise. I had written no
+  such check, and without it a systematic error in rasterisation or in the
+  recipe round-trip would have been invisible and would have been attributed to
+  the operator.
+- Its random-search baseline is ranked *by the operator* on a matched operator
+  budget, which asks a sharper question than mine did: are the gradients
+  informative, or is the operator merely a usable ranker? Those have different
+  consequences for whether the differentiability is worth anything.
+
+My `scripts/inverse_baseline.py` survives because it answers a different
+question — random search evaluated *in the simulator*, reporting best-so-far
+error against the number of simulator calls. That is the number a process
+engineer actually cares about: the gradient method spends 0 simulator calls
+searching and 1 verifying, so "how many calls does a surrogate-free search need
+to match it" is what the surrogate is worth. Reporting the whole curve rather
+than one budget is the same discipline as reporting the speedup grid rather than
+its best cell.
+
+### The process lesson
+
+Two turns of one loop are not two independent workers; they share a filesystem
+and a git index, and `git add -A` is not safe under that assumption. For the rest
+of this queue: before writing a script, check whether a file of that role already
+exists (`ls -la --time-style=+%H:%M:%S scripts/`), and prefer extending it to
+writing a parallel one. Mtimes newer than the session start are the tell.
+
+### Not a critique of a result
+
+There is still no operator and no result. Dataset generation is at 275/900 train
+trajectories, 0.728 traj/s, which matches the 8-worker peak of 0.703 traj/s
+measured in turn 2 — the one prediction this loop has made that has since been
+checked, and it held.
