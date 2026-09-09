@@ -926,3 +926,84 @@ for clause 1 will continue to name which arm and which split produced it.
 CPU, launched now so it overlaps the inverse-design job on GPU 1 rather than
 queueing behind it. Generation uses 12 workers, below the measured throughput
 peak, because a design run is sharing the box.
+
+---
+
+## 2026-09-09 — turn 9: the crossed-split failure localised, and a suspicion of mine refuted
+
+### What was measured
+
+`runs/crossed_analysis.json`, model `runs/seed1`, per-trajectory band rel-L2 and
+a matched **absolute** band error in microns.
+
+| group | n | band rel-L2 | absolute band error (µm) |
+|---|---|---|---|
+| adaptive test split | 250 | 0.0129 | 0.0077 |
+| crossed, per-step displacement **inside** the trained range | 137 | 0.0465 | 0.0284 |
+| crossed, displacement **below** the trained range | 63 | 0.6398 | 0.4903 |
+| crossed, displacement **above** the trained range | 9 | 0.6117 | 0.3911 |
+| crossed, all | 209 | 0.2497 (median 0.0236) | 0.1833 (median 0.0151) |
+
+Trained per-step displacement range: 0.0617–0.3118 µm.
+**`frac_dt_outside_trained_range` = 0.000** — every crossed dt is inside the range
+the model was trained on.
+
+### The suspicion I had, and why it was wrong
+
+Seeing a mean of 0.2497 against a median of 0.0236, and a *negative* rank
+correlation between displacement and error (Spearman −0.449), I expected the
+crossed-split failure to be substantially an artefact of a **relative** metric:
+rel-L2 divides by the norm of the target field in the band, so a trajectory that
+barely moves has a small denominator and reports a large relative error for a
+small absolute one. The crossed split contains such trajectories by construction
+— drawing dt independently of the recipe pairs slow recipes with short timesteps —
+and the adaptive split does not.
+
+That is a clean story and it is **wrong**. Adding an absolute metric refutes it:
+the below-range group is at **0.4903 µm** of absolute band error against
+**0.0077 µm** in-distribution, a factor of 64. The model is not being penalised
+by arithmetic for barely moving; it is actively predicting the wrong thing — motion
+where there is little, on trajectories whose per-step advance is smaller than
+anything it trained on. Had I reported the metric-artefact explanation without
+building the absolute check, it would have excused a real failure.
+
+### What the failure actually is
+
+Not dt coverage — every crossed dt was in range. **Displacement coverage.** The
+operator degrades sharply once the per-step advance leaves the interval the
+adaptive protocol confined training to, in *both* directions, and the degradation
+is real in microns.
+
+Two components, separable:
+
+1. **Out-of-range displacement**, 72 of 209 trajectories, absolute error ~50–64×
+   in-distribution. This is the bulk of the mean.
+2. **A residual at matched displacement**: 137 trajectories inside the trained
+   displacement range are still 3.6× worse in rel-L2 and 3.7× worse in absolute
+   terms (0.0284 µm vs 0.0077 µm). So unfamiliar recipe×dt *combinations* cost
+   something even when their product is familiar — smaller than component 1, and
+   not nothing.
+
+### Consequences
+
+- **H2 is supported so far, and sharpened.** The right axis for the mixed
+  training set is per-step *displacement* coverage, not dt coverage — which is
+  what generating independent-dt trajectories happens to produce, but the
+  hypothesis should be stated in terms of displacement or the experiment will be
+  described wrongly. The third alternative from turn 8 ("the crossed split is
+  intrinsically harder because it moves further per step") is ruled out in the
+  direction it predicted: the worst group moves *less*, not more.
+- **The median crossed trajectory is fine.** 0.0151 µm absolute, still below the
+  solver's own Δ0.2→Δ0.1 grid error of 0.018 µm. The crossed-split miss is a tail
+  phenomenon concentrated in 72 of 209 trajectories, not a uniform collapse, and
+  `RESULTS.md` should say so rather than leaving 0.1524 to imply the latter.
+- **The clause-1 headline is unchanged.** In-distribution 0.0129, crossed 0.1524,
+  both reported. What changes is the *explanation* attached to the second number,
+  which is now measured rather than assumed.
+
+### Method note
+
+`scripts/analyse_crossed.py` now reports an absolute band error in microns
+alongside every relative one. Any relative metric on a corpus with heterogeneous
+target magnitudes needs this; without it there is no way to tell an accuracy
+collapse from a small denominator, and the two call for opposite responses.
