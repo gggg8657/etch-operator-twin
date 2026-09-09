@@ -1,0 +1,20 @@
+{
+  "data": "data",
+  "run": "runs/t4_base_s0",
+  "epochs": 60,
+  "batch": 32,
+  "lr": 0.002,
+  "width": 64,
+  "modes": 16,
+  "layers": 4,
+  "rollout_steps": 0,
+  "band_weight": 0.0,
+  "blind": false,
+  "init_from": null,
+  "seed": 0,
+  "device": "cuda:0",
+  "num_workers": 0,
+  "params": 16810841,
+  "gpu": "NVIDIA H100 NVL",
+  "provenance": "Launched by track-alpha at 03:47 UTC (pid 1834752): --epochs 60 --batch 32 --lr 2e-3 --width 64 --modes 16 --layers 4 --seed 0 --device cuda:0. Copied out of runs/base because a concurrent turn of this loop trained into the same directory with modes=20. The two are distinguishable by parameter count and this checkpoint was verified to hold 16,810,841 = the modes-16 config: runs/base/last.pt and the tail of logs/train_base.log carry 26,248,025 and are NOT from this run."
+}

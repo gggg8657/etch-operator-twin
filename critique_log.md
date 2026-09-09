@@ -467,3 +467,123 @@ about 2.7× of the accuracy of the ground truth it was trained against — close
 enough that further gains would start to be measured against the solver's
 discretisation rather than against the physics. That, not the rel-L2, is the
 number that says what this surrogate is worth.
+
+---
+
+## 2026-09-09 — turn 5: clause 1 measured. H1 falsified. The crossed split is the real story.
+
+### The numbers
+
+`runs/t4_base_s0/test_eval.json` and `runs/t4_base_s0/test_crossed_eval.json`.
+Model: width 64, modes 16, 4 layers, 16,810,841 parameters, 60 epochs one-step
+training, seed 0, 900 train trajectories.
+
+| predictor | in-distribution test | crossed-dt test |
+|---|---|---|
+| **operator, rollout band rel-L2** | **0.0130** | **0.1524** |
+| operator, terminal step | 0.0195 | 0.2972 |
+| persistence null | 2.1439 | 1.5829 |
+| recipe-blind null | 1.7234 | 1.4825 |
+| uniform-recession null (oracle) | 1.6679 | 1.2338 |
+| operator, one-step band | 0.0038 | — |
+| loose full-window reading | 0.0027 | — |
+
+**Clause 1 is MET in-distribution (0.0130 ≤ 0.05) and MISSED on the crossed
+split (0.1524).**
+
+### H1 was wrong
+
+Turn 4 predicted: *the operator will beat all three nulls at one step but miss
+≤0.05 on the 10-step rollout, because error compounds.* It beat the nulls by two
+orders of magnitude and it did **not** miss — 0.0130 against a 0.05 target, a
+factor of 3.8 of headroom. The hypothesis is falsified and I am recording it as
+such rather than reframing it.
+
+The discriminator I committed to in advance still did its job. The per-step curve
+is `0.0055, 0.0076, 0.0094, 0.0110, 0.0125, 0.0140, 0.0155, 0.0168, 0.0181,
+0.0195` — monotonic, roughly linear, 3.5× growth over ten steps. So the
+mechanism I named (compounding autoregressive drift) is real and visible; what I
+got wrong was its magnitude relative to the threshold. Drift exists, and starts
+from a base low enough that it does not matter over this horizon. Had I not
+written the discriminator down first I would now be free to claim I had
+predicted this, which is exactly why it was written down first.
+
+### The result that actually matters
+
+The adversarial critic's confound, measured end to end:
+
+| split | displacement spread (max/min) | CV | operator band rel-L2 |
+|---|---|---|---|
+| adaptive dt (training protocol) | 5.1× | 0.311 | 0.0130 |
+| crossed dt (independent) | 34.2× | 0.702 | 0.1524 |
+
+The adaptive timestep compresses the rate law's natural spread by about **6.7×**,
+and removing that compression costs the operator a factor of **11.7** in band
+rel-L2. So:
+
+- The protocol materially helps the headline number. Clause 1 cannot honestly be
+  quoted without this attached, and `RESULTS.md` now carries both readings in
+  adjacent rows.
+- The operator has nonetheless learned real dynamics rather than a constant. It
+  beats the recipe-blind null by 114× in-distribution and still by 9.7× on the
+  crossed split, where a model that had learned "advance ~0.17 µm" would have
+  collapsed to roughly the null. It did not.
+- Conditioning explains R² ≈ 0.88 of displacement variance in-distribution and
+  0.87 on the crossed split, so the recipe channels carry rate information, not
+  only shape.
+
+Both things are true at once and neither cancels the other. The honest summary is
+that the operator works, and that the in-distribution figure overstates how well
+by roughly an order of magnitude on the distribution a real user would present.
+
+### A ceiling worth naming before anyone tries to improve on it
+
+Mean surface distance between operator and ground truth on the test split is
+**0.0123 µm**. The solver's own grid-convergence error between Δ=0.2 (what the
+dataset uses) and Δ=0.1 is **0.018 µm mean**. The operator is therefore already
+closer to its training target than that target is to a converged solution.
+Further reduction of the in-distribution number is fitting the Δ=0.2
+discretisation, not the physics. This was flagged as the accuracy floor in turn 1
+before any model existed; it is now binding, and it is the reason the next
+experiment should be the crossed split rather than a bigger model.
+
+### 16.4% of the crossed split had to be dropped
+
+41 of 250 crossed trajectories etched out of the window and were rejected. That
+is a property of drawing dt independently — some recipe/dt pairs simply clear the
+20 µm window — and it means the crossed split is not a uniform sample of the
+recipe box: it is biased against fast recipes at long dt. The 0.1524 is therefore
+measured on the 209 that stayed, and is if anything optimistic. Reported here
+rather than buried, and the rejection count is in
+`data/gen_report_crossed.json`.
+
+### Two operational failures this turn, both mine
+
+1. **A ViennaPS call in-process permanently breaks cuFFT.** Reproduced cleanly: a
+   backward pass through the spectral layers succeeds before a single
+   `S.simulate()` call and fails after it with `CUFFT_EXEC_FAILED`, nothing else
+   changed. ViennaPS 4.6.2 ships its own GPU path and evidently disturbs the CUDA
+   context. All simulation in `design.py` now goes to a **spawn** subprocess pool
+   created before CUDA initialises — spawn and not fork, because a forked child
+   inherits the context being protected.
+
+2. **`simulate()` had no guard against a runaway etch.** Adaptive dt kept every
+   training trajectory inside the window, so this never fired during generation.
+   Inverse design proposes arbitrary recipes, where it does: a verification run
+   sat for over 13 minutes on one trajectory before I killed it, because the
+   level set keeps growing past the window and the advection takes more CFL
+   substeps every step. Now stops at the window, pads the remaining frames, and
+   leaves `steps_ok` False so a truncated trajectory can never read as a
+   completed one. `tests/test_solver.py::test_runaway_etch_stops_at_the_window_and_is_flagged`
+   is the regression and asserts a wall-clock bound.
+
+### Provenance, which nearly went wrong
+
+A concurrent turn of this loop trained into `runs/base` while my run was using
+it, and overwrote `logs/train_base.log` and `runs/base/last.pt`. The two models
+are distinguishable only by parameter count — mine is modes 16 (16,810,841),
+theirs is modes 20 (26,248,025) — and I initially read the sizes backwards and
+concluded my checkpoint had been destroyed. It had not. Every number above comes
+from `runs/t4_base_s0/`, a private copy whose checkpoint was **verified by
+loading it and counting parameters** against its own `args.json` before anything
+was evaluated. That check is now the thing I trust, not the filename.

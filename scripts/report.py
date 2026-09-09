@@ -53,6 +53,8 @@ def main():
     gen = read(Path(a.data) / "gen_report.json")
     cfg = read(run / "args.json", {})
     ev = read(run / "test_eval.json")
+    evx = read(run / "test_crossed_eval.json")
+    cf = read("runs/confound.json")
     speed = read("runs/speed.json")
     design = read(run / "design.json")
     workers = read("runs/worker_scaling.json")
@@ -240,6 +242,51 @@ def main():
         L += [f"Box margin: minimum {s['box_margin']['min']:.3f} of the box width from a wall; "
               f"{s['box_margin']['n_pinned_at_wall']} of {s['n_targets']} solutions pinned against "
               "a wall (a pinned solution is a clipped answer, not an interior optimum).", ""]
+    else:
+        L += [NM, ""]
+
+    # ---- generalisation probe: the crossed-dt split
+    L += ["## Clause 1b — the same operator when the timestep stops being adaptive", ""]
+    if evx and ev:
+        k, kx = ev["kpi_clause_rel_l2"], evx["kpi_clause_rel_l2"]
+        L += ["The training set chooses dt per recipe so every trajectory covers a comparable "
+              "etch depth. That was done to stop most of the recipe box being nearly static "
+              "(which a do-nothing predictor solves), but it also compresses how much per-step "
+              "displacement varies across recipes — an adversarial review caught this and the "
+              "compression is measured below. The crossed split is the same recipe box with dt "
+              "drawn *independently of the recipe*, so displacement varies by the rate law's "
+              "own range. It is out-of-distribution by construction and is **not** the KPI "
+              "number; it is the honest qualification of it.", "",
+              table([["in-distribution test", f(k["value"]), f(k["value_terminal_step"]),
+                      "MET" if k["met_both_readings"] else "NOT MET"],
+                     ["crossed dt (OOD probe)", f(kx["value"]), f(kx["value_terminal_step"]),
+                      "MET" if kx["met_both_readings"] else "NOT MET"]],
+                    ["split", "rollout band rel-L2 (mean)", "terminal step", "vs ≤0.05"]), ""]
+        ratio = kx["value"] / k["value"] if k["value"] else None
+        L += [f"Removing the adaptive timestep costs a factor of **{ratio:.1f}** in band "
+              f"rel-L2. The operator still beats every null on the crossed split "
+              f"(persistence {f(kx['persistence_null'])}, recipe-blind "
+              f"{f(kx['recipe_blind_null'])}, uniform-recession "
+              f"{f(kx['uniform_recession_null'])}), so it has learned real dynamics — but the "
+              "in-distribution number is materially helped by the protocol, and clause 1 "
+              "should be read with that attached.", ""]
+        if cf:
+            rows = []
+            for sp in cf["splits"]:
+                t = sp["per_trajectory_mean_displacement"]
+                rows.append([sp["split"], sp["n_trajectories"], f(t["mean"]), f(t["cv"]),
+                             f(t["max_over_min"], 1),
+                             f(sp["r2_displacement_on_full_conditioning"]),
+                             f(sp["r2_displacement_on_recipe_without_dt"])])
+            L += ["How much the adaptive timestep actually flattened the problem "
+                  "(`runs/confound.json`):", "",
+                  table(rows, ["split", "n", "mean displacement µm/step", "CV",
+                               "max/min", "R² on recipe+dt", "R² on recipe alone"]), "",
+                  "Per-step displacement spans **5.1×** across the adaptive test split against "
+                  "**34.2×** across the crossed one, so the protocol compressed the rate law's "
+                  "range by about 6.7×. It did not remove it: displacement still varies by 5× "
+                  "in-distribution and the conditioning explains ~0.88 of its variance, which "
+                  "is why the recipe-blind null is beaten rather than tied.", ""]
     else:
         L += [NM, ""]
 

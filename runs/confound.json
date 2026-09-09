@@ -81,12 +81,39 @@
         "max": 1.0,
         "max_over_min": 15.646812438964844
       }
+    },
+    {
+      "split": "test_crossed",
+      "n_trajectories": 209,
+      "displacement_um_per_step": {
+        "mean": 0.12722596973921274,
+        "std": 0.09190284460646593,
+        "min": 0.012290350540156314,
+        "max": 0.5677211727680556,
+        "cv": 0.7223591598071368,
+        "p5": 0.023177246925577502,
+        "p95": 0.30595783766223394,
+        "max_over_min": 46.19243128282939
+      },
+      "per_trajectory_mean_displacement": {
+        "mean": 0.12722596973921274,
+        "std": 0.08934887455923755,
+        "cv": 0.70228487739087,
+        "max_over_min": 34.19686022440856
+      },
+      "r2_displacement_on_full_conditioning": 0.8735944166541119,
+      "r2_displacement_on_recipe_without_dt": 0.31007327847432553,
+      "dt": {
+        "min": 0.06504171341657639,
+        "max": 0.9681621193885803,
+        "max_over_min": 14.885249137878418
+      }
     }
   ],
   "verdict": {
     "adaptive_displacement_cv": 0.3150292043021652,
     "adaptive_displacement_max_over_min": 5.4087897946219465,
-    "crossed_displacement_max_over_min": null,
+    "crossed_displacement_max_over_min": 34.19686022440856,
     "note": "If the adaptive spread is small, the recipe-blind null is strong and the operator has to beat it to have shown anything. The crossed split is the same recipe box with dt drawn independently, where the spread is the rate law's own."
   }
 }
