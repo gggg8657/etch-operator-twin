@@ -24,6 +24,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from eot.data import PairDataset, TrajDataset, band_mask, fit_norm  # noqa: E402
+from eot import runlock  # noqa: E402
 from eot.operator import EtchOperator, band_rel_l2, rel_l2  # noqa: E402
 
 
@@ -107,6 +108,7 @@ def main():
     np.random.seed(a.seed)
     run = Path(a.run)
     run.mkdir(parents=True, exist_ok=True)
+    runlock.acquire(run, what="train")
     # A run directory belongs to exactly one process. Two trainers once shared
     # runs/base -- a launch fired from a compound command I believed had aborted
     # -- and interleaved their epochs into one log.jsonl while overwriting each
@@ -203,6 +205,8 @@ def main():
     final.update({"best_val_roll_band": best, "train_wall_s": time.perf_counter() - t_start,
                   "params": model.param_count()})
     (run / "val_eval.json").write_text(json.dumps(final, indent=2))
+    runlock.mark_done(run, epochs=a.epochs, seed=a.seed,
+                      best_val_roll_band=best, train_wall_s=final["train_wall_s"])
     print(json.dumps(final, indent=2))
 
 
