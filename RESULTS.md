@@ -150,6 +150,25 @@ Per-step displacement spans **6.7×** across the adaptive test split against **1
 
 Only **33.8%** of crossed trajectories (76 of 225) have a mean per-step displacement inside the training 1st–99th percentile (0.073–0.330 µm). The crossed split is therefore mostly genuine extrapolation, not a reshuffle.
 
+## Clause 1c — the failure is displacement coverage, not the timestep
+
+The crossed split decouples dt from the recipe, and the operator's error there is both large and wildly seed-dependent. Splitting those same trajectories by whether their mean per-step displacement falls inside the range the training set covers separates two explanations that the aggregate confounds: *the model cannot handle a decoupled timestep* versus *the model cannot handle displacements it never saw*.
+
+| run | in-distribution | crossed (all) | crossed, displacement IN range | crossed, OUT of range |
+|---|---|---|---|---|
+| seed1 | 0.0129 | 0.2497 | 0.0465 | 0.6363 |
+| seed2 | 0.0119 | 0.0641 | 0.0294 | 0.1299 |
+| seed5 | 0.0131 | 0.2909 | 0.0340 | 0.7796 |
+| seed6 | 0.0126 | 0.1061 | 0.0389 | 0.2341 |
+| **mean** | — | 0.1777 | 0.0372 | 0.4450 |
+| **range** | — | 0.2268 | 0.0171 | 0.6496 |
+
+**Every seed meets the clause on the in-range crossed trajectories (0.0465 worst of 4, against the 0.05 target), and none meets it out of range.** The dt of a crossed trajectory is *never* outside the trained range (0% of them), so the operator is not failing to extrapolate in dt — it is failing to extrapolate in how far the surface moves in one step.
+
+The seed instability localises the same way. Range across seeds is **0.0171** in range and **0.6496** out of it, a factor of 38. In the regime the data covers, this pipeline is reproducible and correct; outside it, the answer depends on the seed almost as much as on the input, which is the signature of extrapolation rather than of a learned law.
+
+So the earlier framing — that removing the adaptive timestep costs a factor in accuracy — attributes the loss to the wrong variable. The adaptive-dt protocol helped only because it kept per-step displacement inside a narrow band; decoupling dt is harmless where coverage holds (0.0372 mean, clause MET) and ruinous where it does not.
+
 ## Clause 3b — what the surrogate is worth, in simulator calls
 
 [not measured]

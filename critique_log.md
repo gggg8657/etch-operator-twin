@@ -1117,3 +1117,74 @@ with range 0.00114. Out of distribution on the crossed-dt probe: **0.1777 mean
 over 4 seeds, range 0.2268 — MISSED**, on every seed individually. The clause as
 written does not name a protocol, so both readings are reported and neither is
 allowed to stand alone.
+
+### The other instance's H2, tested against my seed spread — and it survives
+
+While I was measuring the crossed split's seed spread, the other α instance was
+attacking the same failure from the other side, and committed
+`scripts/analyse_crossed.py` and `runs/crossed_analysis.json` under H2:
+*the crossed-split failure is displacement coverage, not capacity, not dt, not
+the metric.* Its evidence was `runs/seed1` alone: crossed error 0.0465 on the 137
+trajectories whose mean per-step displacement lies inside the training range,
+against 0.6363 on the 72 outside it.
+
+That is exactly the kind of claim my own result this turn should have made
+suspect. A conclusion drawn from one seed of a quantity whose seed range is
+0.2268 is not a conclusion, and 0.0465 sits close enough to the 0.05 clause that
+a different seed could plausibly have put it on the other side. So rather than
+accept it or duplicate it, I ran its analysis on the other three converged seeds:
+
+| run | in-distribution | crossed (all) | crossed, displacement IN range | crossed, OUT of range |
+|---|---|---|---|---|
+| seed1 | 0.0129 | 0.2497 | 0.0465 | 0.6363 |
+| seed2 | 0.0119 | 0.0641 | 0.0294 | 0.1299 |
+| seed5 | 0.0131 | 0.2909 | 0.0340 | 0.7796 |
+| seed6 | 0.0126 | 0.1061 | 0.0389 | 0.2341 |
+| **mean** | 0.0126 | 0.1777 | **0.0372** | 0.4450 |
+| **range** | 0.00114 | 0.2268 | **0.0171** | 0.6496 |
+
+**H2 holds, and it holds on the axis that could have killed it.** All four seeds
+meet the clause in range — worst 0.0465, and seed1 that the other instance
+happened to pick is the *worst* of the four, so its claim was if anything
+conservative. None of the four meets it out of range.
+
+The decisive detail is one I would not have looked for: `frac_dt_outside_trained_
+range` is **0.0** on both splits. Not one crossed trajectory has a dt the model
+never saw. The crossed split was built to test dt decoupling and it does not test
+dt decoupling at all — dt stays in range and *displacement* leaves it. So the
+variable named in the probe's design is not the variable that breaks it.
+
+That retires my own earlier framing, and turn 5's. "Removing the adaptive
+timestep costs a factor of 11.7" attributes the loss to dt. It is not dt.
+The adaptive protocol helped only because choosing dt per recipe kept per-step
+displacement in a narrow band; decouple dt but keep displacement covered and the
+clause is met (0.0372 mean, 4/4 seeds). The honest statement is **coverage, not
+protocol**, and the two were perfectly confounded until this decomposition split
+them.
+
+It also explains my seed-spread result rather than merely coexisting with it. The
+seed range is 0.0171 in range against 0.6496 out of it — a factor of 38. The
+pipeline is not "unstable"; it is stable where the data covers it and
+seed-dominated where it extrapolates, which is what extrapolation looks like and
+is not a defect to be trained away.
+
+**Clause 1, stated honestly and completely:**
+
+* in-distribution (adaptive dt): **0.0126** mean over 4 seeds, range 0.00114 — **MET**
+* crossed dt, displacement inside training coverage: **0.0372**, worst seed 0.0465 — **MET**
+* crossed dt, displacement outside coverage: **0.4450**, seed range 0.6496 — **NOT MET**
+* aggregate over the whole crossed split: **0.1777** — **NOT MET**, and this is
+  the number a paper would be tempted to omit
+
+The clause is met wherever the operator is used inside its training coverage,
+including under a protocol it was not trained on. Whether that counts as passing
+is a judgement about scope, not about measurement, and it is stated as a decision
+in `WEEKEND.md` rather than resolved by me in the direction I would prefer.
+
+A note on the collaboration, since it was forced rather than chosen: two
+instances sharing one working tree produced, this turn, one genuinely better
+result than either was going to get alone — its decomposition, my seed spread,
+and neither is sufficient without the other. That is not an argument for running
+two loops on one repo. The same collision killed both inverse-design jobs after
+eight minutes of duplicated compute and left clause 3 unmeasured for a fourth
+turn, which is the larger cost.

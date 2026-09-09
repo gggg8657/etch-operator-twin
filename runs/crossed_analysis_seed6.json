@@ -1,0 +1,95 @@
+{
+  "run": "runs/seed6",
+  "trained_dt_range": [
+    0.05991246923804283,
+    1.0
+  ],
+  "splits": {
+    "test": {
+      "n": 250,
+      "band_rel_l2_mean": 0.012649328293278814,
+      "band_rel_l2_median": 0.010325764305889606,
+      "abs_band_err_um_mean": 0.007503294117748738,
+      "abs_band_err_um_median": 0.006156203569844365,
+      "abs_band_err_um_p90": 0.011822868324816226,
+      "vs_displacement": {
+        "r2": 0.04000641002100147,
+        "spearman": 0.3275668410694571,
+        "slope": 0.026866881921436138
+      },
+      "vs_dt": {
+        "r2": 0.00022061939424833366,
+        "spearman": 0.04164124225987615,
+        "slope": -0.0004662676161121499
+      },
+      "vs_log_dt": {
+        "r2": 5.707030287005477e-05,
+        "spearman": 0.04164124225987615,
+        "slope": -8.33282915718861e-05
+      },
+      "displacement_range": [
+        0.06174106924284932,
+        0.3118422390632573
+      ],
+      "dt_range": [
+        0.06391078233718872,
+        1.0
+      ],
+      "frac_dt_outside_trained_range": 0.0,
+      "err_on_displacement_matched_subset": null
+    },
+    "test_crossed": {
+      "n": 209,
+      "band_rel_l2_mean": 0.1061323463836569,
+      "band_rel_l2_median": 0.021626103669404984,
+      "abs_band_err_um_mean": 0.06457656580714162,
+      "abs_band_err_um_median": 0.012476842850446701,
+      "abs_band_err_um_p90": 0.2132177233695984,
+      "vs_displacement": {
+        "r2": 0.009708446364394052,
+        "spearman": -0.39343288290656714,
+        "slope": 0.19015473425042506
+      },
+      "vs_dt": {
+        "r2": 0.0041251962048128865,
+        "spearman": -0.23036305799463694,
+        "slope": -0.05499917850598943
+      },
+      "vs_log_dt": {
+        "r2": 0.009491598415339308,
+        "spearman": -0.23036305799463694,
+        "slope": -0.02365413543622641
+      },
+      "displacement_range": [
+        0.012657531839294906,
+        0.4328478470943689
+      ],
+      "dt_range": [
+        0.06504171341657639,
+        0.9681621193885803
+      ],
+      "frac_dt_outside_trained_range": 0.0,
+      "err_on_displacement_matched_subset": null
+    }
+  },
+  "displacement_matched": {
+    "adaptive_displacement_range": [
+      0.06174106924284932,
+      0.3118422390632573
+    ],
+    "n_crossed_in_range": 137,
+    "crossed_err_in_range_mean": 0.038853436919187544,
+    "crossed_err_out_of_range_mean": 0.2341491602257722,
+    "adaptive_err_mean": 0.012649328293278814,
+    "crossed_abs_um_in_range_mean": 0.021177342151339255,
+    "crossed_abs_um_out_of_range_mean": 0.14715564415221,
+    "adaptive_abs_um_mean": 0.007503294117748738,
+    "crossed_displacement_below_range": 63,
+    "crossed_displacement_above_range": 9,
+    "err_of_below_range": 0.19778117815416957,
+    "err_of_above_range": 0.4887250347269906,
+    "abs_um_of_below_range": 0.13132290877697486,
+    "abs_um_of_above_range": 0.25798479177885586,
+    "note": "If crossed error restricted to in-range displacements is close to the adaptive error, the crossed failure is explained by trajectories simply moving further per step, not by dt being unfamiliar. If it stays high, the model is failing on dt values it never saw at displacements it did."
+  }
+}
