@@ -261,11 +261,25 @@ def main():
     L += ["## Still running, and how to check it", "",
           "```bash",
           "cd ~/Documents/workspace/etch-operator-twin",
-          "python scripts/report.py --run " + str(run) + "   # regenerate RESULTS.md",
+          "python scripts/report.py --run " + str(run) + " \\",
+          "       --design runs/design_Tfixed.json      # regenerate RESULTS.md",
           "python scripts/weekend.py --run " + str(run) + "  # regenerate this file",
           "for t in tests/test_*.py; do python $t; done      # 33 tests",
           "ls runs/                                          # one dir per run",
-          "```", ""]
+          "```", "",
+          "**Clause 3 is the one thing still outstanding.** `design.py` is running against "
+          "`runs/seed1` and writes `runs/design_Tfixed.json` (total etch time pinned to the "
+          "target — the optimistic protocol), then `runs/design_Tfree.json` (etch time "
+          "searched — the honest one). Progress is one line per target in `logs/design.log`; "
+          "the first 15 of 20 gave simulator-verified shape errors of 0.002–0.006 against the "
+          "0.05 clause, with one at 0.0587 where random search beat gradient descent. Neither "
+          "file existing yet is why the clause reads `[not measured]` and not `NOT RUN` — the "
+          "Provenance table in `RESULTS.md` distinguishes the two. When it lands, "
+          "`scripts/report.py --design runs/design_Tfixed.json` fills the cell; nothing needs "
+          "to be typed.", "",
+          "Note that `design.py` now refuses to start if another process holds the run\'s "
+          "lock, so re-running it while the current job is alive is safe — it will exit 3 with "
+          "the holder\'s pid rather than racing it.", ""]
     if gen.get("splits"):
         tot = sum(s["kept"] for s in gen["splits"])
         L += [f"Dataset: {tot} adaptive-dt trajectories "
