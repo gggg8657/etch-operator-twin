@@ -67,11 +67,20 @@ def main():
     rl = ev.get("kpi_clause_rel_l2") if ev else None
     sp = speed.get("kpi_clause") if speed else None
     sh = design["summary"].get("kpi_clause_shape_error") if design else None
+    def _relverdict(rl):
+        if not rl:
+            return NM, NM
+        term = rl.get("value_terminal_step")
+        if term is None:
+            return f(rl["value"]), ("MET" if rl["met"] else "NOT MET")
+        both = rl["value"] <= 0.05 and term <= 0.05
+        return (f"{rl['value']:.4f} mean / {term:.4f} final step",
+                "MET" if both else ("MET (mean only)" if rl["met"] else "NOT MET"))
+
+    _relv, _relvd = _relverdict(rl)
     rows = [
-        ["rel-L2 ≤ 0.05",
-         f(rl["value"]) if rl else NM,
-         ("MET" if rl["met"] else "NOT MET") if rl else NM,
-         "rollout band rel-L2, test split" if rl else "—"],
+        ["rel-L2 ≤ 0.05", _relv, _relvd,
+         "rollout band rel-L2, test split; both readings must pass" if rl else "—"],
         # Keyed on the like-for-like number. Keying it on the best cell of the
         # grid would award the clause to a batched H100 measured against a
         # single-threaded C++ solver.

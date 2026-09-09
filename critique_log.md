@@ -378,3 +378,92 @@ Mean aggregation over 20 targets can satisfy `≤5%` while failing badly on corn
 cases. `design.py` already computes median/p90/max; `report.py` will show p90 and
 the fraction of targets under 5% next to the mean, so a passing mean with a
 failing tail is visible rather than buried.
+
+---
+
+## 2026-09-09 — turn 4: H1 is falsified, and clause 1 depends on which reading you take
+
+### The numbers
+
+Test split, 250 trajectories × 10 steps, from `runs/base/test_eval.json` and
+`runs/blind/test_eval.json`. Both arms: identical architecture (26,248,025
+parameters), identical data, identical schedule, 80 epochs, seed 0. They differ
+in exactly one thing — arm B has its conditioning vector zeroed.
+
+| predictor | rollout band rel-L2 (mean over steps) | terminal step | one-step |
+|---|---|---|---|
+| **conditioned operator** | **0.0400** | **0.0668** | 0.0085 |
+| recipe-blind operator (trained, cond zeroed) | 0.4054 | 0.6679 | 0.0647 |
+| recipe-blind null (constant advance) | 1.7234 | — | — |
+| uniform recession null (oracle) | 1.6679 | — | — |
+| persistence null | 2.1439 | — | — |
+
+### H1 was wrong, and the discriminator I committed to says why
+
+H1 predicted the conditioned operator would **miss** ≤ 0.05 on the 10-step
+rollout through compounding drift. It came in at 0.0400. The prediction is
+falsified.
+
+The *mechanism* half of H1 survives, and the pre-committed discriminator is what
+establishes it rather than hindsight. The per-step curve is
+
+```
+0.0107 0.0178 0.0247 0.0312 0.0378 0.0443 0.0502 0.0558 0.0612 0.0668
+```
+
+— small at step 1 and growing 6.25× by step 10, with near-constant increments of
+about 0.0065. That is the "compounding drift" signature I wrote down in turn 3,
+not the "already large at step 1, roughly flat" signature of underfitting. So the
+error is accumulating as predicted; I simply mis-estimated its scale by enough to
+change the verdict. Underfitting is ruled out by the same curve, which is what
+the discriminator was for.
+
+### The reading that matters, and the one I nearly let stand
+
+**Mean-over-steps is the permissive reading.** It averages the cheap first step
+in with the expensive last one. The number a process engineer holds at the end of
+an etch is the *terminal* step, and that is **0.0668 — above 0.05**.
+
+So clause 1 is met on the mean and missed on the terminal step. Reporting the
+0.0400 alone would have been exactly the move the rules call the worst one
+available: passing a clause by choosing the looser of two readings of the same
+measurement, without saying that a stricter one exists and fails. The clause is
+now scored on **both readings, and is only "MET" if both pass**. It currently
+does not.
+
+For completeness the loosest reading of all, whole-window rel-L2, is 0.0084 —
+five times inside the threshold. The far field of an SDF is a smooth ramp with a
+large norm and the model gets it nearly free; that number is in `RESULTS.md`
+labelled as the loose reading and is not the headline.
+
+### The turn-2 confound is answered by measurement
+
+The recipe-blind *trained* arm reaches 0.4054 against the conditioned arm's
+0.0400 — a factor of 10 on identical capacity. The analytic recipe-blind null
+(constant advance by the train-set mean displacement) reaches 1.7234. So the
+operator is not scoring by predicting a constant ~0.7 µm advance, and the
+conditioning carries most of the signal. The confound was real, the guard was
+worth building, and the guard says the model is clean on this split.
+
+Two caveats I am not entitled to drop:
+
+1. This is **in-distribution**, where dt still comes from the per-recipe probe.
+   The crossed split (dt drawn independently of the recipe) is generating and is
+   the harder test; it is out of distribution by construction and will be
+   reported separately.
+2. This is **one seed**. The gap between arms (10×) is far outside any plausible
+   seed noise, so that comparison is safe. But the clause-1 verdict sits 20%
+   from its threshold, and this workspace has already paid three days to learn
+   that two identical invocations can differ by more than a reported effect. An
+   8-seed sweep is running; until it lands, the clause-1 number is a screen, not
+   a verdict.
+
+### Where the accuracy actually sits, physically
+
+Mean surface distance between predicted and true final profile is **0.048 µm**,
+Hausdorff **0.134 µm**. The solver's own grid-convergence uncertainty at Δ = 0.2
+is 0.018 µm mean (`runs/verify_solver.json`). The operator is therefore within
+about 2.7× of the accuracy of the ground truth it was trained against — close
+enough that further gains would start to be measured against the solver's
+discretisation rather than against the physics. That, not the rel-L2, is the
+number that says what this surrogate is worth.

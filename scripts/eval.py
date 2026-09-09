@@ -157,11 +157,23 @@ def main():
     }
     kpi = 0.05
     op_b = out["rollout"]["op"]["band"]["mean"]
+    # The mean over rollout steps is the permissive reading: it averages the
+    # cheap early steps in with the expensive late ones. The terminal step is
+    # the error you actually hold at the end of the etch, and it is the one the
+    # inverse-design clause depends on, so it is reported beside the mean and
+    # the clause is not called met unless both readings are.
+    op_terminal = float(np.mean(per_step[-1]))
     out["kpi_clause_rel_l2"] = {
         "target": kpi,
         "headline_metric": "rollout band rel-L2, mean over test trajectories",
         "value": op_b,
         "met": bool(op_b <= kpi),
+        "value_terminal_step": op_terminal,
+        "met_terminal_step": bool(op_terminal <= kpi),
+        "met_both_readings": bool(op_b <= kpi and op_terminal <= kpi),
+        "terminal_note": ("mean-over-steps averages the easy first step in with the "
+                          "hardest last one. The terminal-step value is the error "
+                          "standing at the end of the etch and is the stricter read."),
         "persistence_null": out["rollout"]["persist"]["band"]["mean"],
         "recipe_blind_null": out["rollout"]["blind"]["band"]["mean"],
         "beats_recipe_blind": bool(op_b < out["rollout"]["blind"]["band"]["mean"]),

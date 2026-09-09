@@ -186,6 +186,10 @@
     "beats_persistence": true,
     "beats_uniform_recession": true,
     "full_window_reading": 0.09375861136838794,
-    "note": "full_window_reading is the looser reading of the same clause: the far field of an SDF is a smooth ramp with a large norm, so it dilutes interface error. The band value is the headline."
+    "note": "full_window_reading is the looser reading of the same clause: the far field of an SDF is a smooth ramp with a large norm, so it dilutes interface error. The band value is the headline.",
+    "value_terminal_step": 0.6678845371305943,
+    "met_terminal_step": false,
+    "met_both_readings": false,
+    "terminal_note": "mean-over-steps averages the easy first step in with the hardest last one. The terminal-step value is the error standing at the end of the etch and is the stricter read."
   }
 }
