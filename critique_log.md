@@ -144,3 +144,80 @@ exactly this reason. The `solver_s` column stored inside the dataset was measure
 under contention and is excluded from that table.
 
 Regenerated at 16 workers.
+
+---
+
+## 2026-09-09 — turn 2: a measured negative result about my own orchestration
+
+### What was measured
+
+`scripts/bench_workers.py` → `runs/worker_scaling.json`. Generation throughput
+against worker count, 10-step trajectories, `OMP_NUM_THREADS=1` per worker, on
+the shared 192-core box:
+
+| workers | trajectories/s | wall per trajectory (s) | parallel efficiency vs 1 worker |
+|---|---|---|---|
+| 1 | 0.306 | 3.2 | 1.00 |
+| 8 | 0.703 | 10.6 | 0.29 |
+| 24 | 0.677 | 32.4 | 0.09 |
+| 48 | 0.637 | 68.5 | 0.04 |
+| 90 | 0.626 | 131.5 | 0.02 |
+
+**Throughput peaks at 8 workers and then falls.** Ninety workers occupy eleven
+times the machine to deliver 11% *less* throughput than eight.
+
+### Why the gap exists
+
+ViennaPS's plasma-etch flux calculation is a Monte Carlo ray trace over the
+surface disk mesh. Ray tracing has scattered, cache-hostile memory access and
+almost no arithmetic intensity, so it saturates memory bandwidth long before it
+saturates cores. Past that point, extra workers only add contention for the same
+bandwidth and last-level cache.
+
+### What would distinguish this from the obvious alternative
+
+The obvious alternative explanation is CPU oversubscription — that
+`OMP_NUM_THREADS=1` was not taking effect and each worker was spawning its own
+thread pool. Two observations rule that out. First, load average sat at ~105
+with 91 processes; genuine oversubscription at 192 threads per worker would have
+put load in the thousands. Second, per-worker CPU utilisation was 91–93%, i.e.
+each worker held roughly one core, which is what the variable is supposed to
+produce. A bandwidth ceiling reproduces the observed shape — sublinear gain to a
+plateau, then slow decay — while oversubscription would show a sharp collapse and
+much lower per-worker CPU%.
+
+A cleaner discriminator, not yet run and worth an hour if this ever matters
+again: pin workers to cores on a single NUMA node with `numactl` and re-measure.
+Bandwidth-bound work improves markedly when it stops crossing sockets;
+oversubscribed work does not care.
+
+### What it cost, and the honest accounting
+
+The first generation run used 90 workers on the assumption that a 192-core box
+means 90-way parallelism is free. It completed roughly 175 of 1800 trajectories
+in 10 minutes — about 300 core-seconds each against 3.2 s measured serially —
+and was killed and discarded. Two costs, both mine: ~15 minutes of wall clock,
+and 90 cores taken from the two other tracks sharing this machine for that
+period. The rerun uses 16 workers.
+
+This is the same error the seed-count lesson warns about in a different
+costume: an effect (here, "more workers is faster") assumed rather than measured,
+in a regime where the assumption happens to be false. The five-point sweep cost
+under ten minutes and would have cost nothing had it been run first.
+
+### Consequence for the KPI
+
+None directly — but it removes a trap from the speedup clause. The `solver_s`
+field recorded during dataset generation is a *contention* number: at 90 workers
+a trajectory takes 131.5 s of wall clock against 3.2 s serial, a factor of 41.
+Quoting that as "the simulator takes 131 s" would have inflated the reported
+speedup by 41× for free, and it is exactly the sort of number that looks
+defensible because a script did produce it. `scripts/bench_speed.py` therefore
+re-times the solver in a clean subprocess with the thread count pinned and
+records the box load average alongside, and `scripts/report.py` never reads
+`solver_s` from the generation report.
+
+### Still not known
+
+No operator trained yet. `RESULTS.md` currently reads `[not measured]` for all
+three KPI clauses, which is the correct state.
