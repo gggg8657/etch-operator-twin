@@ -1,1 +1,0 @@
-{"pid": 2608280, "host": "dongjukim", "argv": ["scripts/design.py", "--run", "runs/seed1", "--data", "data", "--n-targets", "20", "--iters", "200", "--restarts", "3", "--random-budget", "256", "--device", "cuda:0", "--optimise-dt", "--out", "runs/seed1/design_Tfree.json"], "acquired": 1788928243.2868183, "what": "design"}

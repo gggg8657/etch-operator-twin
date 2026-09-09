@@ -103,3 +103,13 @@ if __name__ == "__main__":
         f()
         print("ok", f.__name__)
     print(f"{len(fns)} passed")
+
+
+def test_omp_is_pinned_below_the_segfault_cliff():
+    """ViennaPS 4.6.2 segfaults above ~96 OpenMP threads on a 192-core host, and
+    the OpenMP default is nproc. Importing eot.solver must therefore have pinned
+    the thread count, or every solver call in this repo is one `nproc` away from
+    exit 139. Bisected: ok at 96, SIGSEGV at 112."""
+    import os
+    n = int(os.environ["OMP_NUM_THREADS"])
+    assert 0 < n <= 96, f"OMP_NUM_THREADS={n} is at or above the measured cliff"

@@ -134,7 +134,13 @@ def main():
     a = ap.parse_args()
 
     run = Path(a.run)
-    runlock.acquire(Path(a.out or (run / "design.json")), what="design")
+    # Two locks, because two design jobs on ONE model are redundant even when
+    # their --out paths differ, and that is exactly what happened: two instances
+    # ran the identical inverse design on runs/seed1 for eight minutes, one
+    # writing design.json and the other design_Tfixed.json, before both were
+    # killed. The out-file lock alone would not have caught it.
+    runlock.acquire(run / ".design.lock", what="design-on-this-run")
+    runlock.acquire(Path(a.out or (run / "design.json")), what="design-output")
     cfg = json.loads((run / "args.json").read_text())
     norm = json.loads((Path(a.data) / "norm.json").read_text())
     gen = json.loads((Path(a.data) / "gen_report.json").read_text())

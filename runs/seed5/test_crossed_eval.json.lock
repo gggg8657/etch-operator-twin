@@ -1,1 +1,0 @@
-{"pid": 2560000, "host": "dongjukim", "argv": ["scripts/eval.py", "--run", "runs/seed5", "--data", "data", "--split", "test_crossed", "--device", "cuda:0"], "acquired": 1788928067.4124875, "what": "eval"}

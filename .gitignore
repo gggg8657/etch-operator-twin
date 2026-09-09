@@ -4,3 +4,7 @@ data/*.npz
 runs/**/*.pt
 logs/*.log
 .ipynb_checkpoints/
+
+# advisory locks are process state, not results
+*.lock
+.design.lock
