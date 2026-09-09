@@ -20,6 +20,25 @@ source.
 | ≥1000× speedup | seconds per simulated wafer for solver and operator, with hardware and thread count stated for each, **per-sample and batched** | A batched H100 forward against a single-threaded C++ solver is a hardware comparison, not a speedup. If the honest figure is short of 1000×, the clause is reported `UNREACHABLE` with the table. |
 | 역설계 형상오차 ≤5% | normalised area difference between achieved and target profile (primary), Hausdorff distance in µm (secondary), **measured in the simulator** on the recipe the operator proposed | A recipe that only works on the surrogate is the failure mode this clause exists to catch. Recipes found outside the training box are reported as extrapolated, not as solutions. |
 
+## The nulls, which are not optional
+
+Every accuracy number in `RESULTS.md` is reported beside three predictors that
+know progressively more, because a KPI threshold on its own cannot tell a working
+operator from a flattering metric:
+
+| null | what it knows | why it is there |
+|---|---|---|
+| persistence | nothing; predicts no change | an SDF over one step is mostly unchanged, so this scores far better than it deserves to |
+| **recipe-blind** | the train-set mean per-step displacement | the timestep is chosen per recipe so every trajectory covers a comparable depth, which makes displacement nearly recipe-independent *by construction*. A model could score well while ignoring the recipe entirely. **Failing this one is fatal.** |
+| uniform recession | the *ground truth's* mean displacement (oracle) | handed the correct amount of etch, lacking only the shape. Losing to it is informative, not damning; beating it is strong. |
+
+A **crossed test split** (`scripts/gen_data.py --dt-mode independent`) draws dt
+without reference to the recipe, so per-step displacement varies across the box
+by the full range of the rate law. A model that learned "advance ~0.7 µm"
+collapses there; one that learned `rate(recipe) × dt` does not. It is
+out-of-distribution by construction and is reported separately, never merged into
+the in-distribution number.
+
 ## Ground truth
 
 ViennaPS 4.6.2, `SF6O2Etching` on a 2-D trench, units µm/min.

@@ -14,5 +14,7 @@ jobs:
         run: PYTHONPATH=. python tests/test_sdf.py
       - name: operator shapes, conditioning, metrics
         run: PYTHONPATH=. python tests/test_operator.py
+      - name: shape metrics and the recipe-blind null constant
+        run: PYTHONPATH=. python tests/test_metrics.py
       - name: ViennaPS ground truth is importable and steps
         run: PYTHONPATH=. OMP_NUM_THREADS=1 python tests/test_solver.py

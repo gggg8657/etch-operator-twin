@@ -59,6 +59,32 @@ def test_perfect_match_is_zero_error():
     assert r["hausdorff_um"] < 1e-6
 
 
+
+
+def test_mean_step_displacement_recovers_a_known_advance():
+    """A surface stepped down by a known amount must return that amount.
+
+    This constant is the recipe-blind null. If it were wrong the null would be
+    weak for the wrong reason and the operator would look better than it is.
+    """
+    from eot.data import mean_step_displacement
+
+    step = 0.4
+    T = 6
+    frames = np.stack([_plane(-1.0 - step * t) for t in range(T + 1)])
+    sdf = frames[None]  # (1, T+1, H, W)
+    d = mean_step_displacement(sdf.astype(np.float32))
+    # the surface moves down by `step`, so phi at a fixed point increases by step
+    assert abs(d - step) < 0.02, d
+
+
+def test_mean_step_displacement_is_zero_for_a_static_surface():
+    from eot.data import mean_step_displacement
+
+    sdf = np.stack([_plane(-2.0)] * 5)[None].astype(np.float32)
+    assert abs(mean_step_displacement(sdf)) < 1e-6
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:
