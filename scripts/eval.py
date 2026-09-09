@@ -8,10 +8,12 @@ operator from a lucky metric:
 
 * **persistence** -- predict no change at all. An SDF over one timestep is mostly
   unchanged, so this scores far better than it deserves to.
-* **uniform recession** -- move the whole surface down by the mean depth change
-  the ground truth made over the step. This is the strongest thing you can do
-  while knowing nothing about the *shape* of the etch, so beating persistence is
-  cheap and beating this one is not.
+* **uniform recession (oracle)** -- move the whole surface down by the mean depth
+  change the ground truth made over the step. It is handed the correct amount of
+  etch and knows only that; it has no shape information. This is deliberately
+  *unfair to the operator*: the null is given a quantity the operator has to
+  infer. Beating persistence is cheap; beating an oracle-offset null means the
+  operator has learned the shape of the etch and not just its rate.
 
 Also reports geometry (Hausdorff, normalised area error) on the final profile,
 which is the quantity the inverse-design clause is judged in.
@@ -35,7 +37,11 @@ from eot.operator import EtchOperator, band_rel_l2, rel_l2  # noqa: E402
 
 
 def uniform_recession(prev_um, target_um):
-    """Shift `prev` down by the mean surface displacement `target` made.
+    """ORACLE null: shift `prev` by the mean surface displacement `target` made.
+
+    Reads the target to get the offset, so it knows the correct etch *rate* for
+    free and only lacks the etch *shape*. Reported as an upper bar the operator
+    should clear, not as a like-for-like competitor.
 
     Implemented as an SDF offset: adding c to a signed distance field moves its
     zero set by c along the normal, so this is exactly 'the right amount of etch,
