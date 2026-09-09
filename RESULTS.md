@@ -150,3 +150,39 @@ Recorded because it changes the solver's seconds-per-wafer by a factor of 40 and
 | gpu | NVIDIA H100 NVL |
 | seed | 1 |
 
+## Provenance — every input this report expects
+
+`[not measured]` above means the JSON in this table is absent. If a row says **NOT RUN**, the corresponding KPI cell is blank because a script did not produce its output, *not* because the quantity is unmeasurable.
+
+| what | file | state | written |
+|---|---|---|---|
+| clause 1 — accuracy | `runs/seed1/test_eval.json` | found | 2026-09-09 04:07 UTC |
+| clause 1b — crossed dt | `runs/seed1/test_crossed_eval.json` | **NOT RUN — file absent** | — |
+| clause 2 — speed | `runs/speed.json` | found | 2026-09-09 04:13 UTC |
+| clause 3 — inverse design | `runs/seed1/design.json` | **NOT RUN — file absent** | — |
+| clause 3b — simulator-call baseline | `runs/inverse_baseline.json` | **NOT RUN — file absent** | — |
+| solver verification | `runs/verify_solver.json` | found | 2026-09-09 02:48 UTC |
+| dataset | `data/gen_report.json` | found | 2026-09-09 03:42 UTC |
+| adaptive-dt confound | `runs/confound.json` | found | 2026-09-09 04:13 UTC |
+| seed spread | `runs/seed_spread.json` | found | 2026-09-09 04:25 UTC |
+| GPU lease health | `runs/gpu_health.json` | found | 2026-09-09 04:21 UTC |
+
+### Noise floor
+
+Largest within-configuration range across seeds: **0.00114** (4 seeds in the largest arm). An effect smaller than this is not an effect.
+
+Runs excluded as unfinished (scoring a mid-training checkpoint beside converged ones reads as a seed outlier):
+
+| run | why excluded | epochs requested |
+|---|---|---|
+| `runs/UNTRACED_t4_base_s0` | no log.jsonl | 60 |
+| `runs/base` | logged 49/80 epochs, not a complete 0..79 | 80 |
+| `runs/base_RACED_do_not_use` | duplicate epoch records [0, 1, 2, 3, 4] -- two writers shared this log | 60 |
+
+### Hardware the timings were taken on
+
+| device | median bf16 TFLOP/s | run-to-run spread |
+|---|---|---|
+| cuda:0 | 531.7 | 2.7% |
+| cuda:1 | 530.6 | 1.1% |
+

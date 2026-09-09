@@ -33,6 +33,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from eot import solver as S  # noqa: E402
 from eot.data import TrajDataset, band_mask  # noqa: E402
 from eot.metrics import shape_error  # noqa: E402
+from eot import runlock
 from eot.operator import EtchOperator, band_rel_l2, rel_l2  # noqa: E402
 
 
@@ -75,6 +76,7 @@ def main():
     a = ap.parse_args()
 
     run = Path(a.run)
+    runlock.acquire(run / f"{a.split}_eval{a.tag or ''}.json", what="eval")
     cfg = json.loads((run / "args.json").read_text())
     norm = json.loads((Path(a.data) / "norm.json").read_text())
     scale, band_um = norm["sdf_scale_um"], norm["band_um"]

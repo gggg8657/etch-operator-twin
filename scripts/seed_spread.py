@@ -20,6 +20,43 @@ from pathlib import Path
 import numpy as np
 
 
+def completed(d, cfg):
+    """Is this run finished, and written by exactly one process?
+
+    Counting lines in log.jsonl is not enough. `train.py` opens the log in
+    APPEND mode, so two trainers sharing a directory interleave into one file
+    and the line count reaches the epoch budget with neither model converged --
+    which is how a 0.0400 rel-L2 belonging to no model got reported once. So:
+
+      * `done.json` (written only at the end of a clean run) is the proof;
+      * failing that, the logged epochs must be exactly 0..epochs-1, each once.
+        A duplicate epoch number is positive evidence of two writers.
+    """
+    epochs = cfg.get("epochs")
+    if (d / "done.json").exists():
+        return True, "done.json"
+    log = d / "log.jsonl"
+    if not log.exists():
+        return False, "no log.jsonl"
+    eps = []
+    for line in log.open():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            eps.append(json.loads(line)["epoch"])
+        except (json.JSONDecodeError, KeyError):
+            return False, "unparseable log line (interleaved writers?)"
+    if epochs is None:
+        return False, "args.json has no epoch budget"
+    if len(eps) != len(set(eps)):
+        dup = sorted({e for e in eps if eps.count(e) > 1})
+        return False, f"duplicate epoch records {dup[:5]} -- two writers shared this log"
+    if sorted(eps) != list(range(epochs)):
+        return False, f"logged {len(eps)}/{epochs} epochs, not a complete 0..{epochs - 1}"
+    return True, "complete epoch sequence"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--glob", default="runs/*")
@@ -39,12 +76,9 @@ def main():
         # This happened: a run 26 epochs into an 80-epoch budget scored 0.0491
         # against 0.0126-0.0131 for four converged seeds, and was very nearly
         # reported as a 3.8x seed effect.
-        log = d / "log.jsonl"
-        n_ep = sum(1 for _ in log.open()) if log.exists() else None
-        done = (n_ep is not None and c.get("epochs") is not None
-                and n_ep >= c["epochs"])
-        if not done:
-            incomplete.append({"run": str(d), "epochs_logged": n_ep,
+        ok, why = completed(d, c)
+        if not ok:
+            incomplete.append({"run": str(d), "reason": why,
                                "epochs_requested": c.get("epochs")})
             continue
         k = e.get("kpi_clause_rel_l2", {})

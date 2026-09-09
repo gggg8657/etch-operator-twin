@@ -38,6 +38,7 @@ from eot import solver as S  # noqa: E402
 from eot.data import TrajDataset, cond_vector  # noqa: E402
 from eot.inverse import DESIGN_KEYS, RecipeParam, build_cond, design, recipe_from_values  # noqa: E402
 from eot.metrics import shape_error  # noqa: E402
+from eot import runlock  # noqa: E402
 from eot.operator import EtchOperator  # noqa: E402
 
 
@@ -102,6 +103,7 @@ def main():
     _POOL = mp.get_context("spawn").Pool(1)
 
     run = Path(a.run)
+    runlock.acquire(Path(a.out or (run / "design.json")), what="design")
     cfg = json.loads((run / "args.json").read_text())
     norm = json.loads((Path(a.data) / "norm.json").read_text())
     gen = json.loads((Path(a.data) / "gen_report.json").read_text())

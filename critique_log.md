@@ -876,3 +876,53 @@ be said now is that among converged runs the spread is 0.00041 — two orders of
 magnitude below the 0.05 threshold — so clause 1's in-distribution verdict is not
 seed-sensitive, whereas the crossed-split miss (0.15–0.16 across the two models
 measured) is far outside it and is not a seed artefact either.
+
+---
+
+## 2026-09-09 — turn 8: H2, written before the run
+
+### The finding it responds to
+
+Clause 1 is met in-distribution (0.0129) and missed on the crossed-dt split
+(0.1524). The training protocol picks dt per recipe so every trajectory covers a
+comparable etch depth, which compresses per-step displacement spread from 34.2×
+to 5.1×. The operator has learned the rate law — the recipe-blind *model* ablation
+costs 32.1× — but it has only been asked to apply it over a narrow range of
+per-step advances, and it degrades by ~12× when that range widens.
+
+### H2
+
+*Training on a mixture of adaptive-dt and independent-dt trajectories will reduce
+crossed-split band rel-L2 by at least 3× without pushing in-distribution band
+rel-L2 above 0.05.*
+
+The claim behind it: the crossed-split failure is a **coverage** failure, not a
+capacity or architecture failure. The operator can represent the rate law over a
+wide range of dt; it has simply never been shown one.
+
+### What would distinguish this from the obvious alternatives
+
+| explanation | prediction |
+|---|---|
+| **coverage (H2)** | mixed training largely closes the crossed gap; in-distribution error rises slightly or not at all, because the model has spare capacity (it is already below the solver's grid error) |
+| **capacity** | mixed training trades one split against the other — crossed improves and in-distribution degrades by a comparable factor — because the model is at its representational limit |
+| **the crossed split is intrinsically harder** (long-dt trajectories have genuinely more surface change per step, so the same relative accuracy is a larger absolute error) | mixed training improves crossed error but plateaus well above the in-distribution value, and the residual gap tracks per-step displacement rather than dt itself |
+
+The third is worth taking seriously and is partly testable already: crossed-split
+error can be regressed on per-step displacement using data I have. If the gap is
+fully explained by displacement magnitude, "coverage" is the wrong word for it.
+
+### The protocol change, and how it will be reported
+
+This changes the training distribution, so **numbers before and after are not
+comparable and both will be reported**. The existing adaptive-only model stays as
+the baseline with its own numbers intact; the mixed model is a second arm, scored
+on the *same* two test splits, neither of which it was trained on. The KPI cell
+for clause 1 will continue to name which arm and which split produced it.
+
+### Cost, and what is running
+
+900 independent-dt training trajectories at the measured 0.74 traj/s ≈ 20 min of
+CPU, launched now so it overlaps the inverse-design job on GPU 1 rather than
+queueing behind it. Generation uses 12 workers, below the measured throughput
+peak, because a design run is sharing the box.
