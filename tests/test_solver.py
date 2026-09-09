@@ -74,6 +74,29 @@ def test_simulate_returns_stacked_frames():
     assert (tr.sdf[0] < 0).mean() > 0.5, "most of the window starts as solid"
 
 
+
+
+def test_runaway_etch_stops_at_the_window_and_is_flagged():
+    """A recipe that clears the window must terminate quickly and report it.
+
+    Without the guard the level set keeps growing past the window and cost per
+    step climbs without bound; an unguarded inverse-design verification hung for
+    >13 min on one trajectory. The trajectory must still have the full frame
+    count so downstream shape code needs no special case, and `steps_ok` must be
+    False so a truncated run cannot be read as a completed one.
+    """
+    import time
+
+    fast = S.Recipe(ion_flux=30.0, etchant_flux=5000.0, oxygen_flux=400.0,
+                    ion_energy=200.0)
+    t0 = time.perf_counter()
+    tr = S.simulate(fast, n_steps=10, dt=1.0, grid_delta=0.3, n=64)
+    elapsed = time.perf_counter() - t0
+    assert tr.sdf.shape == (11, 64, 64), tr.sdf.shape
+    assert tr.steps_ok is False, "a runaway etch must not be reported as ok"
+    assert elapsed < 120, f"guard did not bound the cost: {elapsed:.0f}s"
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:

@@ -274,17 +274,34 @@ def simulate(
     polys = [surface_polyline(dom)] if keep_polylines else []
     seconds = 0.0
     ok = True
-    for _ in range(n_steps):
+    for step in range(n_steps):
         proc = make_process(rec, dom, dt)
         t0 = time.perf_counter()
         proc.apply()
         seconds += time.perf_counter() - t0
         poly = surface_polyline(dom)
-        if poly[:, 1].min() < Y_MIN + 0.5:  # etched out of the window
+        left_window = poly[:, 1].min() < Y_MIN + 0.5
+        if left_window:
             ok = False
         frames.append(rasterise(poly, n))
         if keep_polylines:
             polys.append(poly)
+        # Stop once the surface has left the window. Nothing below Y_MIN is
+        # representable on the fixed grid, so further steps add no information --
+        # and they are not cheap: the level set keeps growing and the advection
+        # takes more CFL substeps each time, so cost per step climbs without
+        # bound. Adaptive dt kept every training trajectory inside the window, so
+        # this never fired during generation. Inverse design proposes arbitrary
+        # recipes, where it does: an unguarded verification run sat for >13
+        # minutes on a single trajectory before being killed. Remaining frames
+        # repeat the last and `steps_ok` stays False, so a truncated trajectory
+        # can never be mistaken for a completed one.
+        if left_window and step < n_steps - 1:
+            last = frames[-1]
+            frames.extend([last] * (n_steps - 1 - step))
+            if keep_polylines:
+                polys.extend([poly] * (n_steps - 1 - step))
+            break
     return Trajectory(
         recipe=rec, sdf=np.stack(frames).astype(np.float32), polylines=polys,
         seconds=seconds, steps_ok=ok,
