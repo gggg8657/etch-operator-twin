@@ -48,15 +48,25 @@ os.environ["OMP_NUM_THREADS"] = "{threads}"
 import sys; sys.path.insert(0, {str(Path(__file__).resolve().parents[1])!r})
 from eot import solver as S
 rng = np.random.default_rng({seed})
-ts = []
+stepped, single = [], []
 for _ in range({n_traj}):
     rec = S.sample_recipe(rng)
+    # (a) stepped: n_steps separate processes, as the dataset was generated,
+    #     because it needs the intermediate frames.
     dom = S.build_domain(rec, {grid_delta})
     t0 = time.perf_counter()
     for _ in range({n_steps}):
         S.make_process(rec, dom, {dt}).apply()
-    ts.append(time.perf_counter() - t0)
-print(json.dumps(ts))
+    stepped.append(time.perf_counter() - t0)
+    # (b) single: ONE process of the whole duration -- what an engineer who wants
+    #     a final profile actually runs, and the honest denominator. (a) pays
+    #     Python/C++ setup n_steps times and would inflate any speedup quoted
+    #     against it.
+    dom = S.build_domain(rec, {grid_delta})
+    t0 = time.perf_counter()
+    S.make_process(rec, dom, {n_steps} * {dt}).apply()
+    single.append(time.perf_counter() - t0)
+print(json.dumps({{"stepped": stepped, "single": single}}))
 """
     env = dict(os.environ, OMP_NUM_THREADS=str(threads))
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env)

@@ -61,6 +61,10 @@ def main():
     ap.add_argument("--split", default="test")
     ap.add_argument("--device", default="cuda:0")
     ap.add_argument("--ckpt", default="best.pt")
+    ap.add_argument("--tag", default=None,
+                    help="suffix for the output file, so evaluating a second "
+                         "split into the same run directory cannot overwrite the "
+                         "first (it did once)")
     ap.add_argument("--blind", action="store_true",
                     help="zero the conditioning, to score a model trained with --blind")
     a = ap.parse_args()
@@ -192,7 +196,7 @@ def main():
                  "far field of an SDF is a smooth ramp with a large norm, so it "
                  "dilutes interface error. The band value is the headline."),
     }
-    (run / f"{a.split}_eval.json").write_text(json.dumps(out, indent=2))
+    (run / f"{a.split}_eval{a.tag or ''}.json").write_text(json.dumps(out, indent=2))
     print(json.dumps(out["kpi_clause_rel_l2"], indent=2))
     print(json.dumps(out["final_profile_geometry"], indent=2))
 

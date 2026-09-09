@@ -1,0 +1,102 @@
+{
+  "steps": 10,
+  "grid_delta": 0.2,
+  "grid_n": 128,
+  "window": {
+    "x": [
+      -10.0,
+      10.0
+    ],
+    "y": [
+      -18.0,
+      2.0
+    ]
+  },
+  "recipe_box": {
+    "ion_flux": [
+      5.0,
+      30.0,
+      "log"
+    ],
+    "etchant_flux": [
+      500.0,
+      5000.0,
+      "log"
+    ],
+    "oxygen_flux": [
+      0.0,
+      400.0,
+      "lin"
+    ],
+    "ion_energy": [
+      50.0,
+      200.0,
+      "lin"
+    ]
+  },
+  "geom_box": {
+    "trench_width": [
+      4.0,
+      9.0,
+      "lin"
+    ],
+    "mask_height": [
+      1.0,
+      3.0,
+      "lin"
+    ]
+  },
+  "recipe_keys": [
+    "ion_flux",
+    "etchant_flux",
+    "oxygen_flux",
+    "ion_energy",
+    "trench_width",
+    "mask_height"
+  ],
+  "target_depth_range": [
+    4.0,
+    10.0
+  ],
+  "splits": [
+    {
+      "split": "train",
+      "requested": 900,
+      "kept": 900,
+      "rejected_out_of_window": 0,
+      "seed0": 1000000,
+      "generate_wall_s": 1186.3700426071882,
+      "workers": 16,
+      "solver_s_per_trajectory_mean_1thread": 17.351922256681654,
+      "solver_s_per_trajectory_median_1thread": 17.246335983276367,
+      "file": "data/train.npz",
+      "bytes": 497542945
+    },
+    {
+      "split": "val",
+      "requested": 150,
+      "kept": 150,
+      "rejected_out_of_window": 0,
+      "seed0": 2000000,
+      "generate_wall_s": 204.52772425115108,
+      "workers": 16,
+      "solver_s_per_trajectory_mean_1thread": 17.148642342885335,
+      "solver_s_per_trajectory_median_1thread": 16.9135799407959,
+      "file": "data/val.npz",
+      "bytes": 82943310
+    },
+    {
+      "split": "test",
+      "requested": 250,
+      "kept": 250,
+      "rejected_out_of_window": 0,
+      "seed0": 3000000,
+      "generate_wall_s": 332.89674305170774,
+      "workers": 16,
+      "solver_s_per_trajectory_mean_1thread": 17.318200984954835,
+      "solver_s_per_trajectory_median_1thread": 17.139467239379883,
+      "file": "data/test.npz",
+      "bytes": 138315966
+    }
+  ]
+}
