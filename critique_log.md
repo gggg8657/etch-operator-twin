@@ -373,3 +373,47 @@ band rel-L2 **0.0963** on the same predictions. The loose reading of clause 1
 passes ≤ 0.05 by a factor of five while the strict reading fails by a factor of
 two. That is the gap §2.1 of the draft asserts, now demonstrated on this code
 rather than argued.
+
+---
+
+## 2026-09-09 — turn 4: hypothesis for the first training run, written before it starts
+
+### H1
+
+*A recipe-conditioned FNO trained on single steps with a plain rel-L2 loss will
+beat all three nulls on one-step band rel-L2, but will **miss** the ≤ 0.05 clause
+on the 10-step autoregressive rollout, because the error compounds rather than
+because the model is underfitted.*
+
+### What would confirm it, and what would distinguish it from the obvious alternative
+
+The obvious alternative — the one the brief specifically forbids asserting
+without evidence — is "it just needs more epochs". These two make *different*
+predictions about the shape of `rollout_band_rel_l2_by_step`, which
+`scripts/eval.py` already writes out:
+
+| explanation | signature in the per-step error curve |
+|---|---|
+| **compounding drift (H1)** | error grows monotonically and superlinearly with step index, while step-1 error is small and close to the teacher-forced one-step number |
+| **underfitting** | error is high and roughly *flat* across steps, and step-1 error is already close to the final-step error |
+| **conditioning is decorative** | operator sits at or above the recipe-blind null at every step |
+
+So the curve discriminates all three without a second training run. If it is
+drift, the intervention is pushforward/rollout training (`--rollout-steps k`),
+which is one change to one knob. If it is underfitting, the intervention is
+capacity or epochs. If it is the third, the dataset is the problem, not the
+model, and no amount of training fixes it.
+
+### Configuration, fixed now so it is not tuned after seeing the answer
+
+`--width 64 --modes 16 --layers 4 --epochs 60 --batch 32 --lr 2e-3`, one-step
+training, no band weighting, seed 0, on GPU 0 of the track's lease. Val is
+scored every 5 epochs on rollout band rel-L2 and the best checkpoint is kept.
+
+### What this run is *not*
+
+A verdict on anything comparative. It is one seed of one configuration. Per the
+seed-count lesson, no comparison between two configurations gets reported as a
+finding until it is run at 8 seeds per arm with an exact test; run-to-run spread
+for this pipeline is `[not measured]` and measuring it is the first ablation
+after a baseline exists.
