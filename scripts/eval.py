@@ -61,6 +61,11 @@ def main():
     ap.add_argument("--split", default="test")
     ap.add_argument("--device", default="cuda:0")
     ap.add_argument("--ckpt", default="best.pt")
+    ap.add_argument("--indices-from", default=None,
+                    help="JSON file with overlap.crossed_indices_inside: restrict "
+                         "scoring to the subset of trajectories whose per-step "
+                         "displacement lies inside the training range. This is what "
+                         "separates an extrapolation failure from a learned shortcut.")
     ap.add_argument("--tag", default=None,
                     help="suffix for the output file, so evaluating a second "
                          "split into the same run directory cannot overwrite the "
@@ -76,7 +81,14 @@ def main():
     device = torch.device(a.device)
 
     ds = TrajDataset(Path(a.data) / f"{a.split}.npz", norm)
-    loader = DataLoader(ds, batch_size=16, shuffle=False, num_workers=2)
+    subset_note = None
+    if a.indices_from:
+        idx = json.loads(Path(a.indices_from).read_text())["overlap"]["crossed_indices_inside"]
+        ds = torch.utils.data.Subset(ds, idx)
+        subset_note = (f"restricted to {len(idx)} trajectories whose mean per-step "
+                       f"displacement lies inside the training p1-p99 range, from "
+                       f"{a.indices_from}")
+    loader = DataLoader(ds, batch_size=16, shuffle=False, num_workers=0)
     model = EtchOperator(cond_dim=len(norm["cond_keys"]), width=cfg["width"],
                          modes=cfg["modes"], n_layers=cfg["layers"]).to(device)
     model.load_state_dict(torch.load(run / a.ckpt, map_location=device))
@@ -147,7 +159,8 @@ def main():
 
     out = {
         "run": str(run), "split": a.split, "ckpt": a.ckpt,
-        "n_trajectories": len(ds), "steps": ds.sdf.shape[1] - 1,
+        "n_trajectories": len(ds), "steps": int(traj.shape[1]),
+        "subset_note": subset_note,
         "band_um": band_um, "sdf_scale_um": scale,
         "one_step": {k: {kk: stat(vv) for kk, vv in v.items()} for k, v in one.items()},
         "rollout": {k: {kk: stat(vv) for kk, vv in v.items()} for k, v in roll.items()},

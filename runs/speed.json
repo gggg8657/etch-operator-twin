@@ -1,0 +1,149 @@
+{
+  "load_average_at_measurement": [
+    11.5634765625,
+    16.6552734375,
+    25.24951171875
+  ],
+  "n_steps_per_wafer": 10,
+  "grid_delta": 0.2,
+  "grid_n": 128,
+  "params": 16810841,
+  "cpu": "Model name:                           INTEL(R) XEON(R) PLATINUM 8558",
+  "gpu": "NVIDIA H100 NVL",
+  "solver": {
+    "1_thread_single": {
+      "seconds_per_wafer_mean": 1.6476549725048244,
+      "seconds_per_wafer_median": 1.5379092786461115,
+      "seconds_per_wafer_std": 0.4900422415806961,
+      "n": 8,
+      "threads": 1,
+      "device": "cpu",
+      "mode": "single"
+    },
+    "1_thread_stepped": {
+      "seconds_per_wafer_mean": 4.607384513597935,
+      "seconds_per_wafer_median": 4.45676739141345,
+      "seconds_per_wafer_std": 1.0242104621691235,
+      "n": 8,
+      "threads": 1,
+      "device": "cpu",
+      "mode": "stepped"
+    },
+    "8_thread_single": {
+      "seconds_per_wafer_mean": 1.3791941129602492,
+      "seconds_per_wafer_median": 1.25398132763803,
+      "seconds_per_wafer_std": 0.4936355709677539,
+      "n": 8,
+      "threads": 8,
+      "device": "cpu",
+      "mode": "single"
+    },
+    "8_thread_stepped": {
+      "seconds_per_wafer_mean": 4.364877432119101,
+      "seconds_per_wafer_median": 4.040472470223904,
+      "seconds_per_wafer_std": 1.0571983069592605,
+      "n": 8,
+      "threads": 8,
+      "device": "cpu",
+      "mode": "stepped"
+    },
+    "16_thread_single": {
+      "seconds_per_wafer_mean": 1.431811026763171,
+      "seconds_per_wafer_median": 1.3358102720230818,
+      "seconds_per_wafer_std": 0.46221322682571614,
+      "n": 8,
+      "threads": 16,
+      "device": "cpu",
+      "mode": "single"
+    },
+    "16_thread_stepped": {
+      "seconds_per_wafer_mean": 4.341854892205447,
+      "seconds_per_wafer_median": 4.069443775340915,
+      "seconds_per_wafer_std": 0.7857140178723591,
+      "n": 8,
+      "threads": 16,
+      "device": "cpu",
+      "mode": "stepped"
+    },
+    "parallel_best_throughput": {
+      "seconds_per_wafer_median": 0.8827640919480473,
+      "seconds_per_wafer_mean": 0.8827640919480473,
+      "n": 32,
+      "threads": "8 procs x 1",
+      "device": "cpu",
+      "mode": "single, parallel throughput",
+      "note": "wall clock / n_wafers with the solver at its measured best worker count"
+    }
+  },
+  "operator": {
+    "cpu_1_thread_batch1": {
+      "seconds_per_wafer_mean": 1.0427642658352851,
+      "seconds_per_wafer_median": 1.0444375984370708,
+      "n": 5,
+      "threads": 1,
+      "device": "cpu",
+      "batch": 1
+    },
+    "h100_batch64_with_host_transfer": {
+      "seconds_per_wafer_mean": 0.004684332496253774,
+      "seconds_per_wafer_median": 0.004708671593107283,
+      "n": 10,
+      "device": "cuda",
+      "batch": 64,
+      "note": "includes H2D of the input field and D2H of the result"
+    },
+    "h100_batch1": {
+      "seconds_per_wafer_mean": 0.023559277318418025,
+      "seconds_per_wafer_median": 0.023557765409350395,
+      "n": 20,
+      "device": "cuda",
+      "batch": 1
+    },
+    "h100_batch16": {
+      "seconds_per_wafer_mean": 0.005553735967259854,
+      "seconds_per_wafer_median": 0.005569546832703054,
+      "n": 20,
+      "device": "cuda",
+      "batch": 16
+    },
+    "h100_batch64": {
+      "seconds_per_wafer_mean": 0.004575025269878097,
+      "seconds_per_wafer_median": 0.004567040712572634,
+      "n": 20,
+      "device": "cuda",
+      "batch": 64
+    },
+    "h100_batch256": {
+      "seconds_per_wafer_mean": 0.004428277105034795,
+      "seconds_per_wafer_median": 0.004429049215104897,
+      "n": 20,
+      "device": "cuda",
+      "batch": 256
+    }
+  },
+  "stepped_vs_single_overhead": {
+    "ratio": 2.8979390743626547,
+    "note": "Timing the solver as n_steps separate processes rather than one process of the full duration inflates it by this factor, and would inflate any speedup quoted against it by the same. 'single' is used as the reference everywhere below."
+  },
+  "speedup": {
+    "cpu_1_thread_batch1": 1.4724759822391373,
+    "h100_batch64_with_host_transfer": 326.6121342795188,
+    "h100_batch1": 65.28247700589185,
+    "h100_batch16": 276.12826049255466,
+    "h100_batch64": 336.7408734527791,
+    "h100_batch256": 347.23237515654654
+  },
+  "speedup_like_for_like_cpu1_vs_cpu1": 1.4724759822391373,
+  "kpi_clause": {
+    "target": 1000.0,
+    "value": 1.4724759822391373,
+    "basis": "operator CPU 1 thread batch 1 vs solver CPU 1 thread, single process",
+    "met": false,
+    "context_throughput_speedup": 199.31232394922486,
+    "context_throughput_basis": "solver at its best parallel worker count vs operator batched on one H100 -- throughput against throughput, still different hardware",
+    "context_naive_best_cell": 347.23237515654654,
+    "context_naive_configuration": "h100_batch256",
+    "context_naive_basis": "largest cell in the grid: batched H100 against a single-threaded CPU solver. Reported for completeness, not used for the verdict.",
+    "stepped_vs_single_overhead": 2.8979390743626547
+  }
+}

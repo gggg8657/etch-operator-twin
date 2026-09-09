@@ -1,0 +1,119 @@
+{
+  "band_um": 1.5,
+  "splits": [
+    {
+      "split": "train",
+      "n_trajectories": 900,
+      "displacement_um_per_step": {
+        "mean": 0.17090379364630393,
+        "std": 0.057818105591962606,
+        "min": 0.055441082711500306,
+        "max": 0.38922897868226664,
+        "cv": 0.33830791206203875,
+        "p5": 0.08841419536347819,
+        "p95": 0.27890461865093424,
+        "max_over_min": 7.020587615644233
+      },
+      "per_trajectory_mean_displacement": {
+        "mean": 0.1709037936463039,
+        "std": 0.05383968612461655,
+        "cv": 0.3150292043021652,
+        "max_over_min": 5.4087897946219465
+      },
+      "r2_displacement_on_full_conditioning": 0.8792312483740383,
+      "r2_displacement_on_recipe_without_dt": 0.4596908505954648,
+      "dt": {
+        "min": 0.05991246923804283,
+        "max": 1.0,
+        "max_over_min": 16.691017150878906
+      }
+    },
+    {
+      "split": "val",
+      "n_trajectories": 150,
+      "displacement_um_per_step": {
+        "mean": 0.1737507499453587,
+        "std": 0.05635706411700487,
+        "min": 0.06447325168514097,
+        "max": 0.38609451838410636,
+        "cv": 0.3243558035561176,
+        "p5": 0.09687157108277794,
+        "p95": 0.2772174669318591,
+        "max_over_min": 5.9884449487614235
+      },
+      "per_trajectory_mean_displacement": {
+        "mean": 0.1737507499453587,
+        "std": 0.05190223547333003,
+        "cv": 0.2987166126744909,
+        "max_over_min": 4.399136899345063
+      },
+      "r2_displacement_on_full_conditioning": 0.8904483143252263,
+      "r2_displacement_on_recipe_without_dt": 0.4809913619298295,
+      "dt": {
+        "min": 0.06469031423330307,
+        "max": 1.0,
+        "max_over_min": 15.458264350891113
+      }
+    },
+    {
+      "split": "test",
+      "n_trajectories": 250,
+      "displacement_um_per_step": {
+        "mean": 0.1728118763209583,
+        "std": 0.05795296546227923,
+        "min": 0.05530182848547452,
+        "max": 0.3726945275186815,
+        "cv": 0.33535290916374827,
+        "p5": 0.08992741504052618,
+        "p95": 0.27925469783422774,
+        "max_over_min": 6.739280376896991
+      },
+      "per_trajectory_mean_displacement": {
+        "mean": 0.17281187632095826,
+        "std": 0.053808947294130126,
+        "cv": 0.31137297065273684,
+        "max_over_min": 5.0508072323249245
+      },
+      "r2_displacement_on_full_conditioning": 0.8841621844233138,
+      "r2_displacement_on_recipe_without_dt": 0.44735903125992427,
+      "dt": {
+        "min": 0.06391078233718872,
+        "max": 1.0,
+        "max_over_min": 15.646812438964844
+      }
+    },
+    {
+      "split": "test_crossed",
+      "n_trajectories": 209,
+      "displacement_um_per_step": {
+        "mean": 0.12722596973921274,
+        "std": 0.09190284460646593,
+        "min": 0.012290350540156314,
+        "max": 0.5677211727680556,
+        "cv": 0.7223591598071368,
+        "p5": 0.023177246925577502,
+        "p95": 0.30595783766223394,
+        "max_over_min": 46.19243128282939
+      },
+      "per_trajectory_mean_displacement": {
+        "mean": 0.12722596973921274,
+        "std": 0.08934887455923755,
+        "cv": 0.70228487739087,
+        "max_over_min": 34.19686022440856
+      },
+      "r2_displacement_on_full_conditioning": 0.8735944166541119,
+      "r2_displacement_on_recipe_without_dt": 0.31007327847432553,
+      "dt": {
+        "min": 0.06504171341657639,
+        "max": 0.9681621193885803,
+        "max_over_min": 14.885249137878418
+      }
+    }
+  ],
+  "verdict": {
+    "adaptive_displacement_cv": 0.3150292043021652,
+    "adaptive_displacement_max_over_min": 5.4087897946219465,
+    "crossed_displacement_max_over_min": 34.19686022440856,
+    "note": "If the adaptive spread is small, the recipe-blind null is strong and the operator has to beat it to have shown anything. The crossed split is the same recipe box with dt drawn independently, where the spread is the rate law's own."
+  }
+}

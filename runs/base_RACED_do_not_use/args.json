@@ -1,20 +1,19 @@
 {
   "data": "data",
   "run": "runs/base",
-  "epochs": 80,
+  "epochs": 60,
   "batch": 32,
   "lr": 0.002,
   "width": 64,
-  "modes": 20,
+  "modes": 16,
   "layers": 4,
   "rollout_steps": 0,
   "band_weight": 0.0,
   "blind": false,
   "init_from": null,
   "seed": 0,
-  "force": false,
   "device": "cuda:0",
   "num_workers": 0,
-  "params": 26248025,
+  "params": 16810841,
   "gpu": "NVIDIA H100 NVL"
 }

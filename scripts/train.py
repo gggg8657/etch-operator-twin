@@ -93,6 +93,8 @@ def main():
                          "this one thing.")
     ap.add_argument("--init-from", default=None)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--force", action="store_true",
+                    help="append to an existing run directory (see the guard above)")
     ap.add_argument("--device", default="cuda:0")
     # The splits are already resident numpy arrays, so worker processes buy
     # nothing but shared-memory pressure -- two arms plus a generation job
@@ -105,6 +107,17 @@ def main():
     np.random.seed(a.seed)
     run = Path(a.run)
     run.mkdir(parents=True, exist_ok=True)
+    # A run directory belongs to exactly one process. Two trainers once shared
+    # runs/base -- a launch fired from a compound command I believed had aborted
+    # -- and interleaved their epochs into one log.jsonl while overwriting each
+    # other's best.pt. The weights stayed coherent (each process had its own
+    # model) but the checkpoint's provenance did not, and two evaluations of
+    # "the same run" differed by 3x. Refuse rather than race.
+    if (run / "log.jsonl").exists() and not a.force:
+        raise SystemExit(
+            f"{run}/log.jsonl already exists. A second trainer writing here would "
+            f"interleave epochs and overwrite best.pt. Use a fresh --run, or --force "
+            f"if you really mean to append.")
     data = Path(a.data)
 
     norm_p = data / "norm.json"
