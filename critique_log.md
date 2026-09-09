@@ -284,3 +284,92 @@ There is still no operator and no result. Dataset generation is at 275/900 train
 trajectories, 0.728 traj/s, which matches the 8-worker peak of 0.703 traj/s
 measured in turn 2 — the one prediction this loop has made that has since been
 checked, and it held.
+
+---
+
+## 2026-09-09 — turn 3b: an adversarial critic found a real confound in my own fix
+
+### What the critic said
+
+`codex exec`, asked for the strongest reason the planned measurements could be
+trivially satisfiable, quoting the relevant part verbatim:
+
+> **The strongest structural threat is simulator-derived timestep conditioning:
+> the evaluation does not independently test whether the model learned the
+> recipe's rate law.** […] `eot/solver.py` computes `rate = probe_rate(...)`,
+> then `dt = target_depth / (rate * n_steps)`. Thus `dt` contains information
+> about the simulator's response to that recipe. […] Because
+> `rate × dt = target_depth / n_steps`, the sampling scheme deliberately cancels
+> much of the variation in etch rate. A predictor of typical progress per step
+> could therefore look competent without learning how physical elapsed time and
+> recipe jointly determine evolution. […] The decisive check is a crossed recipe
+> × independently chosen timestep test, including a recipe-blind baseline.
+
+`cursor-agent` returned `Authentication required` and produced nothing; not
+counted either way.
+
+### It is right, and it is my own fix that caused it
+
+Turn 1 chose a per-recipe timestep to kill a degeneracy: with one global dt, the
+20× spread in etch rate forces most of the recipe box to be nearly static, and a
+static target is one persistence solves for free. That reasoning still holds.
+
+But the specific fix — `dt = target_depth / (rate · n_steps)` with
+`target_depth ~ U[4, 10]` and `n_steps = 10` — makes per-step displacement
+identically `target_depth / n_steps ~ U[0.4, 1.0]` µm **for every recipe in the
+box**. I removed a degeneracy and installed a different one in the same line. A
+model that ignores the recipe and the timestep entirely, and advances every
+surface by a constant ~0.7 µm, is now a strong predictor of the dominant
+variance. The recipe still governs the *shape* of the etch — anisotropy, bowing,
+undercut — but it no longer governs how far, which was the variance I had
+intended it to govern.
+
+This is the same failure as the one turn 2 recorded, in a third costume: a
+property assumed (that per-recipe dt makes the problem harder) rather than
+measured. It would have shown up as a suspiciously good rel-L2 that I would have
+been inclined to believe, because I had a story ready for why the problem was
+hard.
+
+### What distinguishes this explanation from the obvious alternative
+
+The obvious alternative is that this is harmless — that the model must still
+combine recipe and dt to recover displacement (`rate(recipe) × dt`), which is
+learning the rate law. That is true of the *conditional* structure and false of
+the *marginal*: the model does not have to recover the product when the product's
+distribution is `U[0.4, 1.0]` regardless of the inputs. The discriminating
+measurement is direct, and it is now built:
+
+1. **A recipe-blind null** (`scripts/eval.py`): advance every surface by the
+   train-set mean per-step displacement, ignoring recipe, dt and target. Unlike
+   the uniform-recession null this is *not* an oracle — it is fitted on train and
+   sees nothing about the test sample. If the operator does not beat it, the
+   conditioning is decorative.
+2. **A crossed test split** (`scripts/gen_data.py --dt-mode independent`): same
+   recipe box, dt drawn log-uniformly *without reference to the recipe*, so
+   per-step displacement varies across recipes by the full range of the rate
+   law. A model that learned "advance ~0.7 µm" collapses here; a model that
+   learned `rate(recipe) × dt` does not. This split is out-of-distribution by
+   construction and will be reported separately, never merged into the
+   in-distribution number.
+
+The two nulls now bracket the question. Persistence is weak, recipe-blind is the
+one this dataset makes strong, and uniform recession is an oracle handed the
+correct displacement — so losing to uniform recession is informative but not
+damning, while losing to recipe-blind would be fatal. `report.py` states which is
+which so the distinction survives into the document.
+
+### Also fixed this turn
+
+`scripts/report.py` died with `KeyError` on a `gen_report.json` missing one
+optional field. A report that aborts on an absent key tells you nothing about the
+keys that are present, which defeats the entire `[not measured]` design. Now
+`.get` throughout.
+
+### A number that is real, from the smoke harness
+
+Running the full chain on a synthetic fixture (24 train / 8 test trivial
+trajectories — plumbing only, not a result): full-window rel-L2 **0.0090** against
+band rel-L2 **0.0963** on the same predictions. The loose reading of clause 1
+passes ≤ 0.05 by a factor of five while the strict reading fails by a factor of
+two. That is the gap §2.1 of the draft asserts, now demonstrated on this code
+rather than argued.

@@ -41,10 +41,30 @@ def cond_vector(recipe: np.ndarray, dt: np.ndarray) -> np.ndarray:
     ).astype(np.float32)
 
 
+def mean_step_displacement(sdf_um: np.ndarray, band_um: float = BAND_UM) -> float:
+    """Mean per-step normal displacement of the interface, in um, over a split.
+
+    Fitted on train only and used to build the *recipe-blind* null: advance every
+    surface by this constant regardless of recipe, dt or target. Because the
+    dataset's timestep is chosen per recipe so that each trajectory covers a
+    comparable depth, per-step displacement is nearly constant across the recipe
+    box by construction -- so this null is strong, and an operator that fails to
+    beat it has learned nothing the conditioning was supposed to supply.
+    """
+    prev, nxt = sdf_um[:, :-1], sdf_um[:, 1:]
+    band = (np.abs(nxt) < band_um) | (np.abs(prev) < band_um)
+    w = band.reshape(band.shape[0], band.shape[1], -1).astype(np.float64)
+    diff = (nxt - prev).reshape(w.shape)
+    num = (diff * w).sum(axis=2)
+    den = np.clip(w.sum(axis=2), 1.0, None)
+    return float((num / den).mean())
+
+
 def fit_norm(train_npz: str | Path) -> dict:
     d = np.load(train_npz)
     c = cond_vector(d["recipe"], d["dt"])
     return {
+        "mean_step_displacement_um": mean_step_displacement(d["sdf"]),
         "cond_mean": c.mean(axis=0).tolist(),
         "cond_std": (c.std(axis=0) + 1e-8).tolist(),
         "cond_keys": COND_KEYS,

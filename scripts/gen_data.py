@@ -36,12 +36,22 @@ RECIPE_KEYS = ["ion_flux", "etchant_flux", "oxygen_flux", "ion_energy",
 
 
 def one(job):
-    idx, seed, steps, grid_delta, n = job
+    idx, seed, steps, grid_delta, n, dt_mode, dt_lo, dt_hi = job
     rng = np.random.default_rng(seed)
     rec = S.sample_recipe(rng)
     t0 = time.perf_counter()
-    tr, dt, target = S.simulate_adaptive(rec, rng, n_steps=steps,
-                                         grid_delta=grid_delta, n=n)
+    if dt_mode == "independent":
+        # dt drawn without looking at the recipe. This breaks the coupling that
+        # makes every adaptive trajectory advance the same 0.4-1.0 um per step,
+        # so per-step displacement varies with the recipe by the full ~20x of the
+        # rate law. It is the split that can tell a model which learned the rate
+        # law from one which learned "move about 0.7 um".
+        dt = float(np.exp(rng.uniform(np.log(dt_lo), np.log(dt_hi))))
+        target = float("nan")
+        tr = S.simulate(rec, n_steps=steps, dt=dt, grid_delta=grid_delta, n=n)
+    else:
+        tr, dt, target = S.simulate_adaptive(rec, rng, n_steps=steps,
+                                             grid_delta=grid_delta, n=n)
     wall = time.perf_counter() - t0
     return {
         "idx": idx,
@@ -55,8 +65,10 @@ def one(job):
     }
 
 
-def build_split(name, n_samples, seed0, steps, grid_delta, n, workers, out_dir):
-    jobs = [(i, seed0 + i, steps, grid_delta, n) for i in range(n_samples)]
+def build_split(name, n_samples, seed0, steps, grid_delta, n, workers, out_dir,
+                dt_mode="adaptive", dt_lo=0.01, dt_hi=1.0):
+    jobs = [(i, seed0 + i, steps, grid_delta, n, dt_mode, dt_lo, dt_hi)
+            for i in range(n_samples)]
     t0 = time.perf_counter()
     res = []
     with Pool(workers) as pool:
@@ -85,6 +97,7 @@ def build_split(name, n_samples, seed0, steps, grid_delta, n, workers, out_dir):
         "kept": len(kept),
         "rejected_out_of_window": n_samples - len(kept),
         "seed0": seed0,
+        "dt_mode": dt_mode,
         "generate_wall_s": wall,
         "workers": workers,
         "solver_s_per_trajectory_mean_1thread": float(np.mean([float(r["solver_s"]) for r in kept])),
@@ -108,6 +121,13 @@ def main():
     # nothing and take the box away from the other tracks sharing it.
     ap.add_argument("--workers", type=int, default=16)
     ap.add_argument("--out", default="data")
+    ap.add_argument("--dt-mode", default="adaptive", choices=["adaptive", "independent"],
+                    help="adaptive: dt from a per-recipe probe so every trajectory "
+                         "covers a comparable depth. independent: dt drawn without "
+                         "reference to the recipe, so per-step depth varies with the "
+                         "rate law -- the crossed test split.")
+    ap.add_argument("--splits", nargs="*", default=None,
+                    help="subset of train/val/test to build")
     a = ap.parse_args()
 
     out_dir = Path(a.out)
@@ -124,10 +144,17 @@ def main():
         "splits": [],
     }
     # Seed blocks are far apart so no two splits can draw the same recipe.
-    for name, n_s, seed0 in [("train", a.n_train, 1_000_000),
-                             ("val", a.n_val, 2_000_000),
-                             ("test", a.n_test, 3_000_000)]:
-        info = build_split(name, n_s, seed0, a.steps, a.grid_delta, a.n, a.workers, out_dir)
+    plan = [("train", a.n_train, 1_000_000), ("val", a.n_val, 2_000_000),
+            ("test", a.n_test, 3_000_000)]
+    if a.splits:
+        plan = [x for x in plan if x[0] in a.splits]
+    report["dt_mode"] = a.dt_mode
+    for name, n_s, seed0 in plan:
+        # separate seed block per dt-mode so the crossed split cannot reuse a
+        # recipe the adaptive splits already spent
+        seed0 = seed0 + (5_000_000 if a.dt_mode == "independent" else 0)
+        info = build_split(name, n_s, seed0, a.steps, a.grid_delta, a.n, a.workers, out_dir,
+                           dt_mode=a.dt_mode)
         report["splits"].append(info)
         print(json.dumps(info, indent=2), flush=True)
 

@@ -111,8 +111,12 @@ def main():
     # ---- dataset
     L += ["## Dataset", ""]
     if gen:
-        rows = [[s["split"], s["kept"], s["rejected_out_of_window"],
-                 f"{s['generate_wall_s']:.0f}", s["workers"]] for s in gen["splits"]]
+        # .get, not [], throughout: a report that dies on one absent field tells
+        # you nothing about the fields that *are* there, which defeats the point
+        # of emitting [not measured] per cell.
+        rows = [[s.get("split", NM), s.get("kept", NM), s.get("rejected_out_of_window", NM),
+                 (f"{s['generate_wall_s']:.0f}" if "generate_wall_s" in s else NM),
+                 s.get("workers", NM)] for s in gen["splits"]]
         L += [table(rows, ["split", "trajectories", "rejected (left window)",
                            "generation wall (s)", "workers"]), ""]
         L += [f"{gen['steps']} timesteps per trajectory on a {gen['grid_n']}×{gen['grid_n']} window "
@@ -131,16 +135,28 @@ def main():
     if ev:
         L += [f"Test split, {ev['n_trajectories']} trajectories × {ev['steps']} steps. "
               f"Band = |φ| < {ev['band_um']} µm around the ground-truth interface.", "",
-              "Every row carries two nulls. **Persistence** predicts no change; an SDF over one "
-              "step is mostly unchanged, so it scores far better than it deserves to. "
-              "**Uniform recession** moves the whole surface down by the correct mean amount, "
-              "which is the best you can do knowing nothing about the *shape* of the etch. "
-              "A number that does not beat both is not a result.", ""]
+              "Every row carries three nulls, and a number that does not beat all three is "
+              "not a result.", "",
+              "- **Persistence** — predict no change. An SDF over one step is mostly "
+              "unchanged, so this scores far better than it deserves to.",
+              "- **Recipe-blind** — advance every surface by the train-set mean per-step "
+              "displacement, ignoring recipe, dt and target. This is the null that matters "
+              "here: because the timestep is chosen per recipe so every trajectory covers a "
+              "comparable depth, per-step displacement is nearly recipe-independent *by "
+              "construction*, and a model could score well while ignoring the recipe "
+              "entirely. Beating this is the evidence that the conditioning carries shape "
+              "information.",
+              "- **Uniform recession** — offset by the *ground truth's* mean displacement. "
+              "This is an oracle: it is handed the correct amount of etch and lacks only the "
+              "shape. Losing to it is not fatal; beating it is strong.", ""]
         rows = []
         for label, blk in [("one step (teacher forced)", ev["one_step"]),
                            ("full rollout", ev["rollout"])]:
             for k, name in [("op", "**operator**"), ("persist", "persistence null"),
-                            ("uniform", "uniform-recession null")]:
+                            ("blind", "recipe-blind null"),
+                            ("uniform", "uniform-recession null (oracle)")]:
+                if k not in blk:
+                    continue
                 rows.append([label, name, f(blk[k]["band"]["mean"]),
                              f(blk[k]["band"]["median"]), f(blk[k]["band"]["p90"]),
                              f(blk[k]["full"]["mean"])])

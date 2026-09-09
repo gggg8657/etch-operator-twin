@@ -70,7 +70,9 @@ def main():
     model.load_state_dict(torch.load(run / a.ckpt, map_location=device))
     model.eval()
 
-    keys = ["op", "persist", "uniform"]
+    keys = ["op", "persist", "blind", "uniform"]
+    # constant advance fitted on train, ignoring recipe, dt and target
+    blind_c = norm["mean_step_displacement_um"] / scale
     one = {k: {"full": [], "band": []} for k in keys}
     roll = {k: {"full": [], "band": []} for k in keys}
     per_step = None
@@ -88,6 +90,7 @@ def main():
                 pred1 = model(fi, fc).float()
             m1 = band_mask(ft * scale, band_um)
             cands = {"op": pred1, "persist": fi,
+                     "blind": fi + blind_c,
                      "uniform": uniform_recession(fi * scale, ft * scale) / scale}
             for k, v in cands.items():
                 one[k]["full"] += rel_l2(v, ft, "none").tolist()
@@ -98,7 +101,10 @@ def main():
             mm = band_mask(traj * scale, band_um)
             pz = phi0[:, None].expand(-1, T, -1, -1, -1)
             uz = uniform_recession((pz * scale).flatten(0, 1), (traj * scale).flatten(0, 1)) / scale
-            rcands = {"op": rl.flatten(0, 1), "persist": pz.flatten(0, 1), "uniform": uz}
+            bz = pz + blind_c * torch.arange(
+                1, T + 1, device=pz.device, dtype=pz.dtype).view(1, T, 1, 1, 1)
+            rcands = {"op": rl.flatten(0, 1), "persist": pz.flatten(0, 1),
+                      "blind": bz.flatten(0, 1), "uniform": uz}
             for k, v in rcands.items():
                 roll[k]["full"] += rel_l2(v, traj.flatten(0, 1), "none").tolist()
                 roll[k]["band"] += band_rel_l2(v, traj.flatten(0, 1), mm.flatten(0, 1), "none").tolist()
@@ -147,6 +153,15 @@ def main():
         "value": op_b,
         "met": bool(op_b <= kpi),
         "persistence_null": out["rollout"]["persist"]["band"]["mean"],
+        "recipe_blind_null": out["rollout"]["blind"]["band"]["mean"],
+        "beats_recipe_blind": bool(op_b < out["rollout"]["blind"]["band"]["mean"]),
+        "recipe_blind_note": (
+            "Constant advance by the train-set mean per-step displacement, ignoring "
+            "recipe, dt and target. Because the dataset's timestep is chosen per "
+            "recipe so every trajectory covers a comparable depth, per-step "
+            "displacement is nearly recipe-independent by construction; this null "
+            "therefore absorbs that confound, and beating it is the evidence that "
+            "the conditioning carries shape information."),
         "uniform_recession_null": out["rollout"]["uniform"]["band"]["mean"],
         "beats_persistence": bool(op_b < out["rollout"]["persist"]["band"]["mean"]),
         "beats_uniform_recession": bool(op_b < out["rollout"]["uniform"]["band"]["mean"]),
