@@ -1,0 +1,18 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      # viennals is pinned: viennaps 4.6.2 fails to import against viennals
+      # 5.9.0, which pip would otherwise resolve to.
+      - run: pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+      - name: SDF rasteriser against analytic geometry
+        run: PYTHONPATH=. python tests/test_sdf.py
+      - name: operator shapes, conditioning, metrics
+        run: PYTHONPATH=. python tests/test_operator.py
+      - name: ViennaPS ground truth is importable and steps
+        run: PYTHONPATH=. OMP_NUM_THREADS=1 python tests/test_solver.py

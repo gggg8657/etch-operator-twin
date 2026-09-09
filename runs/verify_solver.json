@@ -1,0 +1,67 @@
+{
+  "viennaps": "4.6.2",
+  "viennals": "5.8.5",
+  "sdf_exactness": {
+    "max_abs_err_um": 2.007283228522283e-13,
+    "mean_abs_err_um": 2.0013846266028756e-13,
+    "plane_height_um": 0.0,
+    "grid": 128
+  },
+  "isotropic_recession": [
+    {
+      "duration_min": 0.5,
+      "expected_um": -0.4,
+      "measured_um": -0.39999999500099953,
+      "abs_err_um": 4.999000491334726e-09,
+      "rel_err": 1.2497501228336816e-08,
+      "surface_spread_um": 0.0
+    },
+    {
+      "duration_min": 1.0,
+      "expected_um": -0.8,
+      "measured_um": -0.7999999950009994,
+      "abs_err_um": 4.99900065786818e-09,
+      "rel_err": 6.248750822335225e-09,
+      "surface_spread_um": 0.0
+    },
+    {
+      "duration_min": 2.0,
+      "expected_um": -1.6,
+      "measured_um": -1.599999995000999,
+      "abs_err_um": 4.9990009909350874e-09,
+      "rel_err": 3.1243756193344296e-09,
+      "surface_spread_um": 0.0
+    }
+  ],
+  "grid_convergence": {
+    "pairs": [
+      {
+        "coarse_delta": 0.4,
+        "fine_delta": 0.2,
+        "max_sdf_shift_um": 0.18539796570014844,
+        "mean_sdf_shift_um": 0.051231470774093596,
+        "coarse_solver_s": 0.11016594991087914,
+        "fine_solver_s": 0.25987211242318153
+      },
+      {
+        "coarse_delta": 0.2,
+        "fine_delta": 0.1,
+        "max_sdf_shift_um": 0.08420160722903736,
+        "mean_sdf_shift_um": 0.01769568790957484,
+        "coarse_solver_s": 0.25987211242318153,
+        "fine_solver_s": 0.8651599064469337
+      }
+    ],
+    "solver_seconds_by_delta": {
+      "0.4": 0.11016594991087914,
+      "0.2": 0.25987211242318153,
+      "0.1": 0.8651599064469337
+    }
+  },
+  "pass": {
+    "sdf_exactness": true,
+    "sdf_tol_um": 0.001,
+    "isotropic_recession": true,
+    "isotropic_rel_tol": 0.02
+  }
+}
