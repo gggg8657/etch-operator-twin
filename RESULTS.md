@@ -150,24 +150,38 @@ Per-step displacement spans **6.7×** across the adaptive test split against **1
 
 Only **33.8%** of crossed trajectories (76 of 225) have a mean per-step displacement inside the training 1st–99th percentile (0.073–0.330 µm). The crossed split is therefore mostly genuine extrapolation, not a reshuffle.
 
-## Clause 1c — the failure is displacement coverage, not the timestep
+## Clause 1c — the failure localises to displacement coverage, but the clause still does not hold there
 
-The crossed split decouples dt from the recipe, and the operator's error there is both large and wildly seed-dependent. Splitting those same trajectories by whether their mean per-step displacement falls inside the range the training set covers separates two explanations that the aggregate confounds: *the model cannot handle a decoupled timestep* versus *the model cannot handle displacements it never saw*.
+The crossed split decouples dt from the recipe. Splitting those trajectories by whether their per-step displacement falls inside the range the training data covers separates two explanations the aggregate confounds: *the model cannot handle a decoupled timestep* versus *the model cannot handle displacements it never saw*. Three coverage rules are computed rather than one, because an earlier version of this section used one rule in its table and described a different one in its prose.
 
-| run | in-distribution | crossed (all) | crossed, displacement IN range | crossed, OUT of range |
-|---|---|---|---|---|
-| seed1 | 0.0129 | 0.2497 | 0.0465 | 0.6363 |
-| seed2 | 0.0119 | 0.0641 | 0.0294 | 0.1299 |
-| seed5 | 0.0131 | 0.2909 | 0.0340 | 0.7796 |
-| seed6 | 0.0126 | 0.1061 | 0.0389 | 0.2341 |
-| **mean** | — | 0.1777 | 0.0372 | 0.4450 |
-| **range** | — | 0.2268 | 0.0171 | 0.6496 |
+Errors are bootstrapped over trajectories (10,000 resamples, paired across seeds — the seeds share trajectories, so a resample draws trajectories, not seeds). A clause is **MET only if the upper 95% bound is under target on BOTH readings**, mean-over-steps and terminal-step, which is the rule clause 1 uses everywhere else in this repo.
 
-**Every seed meets the clause on the in-range crossed trajectories (0.0465 worst of 4, against the 0.05 target), and none meets it out of range.** The dt of a crossed trajectory is *never* outside the trained range (0% of them), so the operator is not failing to extrapolate in dt — it is failing to extrapolate in how far the surface moves in one step.
+| coverage rule | n in range | reading | in-range mean [95% CI] | worst seed | upper CI ≤ 0.05 | out-of-range mean [95% CI] |
+|---|---|---|---|---|---|---|
+| `A_test_minmax` | 137/209 | mean-over-steps | 0.0372 [0.0241, 0.0535] | 0.0465 | **no** | 0.4450 [0.3304, 0.5819] |
+| `A_test_minmax` | 137/209 | terminal-step | 0.0600 [0.0384, 0.0865] | 0.0798 | **no** | 1.0163 [0.7466, 1.3372] |
+| `B_train_p1_p99` | 121/209 | mean-over-steps | 0.0330 [0.0214, 0.0474] | 0.0411 | yes | 0.3767 [0.2772, 0.4908] |
+| `B_train_p1_p99` | 121/209 | terminal-step | 0.0531 [0.0340, 0.0767] | 0.0703 | **no** | 0.8520 [0.6169, 1.1185] |
+| `C_train_minmax` | 139/209 | mean-over-steps | 0.0410 [0.0269, 0.0581] | 0.0515 | **no** | 0.4492 [0.3334, 0.5864] |
+| `C_train_minmax` | 139/209 | terminal-step | 0.0665 [0.0432, 0.0947] | 0.0889 | **no** | 1.0308 [0.7546, 1.3512] |
 
-The seed instability localises the same way. Range across seeds is **0.0171** in range and **0.6496** out of it, a factor of 38. In the regime the data covers, this pipeline is reproducible and correct; outside it, the answer depends on the seed almost as much as on the input, which is the signature of extrapolation rather than of a learned law.
+**Verdict in coverage: NOT MET under every rule.** The mean-over-steps reading passes on its point estimate under all three rules and passes on its upper bound under the strictest one — but the **terminal-step reading fails under every rule**, and clause 1 requires both. An earlier version of this section reported only the mean and called the clause met in coverage; that was wrong and is corrected here.
 
-So the earlier framing — that removing the adaptive timestep costs a factor in accuracy — attributes the loss to the wrong variable. The adaptive-dt protocol helped only because it kept per-step displacement inside a narrow band; decoupling dt is harmless where coverage holds (0.0372 mean, clause MET) and ruinous where it does not.
+### The coverage rule is a diagnostic, not something you can deploy
+
+Every rule above selects on the displacement of the *simulated truth* — the answer you do not have when you are deciding whether to trust a prediction. The deployable version applies the same bounds to the displacement the model itself predicts, which needs no oracle:
+
+| selector | in-range mean-over-steps | terminal-step |
+|---|---|---|
+| oracle selector (rule B) | 0.0330 | — |
+| a-priori selector, model's own predicted displacement | 0.1402 [0.1003, 0.1844] | 0.3192 [0.2210, 0.4271] |
+
+The two selectors agree on **87.1%** of trajectories, but the a-priori one gives **0.1402** where the oracle gives 0.0330 — a factor of 4.3. The disagreement is concentrated exactly where it costs most: a trajectory the model gets badly wrong also has its displacement badly wrong, so it is admitted into the 'covered' set by its own error. **The coverage rule localises the failure but cannot be used to certify a prediction in advance**, which is the thing a deployable surrogate would need.
+
+### What this analysis does not establish
+
+- The subset is chosen by displacement, and displacement = rate(recipe, geometry) x dt. Conditioning on it can preferentially select recipe/dt pairs resembling the adaptive training relationship, so this localises the failure but does not prove displacement is the sole cause. A controlled test would hold recipe fixed and vary dt across the boundary.
+- dt is inside its trained MARGINAL range on every crossed trajectory. That does not establish that the joint (recipe, geometry, dt) input is covered, and the claim is stated marginally for that reason.
 
 ## Clause 3b — what the surrogate is worth, in simulator calls
 

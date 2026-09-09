@@ -1,0 +1,286 @@
+{
+  "runs": [
+    "seed1",
+    "seed2",
+    "seed5",
+    "seed6"
+  ],
+  "n_crossed": 209,
+  "target": 0.05,
+  "readings": [
+    "mean_over_steps",
+    "terminal_step"
+  ],
+  "rules": {
+    "A_test_minmax": {
+      "lo": 0.06174106924284932,
+      "hi": 0.3118422390632573,
+      "note": "what analyse_crossed.py used: the adaptive TEST split's full displacement min/max. Widest of the three, so most permissive.",
+      "n_in": 137,
+      "n_out": 72,
+      "mean_over_steps": {
+        "in_range": {
+          "point": 0.03721194138434328,
+          "lo": 0.024069384716465612,
+          "hi": 0.053540832103152726,
+          "worst_seed_point": 0.04652985851926199,
+          "per_seed": [
+            0.04652985851926199,
+            0.029423399977929837,
+            0.034041070120993756,
+            0.038853436919187544
+          ],
+          "n": 137,
+          "n_boot": 10000
+        },
+        "out_of_range": {
+          "point": 0.44500571065711686,
+          "lo": 0.330356592199597,
+          "hi": 0.5819199328841123,
+          "worst_seed_point": 0.779597293637279,
+          "per_seed": [
+            0.6363264518376026,
+            0.12994993692781362,
+            0.779597293637279,
+            0.2341491602257722
+          ],
+          "n": 72,
+          "n_boot": 10000
+        },
+        "met_point": true,
+        "met_every_seed": true,
+        "met_upper_ci": false,
+        "margin_to_target": -0.003540832103152723
+      },
+      "terminal_step": {
+        "in_range": {
+          "point": 0.06000679941936294,
+          "lo": 0.038410093881577304,
+          "hi": 0.08651665154335522,
+          "worst_seed_point": 0.07980877269113804,
+          "per_seed": [
+            0.07980877269113804,
+            0.04663518237045212,
+            0.05425761682899111,
+            0.0593256257868705
+          ],
+          "n": 137,
+          "n_boot": 10000
+        },
+        "out_of_range": {
+          "point": 1.0163227889376383,
+          "lo": 0.7465768501178698,
+          "hi": 1.3372140581142349,
+          "worst_seed_point": 2.136569225281063,
+          "per_seed": [
+            1.288494258472282,
+            0.23254788141801125,
+            2.136569225281063,
+            0.40767979057919645
+          ],
+          "n": 72,
+          "n_boot": 10000
+        },
+        "met_point": false,
+        "met_every_seed": false,
+        "met_upper_ci": false,
+        "margin_to_target": -0.03651665154335522
+      },
+      "verdict_in_coverage": "NOT MET",
+      "verdict_basis": "upper bound of a 95% trajectory bootstrap on BOTH readings must be <= target"
+    },
+    "B_train_p1_p99": {
+      "lo": 0.07555290407071312,
+      "hi": 0.2987453897955747,
+      "note": "the TRAIN split's 1st-99th percentile -- the rule RESULTS.md's prose had been describing while the table used rule A.",
+      "n_in": 121,
+      "n_out": 88,
+      "mean_over_steps": {
+        "in_range": {
+          "point": 0.03295628222240489,
+          "lo": 0.02142560286579696,
+          "hi": 0.047355038922713984,
+          "worst_seed_point": 0.04108503725271949,
+          "per_seed": [
+            0.04108503725271949,
+            0.026341525907050974,
+            0.030192769879151968,
+            0.034205795850697135
+          ],
+          "n": 121,
+          "n_boot": 10000
+        },
+        "out_of_range": {
+          "point": 0.3767129203188233,
+          "lo": 0.27719408413699553,
+          "hi": 0.4908416355440832,
+          "worst_seed_point": 0.6493330294668506,
+          "per_seed": [
+            0.5365773368394002,
+            0.11590996160256592,
+            0.6493330294668506,
+            0.20503135336647657
+          ],
+          "n": 88,
+          "n_boot": 10000
+        },
+        "met_point": true,
+        "met_every_seed": true,
+        "met_upper_ci": true,
+        "margin_to_target": 0.002644961077286019
+      },
+      "terminal_step": {
+        "in_range": {
+          "point": 0.05306476031330006,
+          "lo": 0.03402804764991141,
+          "hi": 0.07672904562325339,
+          "worst_seed_point": 0.07029722317714583,
+          "per_seed": [
+            0.07029722317714583,
+            0.04165912236371809,
+            0.04790182951222027,
+            0.05240086620011605
+          ],
+          "n": 121,
+          "n_boot": 10000
+        },
+        "out_of_range": {
+          "point": 0.8519924582506064,
+          "lo": 0.6168956315810978,
+          "hi": 1.118497907339836,
+          "worst_seed_point": 1.7667063222139736,
+          "per_seed": [
+            1.0818116416392678,
+            0.20558765500953252,
+            1.7667063222139736,
+            0.35386421413965186
+          ],
+          "n": 88,
+          "n_boot": 10000
+        },
+        "met_point": false,
+        "met_every_seed": false,
+        "met_upper_ci": false,
+        "margin_to_target": -0.026729045623253386
+      },
+      "verdict_in_coverage": "NOT MET",
+      "verdict_basis": "upper bound of a 95% trajectory bootstrap on BOTH readings must be <= target"
+    },
+    "C_train_minmax": {
+      "lo": 0.060483749761065866,
+      "hi": 0.32714388844812065,
+      "note": "train split full range; the literal reading of 'a displacement the model saw in training'.",
+      "n_in": 139,
+      "n_out": 70,
+      "mean_over_steps": {
+        "in_range": {
+          "point": 0.040966790403145624,
+          "lo": 0.026869523734345917,
+          "hi": 0.05810105037637198,
+          "worst_seed_point": 0.051475524021272395,
+          "per_seed": [
+            0.051475524021272395,
+            0.03181241332761032,
+            0.037216737457691766,
+            0.04336248680600803
+          ],
+          "n": 139,
+          "n_boot": 10000
+        },
+        "out_of_range": {
+          "point": 0.44920090387043143,
+          "lo": 0.3334308667116732,
+          "hi": 0.5863604226357503,
+          "worst_seed_point": 0.7945929320263011,
+          "per_seed": [
+            0.643357104435563,
+            0.1280782257605876,
+            0.7945929320263011,
+            0.23077535325927392
+          ],
+          "n": 70,
+          "n_boot": 10000
+        },
+        "met_point": true,
+        "met_every_seed": false,
+        "met_upper_ci": false,
+        "margin_to_target": -0.008101050376371974
+      },
+      "terminal_step": {
+        "in_range": {
+          "point": 0.06649085891218655,
+          "lo": 0.04323640459961686,
+          "hi": 0.0946772925052356,
+          "worst_seed_point": 0.08886962721003688,
+          "per_seed": [
+            0.08886962721003688,
+            0.05049934621444709,
+            0.05958458555446897,
+            0.06700987666979324
+          ],
+          "n": 139,
+          "n_boot": 10000
+        },
+        "out_of_range": {
+          "point": 1.0307706133595536,
+          "lo": 0.7546276446945765,
+          "hi": 1.3511551431476672,
+          "worst_seed_point": 2.1854860047676734,
+          "per_seed": [
+            1.305035861235644,
+            0.23018654747200865,
+            2.1854860047676734,
+            0.4023740399628878
+          ],
+          "n": 70,
+          "n_boot": 10000
+        },
+        "met_point": false,
+        "met_every_seed": false,
+        "met_upper_ci": false,
+        "margin_to_target": -0.0446772925052356
+      },
+      "verdict_in_coverage": "NOT MET",
+      "verdict_basis": "upper bound of a 95% trajectory bootstrap on BOTH readings must be <= target"
+    }
+  },
+  "a_priori_selector": {
+    "note": "Rule B applied to the displacement the MODEL predicts rather than the simulated truth. This one is deployable -- it needs no oracle. If its verdict matches the oracle selector's, the coverage rule is usable in practice and not merely diagnostic.",
+    "n_in": 148,
+    "agreement_with_oracle_selector": 0.8708133971291866,
+    "mean_over_steps": {
+      "point": 0.14016834407890644,
+      "lo": 0.10033609974843047,
+      "hi": 0.18435878906573241,
+      "worst_seed_point": 0.2236625018680619,
+      "per_seed": [
+        0.20165006588276074,
+        0.05010736295072412,
+        0.2236625018680619,
+        0.08525344561407897
+      ],
+      "n": 148,
+      "n_boot": 10000,
+      "met_upper_ci": false
+    },
+    "terminal_step": {
+      "point": 0.31922298745013067,
+      "lo": 0.22099501727749846,
+      "hi": 0.42713724618488164,
+      "worst_seed_point": 0.6327128942640549,
+      "per_seed": [
+        0.41073724102052683,
+        0.0884530974828915,
+        0.6327128942640549,
+        0.14498871703304955
+      ],
+      "n": 148,
+      "n_boot": 10000,
+      "met_upper_ci": false
+    }
+  },
+  "limitations": [
+    "The subset is chosen by displacement, and displacement = rate(recipe, geometry) x dt. Conditioning on it can preferentially select recipe/dt pairs resembling the adaptive training relationship, so this localises the failure but does not prove displacement is the sole cause. A controlled test would hold recipe fixed and vary dt across the boundary.",
+    "dt is inside its trained MARGINAL range on every crossed trajectory. That does not establish that the joint (recipe, geometry, dt) input is covered, and the claim is stated marginally for that reason."
+  ]
+}

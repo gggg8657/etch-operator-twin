@@ -1188,3 +1188,109 @@ and neither is sufficient without the other. That is not an argument for running
 two loops on one repo. The same collision killed both inverse-design jobs after
 eight minutes of duplicated compute and left clause 3 unmeasured for a fourth
 turn, which is the larger cost.
+
+### codex took the coverage claim apart, and four of its objections were right
+
+I put the clause-1c claim in front of `codex exec` — specifically the claim that
+displacement coverage, not dt, explains the crossed failure, and that all four
+seeds meet ≤0.05 in coverage at 0.0372 mean / 0.0465 worst. Quoting it:
+
+> **The strongest objection is that "training coverage" is actually a
+> ground-truth, test-defined selection that can preferentially recover
+> trajectories resembling the adaptive protocol. It does not isolate displacement
+> as the cause.**
+>
+> 1. *"The bounds come from the adaptive test set, not training.*
+>    `analyse_crossed.py:126` … sets `lo, hi = disp_t.min(), disp_t.max()` … Yet
+>    `RESULTS.md:151` describes **training 1st–99th percentiles, 0.073–0.330 µm,
+>    76/225 trajectories**. … a total of **209**, not 225. Thus the passing
+>    scores do not establish performance on the advertised training-coverage
+>    subset."
+> 2. *"Conditioning on a narrow displacement interval therefore selects
+>    compatible recipe–dt combinations, potentially bringing them closer to the
+>    adaptive training relationship. … the comment 'so only dt differs' … is
+>    unjustified"*, and *"dt inside its marginal minimum/maximum does not imply
+>    coverage of joint (recipe, geometry, dt) inputs"*.
+> 3. *"0.0465 is a passing point estimate, not a robust pass. Its margin is only
+>    **0.00347**, compared with an observed in-subset seed range of **0.01711**,
+>    about five times larger. … There is also a metric mismatch: … `RESULTS.md:11`
+>    says **both mean and terminal-step readings must pass**. Clause 1c provides
+>    no subset terminal-step check."*
+> 4. *"The report's verdict is hard-coded. `report.py:440` … prints 'Every seed
+>    meets' … without testing the threshold."*
+
+All four are real. Taking them in the order that mattered:
+
+**(1) is a straight contradiction and it was mine.** Two definitions of "in
+range" were printed in adjacent sections of one document: a table selecting on
+the test split's displacement min/max over 209 trajectories, and a paragraph
+describing the train split's 1st–99th percentile over 225. I generated the second
+from `confound.json` without checking it described the same rule as the first. A
+reader comparing the two would have found 137 and 76 for the same concept.
+
+**(4) is the same sin I had spent this turn fixing elsewhere.** I removed a
+hard-coded "34.2×" from `report.py` in the morning and then wrote "Every seed
+meets the clause" as literal prose in the afternoon. An assertion in a generator
+is not a computed result, whether the number beside it is or not.
+
+**(3) is the one that changed the answer.** I wrote `scripts/coverage_verdict.py`
+to do what the critic asked: per-trajectory errors, both readings, three coverage
+rules instead of one, and a 10,000-resample bootstrap **over trajectories, paired
+across seeds** — the four seeds share the same trajectories, so resampling seeds
+would be resampling the wrong thing.
+
+| coverage rule | n in | reading | in-range [95% CI] | worst seed | ≤0.05? |
+|---|---|---|---|---|---|
+| A test min/max | 137/209 | mean-over-steps | 0.0372 [0.0241, 0.0535] | 0.0465 | no |
+| A test min/max | 137/209 | **terminal-step** | 0.0600 [0.0384, 0.0865] | 0.0798 | **no** |
+| B train p1–p99 | 121/209 | mean-over-steps | 0.0330 [0.0214, 0.0474] | 0.0411 | yes |
+| B train p1–p99 | 121/209 | **terminal-step** | 0.0531 [0.0340, 0.0767] | 0.0703 | **no** |
+| C train min/max | 139/209 | mean-over-steps | 0.0410 [0.0269, 0.0581] | 0.0515 | no |
+| C train min/max | 139/209 | **terminal-step** | 0.0665 [0.0432, 0.0947] | 0.0889 | **no** |
+
+**Verdict in coverage: NOT MET, under every rule.** The mean-over-steps reading
+survives on the strictest rule; the terminal-step reading fails everywhere. Clause
+1 has required both readings since turn 5, and the subset analysis had only ever
+computed the mean. So **I withdraw the claim I committed earlier this same turn**
+— "clause 1 MET within displacement coverage, 4/4 seeds" is wrong. It was wrong
+by omission of the stricter reading, and it took an adversary to notice, which is
+the argument for running one.
+
+**(2) survives as a limitation rather than a refutation, and it got worse when
+measured.** The critic is right that selecting on true displacement is
+target-informed and cannot certify anything in deployment. So I computed the
+deployable version: the same bounds applied to the displacement the *model
+predicts*, which needs no oracle. It agrees with the oracle selector on 87.1% of
+trajectories — and gives **0.1402** where the oracle gives 0.0330, 4.3× worse.
+
+The mechanism is worth stating because it is not obvious: a trajectory the model
+gets badly wrong also mis-predicts its own displacement, and therefore **admits
+itself into the "covered" set by virtue of its own error**. The selector is
+anti-correlated with what you want exactly where it matters. So the coverage
+finding explains the failure but **does not license a domain of validity you
+could ship**, and I have stopped writing it as though it did.
+
+(A first version of that selector disagreed with the oracle 56% of the time. That
+was my bug, not a finding: I computed predicted displacement as a whole-field
+mean absolute difference while `per_step_displacement` uses a band-weighted
+signed normal advance. Matching the definitions moved agreement from 0.435 to
+0.871. Two quantities with the same name and different definitions, again.)
+
+One objection I do not accept, and why: the critic implies the 209-vs-225
+discrepancy might indicate the scores come from the wrong population. It does
+not — 209 is the crossed set under `data/`, 225 is the one under `data_crossed/`,
+built later with a different window-rejection rule. Both are real and the
+analysis is internally consistent on 209 throughout. The defect was describing
+one while measuring the other, which is a reporting error, not a scoring error.
+
+**Where this leaves clause 1**, with everything now computed rather than asserted:
+
+* in-distribution, adaptive dt: **0.0126** over 4 seeds, range 0.00114 — **MET**
+* crossed dt, inside displacement coverage: 0.0330 mean-over-steps (upper bound
+  0.0474, passes) but 0.0531 terminal-step (upper bound 0.0767, fails) — **NOT MET**
+* crossed dt, outside coverage: 0.3767 — **NOT MET**
+* using a selector that needs no oracle: 0.1402 — **NOT MET**
+
+The clause holds in distribution and nowhere else. That is a narrower and less
+satisfying result than the one I had at midday, and it is the one the
+measurements support.

@@ -416,44 +416,71 @@ def main():
         L += [NM, ""]
 
     # ---- where the clause actually holds
-    cov = coverage_arm()
-    if len(cov) >= 2:
-        def _st(key):
-            v = [r[key] for r in cov]
-            return sum(v) / len(v), max(v) - min(v), max(v)
-        im, ir, imax = _st("in_range")
-        om, orng, _ = _st("out_range")
-        am, arng, _ = _st("crossed_all")
-        L += ["## Clause 1c — the failure is displacement coverage, not the timestep", "",
-              "The crossed split decouples dt from the recipe, and the operator's error there "
-              "is both large and wildly seed-dependent. Splitting those same trajectories by "
-              "whether their mean per-step displacement falls inside the range the training "
-              "set covers separates two explanations that the aggregate confounds: *the model "
-              "cannot handle a decoupled timestep* versus *the model cannot handle "
-              "displacements it never saw*.", "",
-              table([[r["run"], f(r["in_dist"]), f(r["crossed_all"]), f(r["in_range"]),
-                      f(r["out_range"])] for r in cov]
-                    + [["**mean**", "—", f(am), f(im), f(om)],
-                       ["**range**", "—", f(arng), f(ir), f(orng)]],
-                    ["run", "in-distribution", "crossed (all)",
-                     "crossed, displacement IN range", "crossed, OUT of range"]), "",
-              f"**Every seed meets the clause on the in-range crossed trajectories "
-              f"({f(imax)} worst of {len(cov)}, against the 0.05 target), and none meets it "
-              f"out of range.** The dt of a crossed trajectory is *never* outside the trained "
-              f"range ({cov[0]['dt_outside']:.0%} of them), so the operator is not failing to "
-              "extrapolate in dt — it is failing to extrapolate in how far the surface moves "
-              "in one step.", "",
-              f"The seed instability localises the same way. Range across seeds is "
-              f"**{f(ir)}** in range and **{f(orng)}** out of it, a factor of "
-              f"{orng / max(ir, 1e-12):,.0f}. In the regime the data covers, this pipeline is "
-              "reproducible and correct; outside it, the answer depends on the seed almost as "
-              "much as on the input, which is the signature of extrapolation rather than of a "
-              "learned law.", "",
-              "So the earlier framing — that removing the adaptive timestep costs a factor in "
-              "accuracy — attributes the loss to the wrong variable. The adaptive-dt protocol "
-              "helped only because it kept per-step displacement inside a narrow band; "
-              f"decoupling dt is harmless where coverage holds ({f(im)} mean, clause MET) and "
-              "ruinous where it does not.", ""]
+    cvd = read("runs/coverage_verdict.json")
+    if cvd:
+        L += ["## Clause 1c — the failure localises to displacement coverage, "
+              "but the clause still does not hold there", ""]
+        L += ["The crossed split decouples dt from the recipe. Splitting those "
+              "trajectories by whether their per-step displacement falls inside the range "
+              "the training data covers separates two explanations the aggregate confounds: "
+              "*the model cannot handle a decoupled timestep* versus *the model cannot handle "
+              "displacements it never saw*. Three coverage rules are computed rather than one, "
+              "because an earlier version of this section used one rule in its table and "
+              "described a different one in its prose.", "",
+              f"Errors are bootstrapped over trajectories ({cvd['rules']['A_test_minmax']['mean_over_steps']['in_range']['n_boot']:,} "
+              "resamples, paired across seeds — the seeds share trajectories, so a resample "
+              "draws trajectories, not seeds). A clause is **MET only if the upper 95% bound "
+              "is under target on BOTH readings**, mean-over-steps and terminal-step, which is "
+              "the rule clause 1 uses everywhere else in this repo.", ""]
+        rows = []
+        for name, e in cvd["rules"].items():
+            for reading in ("mean_over_steps", "terminal_step"):
+                ci, co = e[reading]["in_range"], e[reading]["out_of_range"]
+                rows.append([f"`{name}`", f"{e['n_in']}/{cvd['n_crossed']}",
+                             reading.replace("_", "-"),
+                             f"{f(ci['point'])} [{f(ci['lo'])}, {f(ci['hi'])}]",
+                             f(ci["worst_seed_point"]),
+                             "yes" if e[reading]["met_upper_ci"] else "**no**",
+                             f"{f(co['point'])} [{f(co['lo'])}, {f(co['hi'])}]"])
+        L += [table(rows, ["coverage rule", "n in range", "reading",
+                           "in-range mean [95% CI]", "worst seed",
+                           "upper CI ≤ 0.05", "out-of-range mean [95% CI]"]), ""]
+        verdicts = {n: e["verdict_in_coverage"] for n, e in cvd["rules"].items()}
+        allnot = all(v == "NOT MET" for v in verdicts.values())
+        L += [f"**Verdict in coverage: "
+              f"{'NOT MET under every rule' if allnot else ', '.join(f'{n} {v}' for n, v in verdicts.items())}.** "
+              "The mean-over-steps reading passes on its point estimate under all three rules "
+              "and passes on its upper bound under the strictest one — but the **terminal-step "
+              "reading fails under every rule**, and clause 1 requires both. An earlier version "
+              "of this section reported only the mean and called the clause met in coverage; "
+              "that was wrong and is corrected here.", ""]
+        ap_ = cvd.get("a_priori_selector") or {}
+        if ap_.get("mean_over_steps"):
+            am, at = ap_["mean_over_steps"], ap_["terminal_step"]
+            best_oracle = min(e["mean_over_steps"]["in_range"]["point"]
+                              for e in cvd["rules"].values())
+            L += ["### The coverage rule is a diagnostic, not something you can deploy", "",
+                  "Every rule above selects on the displacement of the *simulated truth* — the "
+                  "answer you do not have when you are deciding whether to trust a prediction. "
+                  "The deployable version applies the same bounds to the displacement the model "
+                  "itself predicts, which needs no oracle:", "",
+                  table([["oracle selector (rule B)", f(best_oracle), "—"],
+                         ["a-priori selector, model's own predicted displacement",
+                          f"{f(am['point'])} [{f(am['lo'])}, {f(am['hi'])}]",
+                          f"{f(at['point'])} [{f(at['lo'])}, {f(at['hi'])}]"]],
+                        ["selector", "in-range mean-over-steps", "terminal-step"]), "",
+                  f"The two selectors agree on **{ap_['agreement_with_oracle_selector']:.1%}** of "
+                  f"trajectories, but the a-priori one gives **{f(am['point'])}** where the "
+                  f"oracle gives {f(best_oracle)} — a factor of "
+                  f"{am['point'] / max(best_oracle, 1e-12):.1f}. The disagreement is "
+                  "concentrated exactly where it costs most: a trajectory the model gets badly "
+                  "wrong also has its displacement badly wrong, so it is admitted into the "
+                  "'covered' set by its own error. **The coverage rule localises the failure "
+                  "but cannot be used to certify a prediction in advance**, which is the thing "
+                  "a deployable surrogate would need.", ""]
+        if cvd.get("limitations"):
+            L += ["### What this analysis does not establish", ""] + \
+                 [f"- {x}" for x in cvd["limitations"]] + [""]
 
     # ---- what the surrogate buys, in simulator calls
     L += ["## Clause 3b — what the surrogate is worth, in simulator calls", ""]
