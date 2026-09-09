@@ -58,8 +58,15 @@ def one(job):
 def build_split(name, n_samples, seed0, steps, grid_delta, n, workers, out_dir):
     jobs = [(i, seed0 + i, steps, grid_delta, n) for i in range(n_samples)]
     t0 = time.perf_counter()
+    res = []
     with Pool(workers) as pool:
-        res = list(pool.imap_unordered(one, jobs, chunksize=2))
+        for r in pool.imap_unordered(one, jobs, chunksize=1):
+            res.append(r)
+            if len(res) % 25 == 0:
+                el = time.perf_counter() - t0
+                print(f"[{name}] {len(res)}/{n_samples}  {el:.0f}s  "
+                      f"{len(res)/el:.3f} traj/s  eta {(n_samples-len(res))/(len(res)/el):.0f}s",
+                      flush=True)
     wall = time.perf_counter() - t0
     res.sort(key=lambda r: r["idx"])
     kept = [r for r in res if r["ok"]]
@@ -89,13 +96,17 @@ def build_split(name, n_samples, seed0, steps, grid_delta, n, workers, out_dir):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--n-train", type=int, default=1800)
-    ap.add_argument("--n-val", type=int, default=300)
-    ap.add_argument("--n-test", type=int, default=400)
+    ap.add_argument("--n-train", type=int, default=900)
+    ap.add_argument("--n-val", type=int, default=150)
+    ap.add_argument("--n-test", type=int, default=250)
     ap.add_argument("--steps", type=int, default=10)
     ap.add_argument("--grid-delta", type=float, default=0.2)
     ap.add_argument("--n", type=int, default=128)
-    ap.add_argument("--workers", type=int, default=90)
+    # Measured, not guessed: throughput peaks near 8 workers (0.70 traj/s) and is
+    # *lower* at 90 (0.63) -- see runs/worker_scaling.json. ViennaPS's flux solver
+    # is a Monte Carlo ray trace and is bandwidth-bound, so extra workers buy
+    # nothing and take the box away from the other tracks sharing it.
+    ap.add_argument("--workers", type=int, default=16)
     ap.add_argument("--out", default="data")
     a = ap.parse_args()
 

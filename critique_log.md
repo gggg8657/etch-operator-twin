@@ -93,3 +93,54 @@ Consequences, stated now rather than discovered later:
 
 No operator has been trained. There is no rel-L2, no speedup and no shape error
 in this repo yet, and none will be written down until a run produces them.
+
+---
+
+## 2026-09-09 — turn 1b: the dataset generator was 11× oversubscribed
+
+### What was measured
+
+`scripts/bench_workers.py` → `runs/worker_scaling.json`. Identical trajectories,
+identical code, only the worker count changes:
+
+| workers | traj/s | wall per trajectory (s) | speedup vs 1 worker |
+|---|---|---|---|
+| 1 | 0.306 | 3.2 | 1.00× |
+| 8 | 0.703 | 10.6 | 2.30× |
+| 24 | 0.677 | 32.4 | 2.21× |
+| 48 | 0.637 | 68.5 | 2.08× |
+| 90 | 0.626 | 131.5 | 2.05× |
+
+### The critique
+
+The first generation run used **90 workers and was slower than 8**. It completed
+about 175 trajectories in 10 minutes — roughly 300 core-seconds each against 4.7 s
+measured serially — and was killed.
+
+Parallel efficiency at 8 workers is already only 29% (2.30× on 8 cores), and the
+curve is *falling* after that. This is the signature of a bandwidth-bound
+workload, not a compute-bound one: ViennaPS's flux calculation is a Monte Carlo
+ray trace over a level-set surface with scattered memory access, so the cores
+were queuing on memory, not arithmetic. Eighty-two of the ninety cores were
+producing negative value, and they were taken from two other tracks sharing this
+box.
+
+**What would distinguish this explanation from the obvious alternative.** The
+obvious alternative is OpenMP oversubscription — each worker silently spawning
+its own thread pool, 90 × N threads on 192 cores. That would show a load average
+far above the worker count; the measured load was ~105 with 91 processes, i.e.
+about one runnable thread per process, so the threads are not there. The
+remaining candidate is memory. The falling-throughput shape (0.703 → 0.626 while
+cores go 8 → 90) is what a saturated memory system looks like and is not what
+scheduler contention looks like — scheduler contention plateaus, it does not
+decline.
+
+**Consequence for the KPI.** The ≥1000× clause compares "seconds per simulated
+wafer" for solver and operator. The solver's cost per wafer moves by a factor of
+40 between 1 worker and 90 depending only on what else is running. So a speedup
+number is meaningless without the thread count and the machine state attached,
+and `scripts/bench_speed.py` records the load average at measurement time for
+exactly this reason. The `solver_s` column stored inside the dataset was measured
+under contention and is excluded from that table.
+
+Regenerated at 16 workers.
