@@ -26,13 +26,27 @@ def main():
     ap.add_argument("--out", default="runs/seed_spread.json")
     a = ap.parse_args()
 
-    runs = []
+    runs, incomplete = [], []
     for d in sorted(Path().glob(a.glob)):
         cfg, ev = d / "args.json", d / "test_eval.json"
         if not (cfg.exists() and ev.exists()):
             continue
         c = json.loads(cfg.read_text())
         e = json.loads(ev.read_text())
+        # Refuse runs that have not finished their epoch budget. A checkpoint
+        # from a still-training job evaluates to whatever it happens to be worth
+        # at that moment; pooled with converged runs it reads as a seed outlier.
+        # This happened: a run 26 epochs into an 80-epoch budget scored 0.0491
+        # against 0.0126-0.0131 for four converged seeds, and was very nearly
+        # reported as a 3.8x seed effect.
+        log = d / "log.jsonl"
+        n_ep = sum(1 for _ in log.open()) if log.exists() else None
+        done = (n_ep is not None and c.get("epochs") is not None
+                and n_ep >= c["epochs"])
+        if not done:
+            incomplete.append({"run": str(d), "epochs_logged": n_ep,
+                               "epochs_requested": c.get("epochs")})
+            continue
         k = e.get("kpi_clause_rel_l2", {})
         runs.append({
             "run": str(d), "seed": c.get("seed"), "modes": c.get("modes"),
@@ -53,7 +67,8 @@ def main():
                r["blind"])
         groups.setdefault(key, []).append(r)
 
-    out = {"n_runs": len(runs), "runs": runs, "groups": []}
+    out = {"n_runs": len(runs), "runs": runs, "groups": [],
+           "excluded_incomplete": incomplete}
     for key, g in groups.items():
         vals = [r["band_rel_l2"] for r in g if r["band_rel_l2"] is not None]
         entry = {

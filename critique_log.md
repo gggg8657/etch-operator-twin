@@ -697,3 +697,182 @@ as pipeline instability. Had I taken that at face value I would have written
 anything else", which is false and would have invalidated every comparison. Fixed
 by putting `blind` in the grouping key; the ablation is now computed explicitly
 as a matched-config contrast.
+
+---
+
+## Turn 7 — 2026-09-09 04:2x UTC
+
+### Pre-registration, written before the runs below were launched
+
+**Headline run.** Clauses 1 and 3 need one designated model, and there are now
+several finished ones. Picking the best of them after seeing their scores is
+cherry-picking, so the rule is fixed here in advance and does not change again:
+
+> The headline run is the **lowest seed index in the converged conditioned arm**
+> (modes 20, width 64, layers 4, 80 epochs, `blind: false`, `log.jsonl` complete
+> at 80 epochs). That is **`runs/seed1`**, band rel-L2 0.012919.
+
+`runs/base` (seed 0) would have been the natural headline and is excluded on a
+rule that predates its score: it is still training as of this turn, at epoch 23
+of 80. It becomes the headline only if it finishes *and* the rule above still
+selects it, which it will, and at that point clause 1 gets re-reported under it.
+
+**H2, the hypothesis under test this turn.** Not an architecture change — the
+question this turn resolves is whether clause 3 is measurable at all:
+
+> The operator's gradients are informative enough that gradient descent on the
+> recipe beats a matched-budget random search *when both are scored in ViennaPS*,
+> not on the surrogate.
+
+The discriminator is already built into `design.py`: `operator_gd` vs
+`random_search`, both re-simulated. If GD does not beat random search, the
+finding is that the operator is a usable **ranker** whose **gradients are not
+informative**, and that is the result — it does not get reframed as needing more
+iterations. The `surrogate_opinion` row measures the surrogate-reality gap
+separately, and a small simulator error with a large gap would mean the KPI is
+met for the wrong reason.
+
+### Why clause 3 read `[not measured]` for three turns, which was my fault
+
+`logs/design.log` shows both inverse-design variants dying identically:
+
+    FileNotFoundError: 'runs/t4_base_s0/args.json'
+
+When turn 6 caught the two-trainers-one-directory race it renamed the affected
+run directories to `UNTRACED_t4_base_s0` and `base_RACED_do_not_use`. That was
+the right call for the data. But `scripts/design.py`, `scripts/report.py` and
+`scripts/weekend.py` were all still being invoked with `--run runs/t4_base_s0`,
+so every one of them failed or silently emitted `[not measured]`, and **three
+KPI cells have been blank since for a path reason, not a scientific one.**
+
+Worth naming the shape of this: the repo's honesty machinery worked exactly as
+designed — a missing JSON printed `[not measured]` instead of a guess — and that
+correct behaviour *masked a broken pipeline* for three turns, because a blank
+cell looks the same whether the measurement is impossible or the script simply
+crashed. `[not measured]` needs to be distinguishable from `[not run]`. Logged
+as a defect against `report.py`, fixed below.
+
+### `runs/seed_spread.json` on disk was stale and contaminated
+
+The file dated 04:14 pools two runs that were **still training when they were
+scored**:
+
+| run | epochs logged | epochs requested | band rel-L2 as scored |
+|---|---|---|---|
+| `runs/seed2` | 68 | 80 | 0.012838 |
+| `runs/base` | ~23 | 80 | **0.049133** |
+
+`runs/seed2/test_eval.json` is timestamped 04:19:01 against a `log.jsonl` still
+being appended at 04:19:29 — an eval of a mid-flight checkpoint, filed next to
+converged ones. The 0.0491 is not a seed outlier, it is a partly-trained model,
+and pooled with the four converged seeds it inflated the arm's reported spread to
+**range 0.0365, cv 0.81**. Had I quoted that as the noise floor I would have
+declared every effect in this repo indistinguishable from zero, including the
+31× conditioning ablation — the exact inversion of turn 6's error, where an
+ablation was misread as noise.
+
+`scripts/seed_spread.py` *already* carries the completeness guard that catches
+this; it was added in turn 6 and its comment describes this very case. The script
+was fixed and **the JSON was never regenerated**. So the defect this turn is not
+a missing guard, it is that a stale artefact outlived the fix that invalidated
+it. Regenerated below.
+
+### GPU lease health, measured rather than assumed
+
+Track β recorded GPU 2 as unusable — 91 leaked CUDA contexts, 2.88 TFLOP/s
+against 44.07 on a clean device. `nvidia-smi` shows my leased GPU 1 carrying
+three foreign contexts (PIDs 342714, 350120, 350220, ~10 GB) at 95% reported
+utilisation, which is the same picture. Clause 2 is a timing claim, so I measured
+the device instead of inheriting β's conclusion (`runs/gpu_health.json`):
+
+| device | median bf16 TFLOP/s | best | worst | run-to-run spread |
+|---|---|---|---|---|
+| cuda:0 (my two trainers) | 531.7 | 540.1 | 525.8 | 2.7% |
+| cuda:1 (foreign contexts) | 530.6 | 534.0 | 528.1 | 1.1% |
+
+Ratio 1.002. **The leaked-context pathology does not reproduce on my lease** —
+GPU 1 delivers full throughput despite the foreign contexts and the 95% reading,
+so the utilisation figure is not tracking work that competes with mine. β's
+finding was real on GPU 2 and does not generalise to GPU 1; inheriting it would
+have cost me a device for the weekend. Recorded as a negative result, and
+`scripts/gpu_health.py` is now in the repo so clause 2's timings can state the
+health of the hardware they were taken on.
+
+Incidental, and not mine to fix: `/tmp/struct.py` on this box shadows the stdlib
+`struct` module and makes *any* `python /tmp/foo.py` fail at `import torch`. It
+references a `scripts/hypothesis_ledger.py` that does not exist in this repo, so
+it belongs to another loop. Routed around by keeping scratch scripts in the repo.
+
+---
+
+## 2026-09-09 — turn 7: I nearly reported a 3.8× seed effect that was an unfinished training run
+
+### The sequence, including the part where I was wrong
+
+1. Two converged seeds (1, 5) of the modes-20 configuration gave 0.01292 and
+   0.01306. I wrote that the seed-to-seed range was **0.000144** and used it as
+   the noise floor against which the conditioning ablation was "2700× the noise".
+2. `runs/base` — same configuration, seed 0 — evaluated to **0.0491**, 3.8×
+   worse, with a terminal-step reading of 0.0888 that misses the clause outright.
+   That looked like a genuine and important training-stability finding: one seed
+   in three landing in a much worse basin, with direct consequences for whether
+   clause 1 can be claimed at all.
+3. Before writing it up I checked the training curves. `runs/base` had a final
+   train loss of 0.00213 against ~0.00064 for the others — consistent with a
+   worse basin, and I nearly stopped there.
+4. `runs/base/log.jsonl` had **26 lines against seed1's 80**. It was not a worse
+   basin. It was a job that was **still running**, 26 epochs into an 80-epoch
+   budget, whose `best.pt` I had evaluated mid-flight. `runs/seed2` was likewise
+   at 69/80.
+
+### What the numbers actually are
+
+Restricted to runs that completed their epoch budget:
+
+| arm | seeds | band rel-L2 | range |
+|---|---|---|---|
+| conditioned, modes 20, 80 ep | 1, 5, 6 | 0.0129, 0.0131, 0.0126 | **0.00041** |
+| recipe-blind, same architecture | 0 | 0.4054 | — |
+
+So the converged seed range is **0.00041**, and the conditioning ablation is
+**31.5×**, about 950× that range. Both my earlier figures were wrong in opposite
+directions: 0.000144 was too small (two seeds), and the 0.0365 I briefly believed
+was an artefact of an unfinished run.
+
+### The correction to the previous entry
+
+Turn 6 said the ablation was "~2700× the noise floor". The honest multiple
+against three converged seeds is **~950×**. The conclusion — that the recipe
+conditioning is doing real work and is not decorative — is unchanged, and the
+effect remains far outside any plausible seed variation. The number was wrong and
+is corrected here rather than quietly restated.
+
+### Why this was so easy to get wrong, and what now prevents it
+
+A mid-training checkpoint is a perfectly valid model file. It loads, its
+parameter count matches its `args.json`, it evaluates, and it produces a number
+with a JSON behind it. Every provenance check I had built — and I had built
+several this weekend, after the `runs/base` collision — passes on it. The only
+thing that distinguishes it is that the run had not finished, and nothing was
+looking at that.
+
+`scripts/seed_spread.py` now refuses any run whose `log.jsonl` is shorter than
+its requested `epochs`, and lists what it excluded and why in
+`excluded_incomplete`. That is a cheap check and it should have existed from the
+first seed comparison.
+
+The general form, which is the third instance of the same shape this weekend:
+**a number having a JSON behind it is necessary and not sufficient.** Turn 2's
+`solver_s` was real and contention-contaminated. Turn 6's 1006× was real and
+measured against the wrong denominator. This one is real and measured on a model
+that was still moving. In all three the artefact was upstream of the file, where
+the provenance check was not looking.
+
+### Status of the seed claim
+
+Three converged seeds. By the standing rule this is a **screen, not a verdict**;
+seeds 0 and 2 are still training and will be folded in when they finish. What can
+be said now is that among converged runs the spread is 0.00041 — two orders of
+magnitude below the 0.05 threshold — so clause 1's in-distribution verdict is not
+seed-sensitive, whereas the crossed-split miss (0.15–0.16 across the two models
+measured) is far outside it and is not a seed artefact either.

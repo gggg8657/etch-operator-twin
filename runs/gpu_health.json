@@ -1,0 +1,73 @@
+{
+  "lease": [
+    "cuda:0",
+    "cuda:1"
+  ],
+  "nvidia_smi": {
+    "devices": [
+      {
+        "index": 0,
+        "memory_used": "17588 MiB",
+        "utilization": "100 %"
+      },
+      {
+        "index": 1,
+        "memory_used": "10622 MiB",
+        "utilization": "90 %"
+      },
+      {
+        "index": 2,
+        "memory_used": "14 MiB",
+        "utilization": "0 %"
+      },
+      {
+        "index": 3,
+        "memory_used": "14 MiB",
+        "utilization": "0 %"
+      }
+    ],
+    "apps": [
+      {
+        "pid": 95653,
+        "used_memory": "8780 MiB",
+        "gpu_index": 0
+      },
+      {
+        "pid": 197185,
+        "used_memory": "8780 MiB",
+        "gpu_index": 0
+      },
+      {
+        "pid": 342714,
+        "used_memory": "8780 MiB",
+        "gpu_index": 1
+      },
+      {
+        "pid": 350120,
+        "used_memory": "1814 MiB",
+        "gpu_index": 1
+      }
+    ]
+  },
+  "probes": [
+    {
+      "device": "cuda:0",
+      "matmul_n": 8192,
+      "iters": 10,
+      "median_tflops": 531.7414998754238,
+      "best_tflops": 540.104938622403,
+      "worst_tflops": 525.7907496144996,
+      "spread_pct": 2.6802556124664223
+    },
+    {
+      "device": "cuda:1",
+      "matmul_n": 8192,
+      "iters": 10,
+      "median_tflops": 530.6487664182308,
+      "best_tflops": 533.982062090628,
+      "worst_tflops": 528.0805307132543,
+      "spread_pct": 1.1105677433738101
+    }
+  ],
+  "ratio_fastest_to_slowest": 1.002059240549203
+}
