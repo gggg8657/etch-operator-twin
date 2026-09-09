@@ -89,6 +89,42 @@ def test_cond_vector_layout():
     assert abs(c[0, 6] - np.log(0.25)) < 1e-5
 
 
+
+
+def test_recipe_param_gradients_are_finite_with_a_zero_lower_bound():
+    """Regression: oxygen flux has lo = 0, and log(0) poisoned the backward pass.
+
+    `values()` uses torch.where over a log-interpolated branch. torch.where
+    differentiates *both* branches, so log(0) = -inf produced 0 * inf = NaN in
+    the unused branch and NaN propagated into every recipe knob. The failure was
+    silent -- nan loss, nan recipe, and a verification subprocess that died with
+    an empty stderr.
+    """
+    from eot.inverse import RecipeParam
+    from eot.solver import RECIPE_BOX
+
+    assert min(RECIPE_BOX[k][0] for k in RECIPE_BOX) == 0.0, (
+        "this regression needs a knob whose lower bound is zero")
+    p = RecipeParam(device="cpu")
+    v = p.values()
+    assert torch.isfinite(v).all(), v
+    v.sum().backward()
+    assert p.z.grad is not None and torch.isfinite(p.z.grad).all(), p.z.grad
+
+
+def test_recipe_param_round_trips_and_stays_in_box():
+    from eot.inverse import DESIGN_KEYS, RecipeParam
+    from eot.solver import RECIPE_BOX
+
+    init = [0.5 * (RECIPE_BOX[k][0] + RECIPE_BOX[k][1]) for k in DESIGN_KEYS]
+    p = RecipeParam(init=init, device="cpu")
+    v = p.values().detach()
+    for i, k in enumerate(DESIGN_KEYS):
+        lo, hi, _ = RECIPE_BOX[k]
+        assert lo <= float(v[i]) <= hi, (k, float(v[i]), lo, hi)
+    assert 0.0 <= p.margin() <= 0.5
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:

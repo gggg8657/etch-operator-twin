@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import multiprocessing as mp
+import os
 import sys
 import time
 from pathlib import Path
@@ -56,31 +56,65 @@ from eot.operator import EtchOperator  # noqa: E402
 # not fork: a forked child inherits the parent's CUDA context, which is the thing
 # being protected. The pool is created before the model touches the GPU.
 # ---------------------------------------------------------------------------
-_POOL = None
-
-
-def _sim_worker(job):
-    import sys as _sys
-    _sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from eot import solver as _S
-
-    values, geom, dt, n_steps, grid_delta, n = job
-    rec = _S.Recipe(**dict(zip(DESIGN_KEYS, [float(v) for v in values])),
-                    trench_width=float(geom["trench_width"]),
-                    mask_height=float(geom["mask_height"]))
-    tr = _S.simulate(rec, n_steps=n_steps, dt=float(dt), grid_delta=grid_delta, n=n)
-    return tr.sdf[-1], tr.sdf[0]
+# A persistent multiprocessing.Pool deadlocks here. Observed: the parent blocked in
+# futex_wait while an idle spawn worker sat in pipe_read, neither accumulating CPU,
+# zero targets completed in ten minutes. Torch's CUDA context and thread pools do
+# not coexist with a long-lived Pool in this process.
+#
+# Each simulation therefore gets a fresh short-lived subprocess -- the pattern
+# gen_data.py and bench_speed.py already use without trouble. Interpreter startup
+# costs ~2 s a call, a few calls per target, which is nothing next to the gradient
+# descent, and it buys a mechanism that demonstrably works.
+_SIM_SRC = """
+import os, sys, base64, pickle
+os.environ["OMP_NUM_THREADS"] = "1"
+sys.path.insert(0, {root!r})
+from eot import solver as S
+job = pickle.loads(base64.b64decode(sys.argv[1]))
+tr = S.simulate(S.Recipe(**job["kw"]), n_steps=job["n_steps"], dt=job["dt"],
+                grid_delta=job["grid_delta"], n=job["n"])
+sys.stdout.write(base64.b64encode(pickle.dumps(
+    {{"last": tr.sdf[-1], "first": tr.sdf[0], "ok": bool(tr.steps_ok)}})).decode())
+"""
 
 
 def simulate_recipe(rec: S.Recipe, dt: float, n_steps: int, grid_delta: float, n: int):
-    values = [getattr(rec, k) for k in DESIGN_KEYS]
-    geom = {"trench_width": rec.trench_width, "mask_height": rec.mask_height}
-    job = (values, geom, dt, n_steps, grid_delta, n)
-    return _POOL.apply(_sim_worker, (job,))
+    import base64
+    import pickle
+    import subprocess
+
+    kw = {k: float(getattr(rec, k)) for k in DESIGN_KEYS}
+    kw["trench_width"] = float(rec.trench_width)
+    kw["mask_height"] = float(rec.mask_height)
+    job = {"kw": kw, "dt": float(dt), "n_steps": int(n_steps),
+           "grid_delta": float(grid_delta), "n": int(n)}
+    src = _SIM_SRC.format(root=str(Path(__file__).resolve().parents[1]))
+    # Do NOT hide the GPU from the child: ViennaPS initialises a CUDA context
+    # even for CPU-only work and dies with CUDA_ERROR_NO_DEVICE without one.
+    # That is also the likely mechanism behind the in-process cuFFT corruption --
+    # two CUDA contexts, ViennaPS's and torch's, in one process. A separate
+    # process is exactly the isolation that makes both work.
+    env = dict(os.environ, OMP_NUM_THREADS="1")
+    try:
+        r = subprocess.run(
+            [sys.executable, "-c", src, base64.b64encode(pickle.dumps(job)).decode()],
+            capture_output=True, text=True, env=env, timeout=900)
+    except subprocess.TimeoutExpired:
+        return None, None, {"failed": "timeout", "recipe": kw}
+    if r.returncode != 0:
+        # Inverse design proposes recipes the solver may not survive -- a
+        # geometry that self-intersects, an etch that clears the domain. That is
+        # a property of the proposed recipe and therefore a *result*: the recipe
+        # is not simulable, which is a failure of the design, not of the script.
+        # Crashing here would throw away every target already computed and would
+        # also quietly bias the reported mean toward recipes that happen to run.
+        return None, None, {"failed": f"returncode {r.returncode}",
+                            "stderr_tail": r.stderr[-400:], "recipe": kw}
+    out = pickle.loads(base64.b64decode(r.stdout.strip()))
+    return out["last"], out["first"], {"failed": None, "steps_ok": out["ok"]}
 
 
 def main():
-    global _POOL
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", default="runs/base")
     ap.add_argument("--data", default="data")
@@ -98,9 +132,6 @@ def main():
                          "of the true recipe's rate, so it hands over the degree of "
                          "freedom that sets depth. Both variants get reported.")
     a = ap.parse_args()
-
-    # before anything touches the GPU
-    _POOL = mp.get_context("spawn").Pool(1)
 
     run = Path(a.run)
     runlock.acquire(Path(a.out or (run / "design.json")), what="design")
@@ -140,9 +171,11 @@ def main():
 
         # --- tripwire: the recipe that made the target, re-simulated
         t0 = time.perf_counter()
-        rs_final, rs_init = simulate_recipe(
+        rs_final, rs_init, st = simulate_recipe(
             recipe_from_values(true_rec_vec[:4], geom), dt, n_steps, grid_delta, n_grid)
-        row["true_resim"] = shape_error(rs_final, tgt_np, phi0_np, gx, gy)
+        row["true_resim"] = (shape_error(rs_final, tgt_np, phi0_np, gx, gy)
+                             if rs_final is not None else dict(st))
+        row["true_resim"]["sim_status"] = st
         row["true_resim"]["sim_seconds"] = time.perf_counter() - t0
 
         # --- gradient descent through the operator, several restarts
@@ -185,8 +218,10 @@ def main():
         row["surrogate_opinion"] = shape_error(
             phi[0, 0].cpu().numpy() * scale, tgt_np, phi0_np, gx, gy)
         t0 = time.perf_counter()
-        gd_final, _ = simulate_recipe(gd_rec, gd_dt, n_steps, grid_delta, n_grid)
-        row["operator_gd"] = shape_error(gd_final, tgt_np, phi0_np, gx, gy)
+        gd_final, _, st = simulate_recipe(gd_rec, gd_dt, n_steps, grid_delta, n_grid)
+        row["operator_gd"] = (shape_error(gd_final, tgt_np, phi0_np, gx, gy)
+                              if gd_final is not None else dict(st))
+        row["operator_gd"]["sim_status"] = st
         row["operator_gd"]["sim_seconds"] = time.perf_counter() - t0
 
         # --- random search over the same operator, matched budget
@@ -215,25 +250,41 @@ def main():
         jbest = int(np.argmin(losses))
         rs_rec = recipe_from_values(cands[jbest], geom)
         t0 = time.perf_counter()
-        rand_final, _ = simulate_recipe(rs_rec, dt, n_steps, grid_delta, n_grid)
-        row["random_search"] = shape_error(rand_final, tgt_np, phi0_np, gx, gy)
+        rand_final, _, st = simulate_recipe(rs_rec, dt, n_steps, grid_delta, n_grid)
+        row["random_search"] = (shape_error(rand_final, tgt_np, phi0_np, gx, gy)
+                                if rand_final is not None else dict(st))
+        row["random_search"]["sim_status"] = st
         row["random_search"]["sim_seconds"] = time.perf_counter() - t0
         row["random_search"]["surrogate_loss"] = float(losses[jbest])
         row["random_search"]["budget"] = a.random_budget
         row["random_search"]["recipe"] = dict(zip(DESIGN_KEYS, cands[jbest].tolist()))
 
         rows.append(row)
-        print(f"[{ti+1}/{len(idxs)}] idx={idx} "
-              f"true_resim={row['true_resim']['area_error_vs_removed']:.4f} "
-              f"gd_sim={row['operator_gd']['area_error_vs_removed']:.4f} "
-              f"gd_surrogate={row['surrogate_opinion']['area_error_vs_removed']:.4f} "
-              f"rand_sim={row['random_search']['area_error_vs_removed']:.4f} "
+
+        def _v(key):
+            x = row[key].get("area_error_vs_removed")
+            return f"{x:.4f}" if isinstance(x, float) else "SIMFAIL"
+
+        print(f"[{ti+1}/{len(idxs)}] idx={idx} true_resim={_v('true_resim')} "
+              f"gd_sim={_v('operator_gd')} gd_surrogate={_v('surrogate_opinion')} "
+              f"rand_sim={_v('random_search')} "
               f"margin={row['operator_gd_surrogate']['box_margin']:.3f}", flush=True)
 
     def agg(name, field="area_error_vs_removed"):
+        """Aggregate over targets whose simulation completed, and say how many did not.
+
+        A recipe the solver cannot survive is a design failure, not a missing
+        datum. Averaging only over the survivors without reporting the count
+        would flatter the method exactly in proportion to how often it proposes
+        something unphysical."""
         v = np.array([r[name][field] for r in rows if r[name].get(field) is not None], float)
+        n_failed = sum(1 for r in rows if (r[name].get("sim_status") or {}).get("failed"))
+        if v.size == 0:
+            return {"mean": None, "n": 0, "n_failed_simulation": n_failed}
         return {"mean": float(v.mean()), "median": float(np.median(v)),
-                "p90": float(np.percentile(v, 90)), "max": float(v.max()), "n": int(v.size)}
+                "p90": float(np.percentile(v, 90)), "max": float(v.max()),
+                "n": int(v.size), "n_failed_simulation": n_failed,
+                "n_targets": len(rows)}
 
     summary = {
         "n_targets": len(rows),
@@ -268,8 +319,6 @@ def main():
     out = Path(a.out or (run / "design.json"))
     out.write_text(json.dumps({"summary": summary, "targets": rows}, indent=2))
     print(json.dumps(summary, indent=2))
-    _POOL.close()
-    _POOL.join()
 
 
 if __name__ == "__main__":

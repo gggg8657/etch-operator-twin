@@ -1007,3 +1007,113 @@ Two components, separable:
 alongside every relative one. Any relative metric on a corpus with heterogeneous
 target magnitudes needs this; without it there is no way to tell an accuracy
 collapse from a small denominator, and the two call for opposite responses.
+
+### Two loop instances are running this repo at once
+
+`ps` on the full command lines:
+
+    PID 2419080  claude -p "# Rules for every autonomous loop this weekend..."  04:18:40
+    PID 2419219  claude -p "# Rules for every autonomous loop this weekend..."  04:18:41
+
+Two agents, same brief, started one second apart. The consequences were already
+visible in the working tree before I understood the cause: a commit (`02c1def`)
+appeared on `master` between two of my own reads; `runs/seed3` and `runs/seed7`
+trainers I did not launch were running on my GPU; and a second `design.py --run
+runs/seed1` had started at 04:20, two minutes before mine.
+
+So turn 6's "two trainers wrote to `runs/base`" was **not** a slip by one careless
+process. It is structural, it will recur every turn, and being careful cannot fix
+it. That reframes the withdrawn 0.0400 number: it was a symptom, not the disease.
+
+What I did and did not do:
+
+* **Did:** `eot/runlock.py`, an `fcntl.flock` on a sidecar `.lock`, acquired by
+  `train.py` (on the run dir), `eval.py` and `design.py` (on the output file).
+  A second writer to the same output now exits 3 with the holder's pid and argv
+  instead of silently interleaving. The lock dies with the process, so a killed
+  job does not wedge a directory. Six tests in `tests/test_runlock.py`.
+* **Did:** strengthened the completeness guard. Line-counting `log.jsonl` was
+  never sufficient — `train.py` opens it in **append** mode, so two writers reach
+  the epoch budget with neither model converged. It now demands `done.json`, or
+  failing that an exact, duplicate-free `0..epochs-1` sequence. Run against the
+  existing tree it immediately and independently re-derived turn 6's incident:
+
+      runs/base_RACED_do_not_use -- duplicate epoch records [0,1,2,3,4]
+                                    -- two writers shared this log
+
+  That is forensic evidence rather than inference, produced by the guard on its
+  first execution against data it was not written for.
+* **Did not:** kill the other instance's jobs. The boundary rule says never touch
+  another loop's processes, and it holds even when the other loop is me. Its
+  `design.py` writes `runs/design_Tfixed.json` and mine writes
+  `runs/seed1/design.json`, so they do not collide, and running the identical
+  computation twice under different names turns the waste into a free
+  determinism check — I will compare them when both land.
+
+**This needs a human and is now D4 in `WEEKEND.md`.** No amount of in-repo
+locking fixes a supervisor that starts two α loops; the lock only converts silent
+corruption into a loud refusal.
+
+### The crossed-dt number does not survive its own seed spread — H3 killed on arrival
+
+I had a tidy story ready. Holding the crossed-dt data fixed at the original
+209-trajectory set: the old modes-16/60-epoch model scored **0.1524** (committed
+in `17115c5`) and the new modes-20/80-epoch `seed1` scores **0.2497**. In
+distribution the two are indistinguishable — 0.0130 vs 0.0129, against a measured
+noise floor of 0.00114. The story writes itself: *the extra capacity and the
+extra 20 epochs bought nothing in distribution and cost 64% out of it, so the
+model is overfitting to the adaptive-dt protocol.*
+
+Before writing that down I ran the other three converged seeds on the same 209
+trajectories. All four models, one architecture, one dataset, seed only:
+
+| run | in-distribution | crossed-dt | crossed terminal | beats recipe-blind null |
+|---|---|---|---|---|
+| seed1 | 0.0129 | 0.2497 | 0.4962 | yes |
+| seed2 | 0.0119 | **0.0641** | 0.1107 | yes |
+| seed5 | 0.0131 | **0.2909** | 0.7716 | yes |
+| seed6 | 0.0126 | 0.1061 | 0.1793 | yes |
+| **mean** | **0.0126** | **0.1777** | — | 4/4 |
+| **range** | **0.00114** | **0.2268** | — | — |
+
+**The seed range on the crossed split is 0.2268 — larger than the mean itself,
+and 200× the in-distribution range.** The 0.097 gap I was about to attribute to
+architecture sits entirely inside it; seed2 at 0.0641 is *better* than the old
+model's 0.1524 and seed5 at 0.2909 is worse than seed1, at identical
+configuration. H3 is dead, and it was never alive: the effect is smaller than the
+noise on the axis it was measured on.
+
+The brief's seed-count lesson cost another track three days. It nearly cost me
+this turn, and the thing that saved it was running three more evals — about
+ninety seconds of GPU — *before* writing the paragraph rather than after.
+
+Two consequences that outlive the dead hypothesis:
+
+1. **The noise floor is protocol-dependent, and nobody measures it twice.** This
+   repo had one noise floor, 0.00114, measured in distribution, and I had been
+   treating it as *the* noise floor. On the OOD probe the same pipeline is 200×
+   noisier. A tolerance established on the test split licenses nothing on the
+   crossed split. Any future crossed-dt comparison needs 8 seeds per arm and an
+   exact test; below that it is not reportable at all, not even as a screen.
+2. **The previously committed 0.1524 should be read as one draw, not a value.**
+   It is not withdrawn — it was honestly measured — but `17115c5`'s framing
+   ("removing the adaptive timestep costs a factor of 11.7") rests on a single
+   seed of a quantity whose seed range is 4.5×. The factor is somewhere between
+   about 5× and 23× depending on which model you happened to train. That is the
+   honest statement and it is the one that goes in `RESULTS.md`.
+
+What survives, and it is the substantive physics result: **all four seeds beat
+the recipe-blind null on the crossed split.** The operator did learn
+recipe-dependent dynamics rather than a protocol-shaped constant — that
+conclusion is 4/4 and does not depend on the unstable magnitude. What is unstable
+is *how much* accuracy the adaptive-dt protocol was buying, not *whether* the
+model learned anything.
+
+### Where clause 1 stands
+
+`[not measured]` is gone from two cells. In distribution, headline run `seed1`:
+**0.0129 mean / 0.0194 terminal — MET**, and the arm mean is 0.0126 over 4 seeds
+with range 0.00114. Out of distribution on the crossed-dt probe: **0.1777 mean
+over 4 seeds, range 0.2268 — MISSED**, on every seed individually. The clause as
+written does not name a protocol, so both readings are reported and neither is
+allowed to stand alone.

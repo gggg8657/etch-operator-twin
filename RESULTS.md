@@ -116,7 +116,39 @@ CPU: Model name:                           INTEL(R) XEON(R) PLATINUM 8558. GPU: 
 
 ## Clause 1b — the same operator when the timestep stops being adaptive
 
-[not measured]
+The training set chooses dt per recipe so every trajectory covers a comparable etch depth. That was done to stop most of the recipe box being nearly static (which a do-nothing predictor solves), but it also compresses how much per-step displacement varies across recipes — an adversarial review caught this and the compression is measured below. The crossed split is the same recipe box with dt drawn *independently of the recipe*, so displacement varies by the rate law's own range. It is out-of-distribution by construction and is **not** the KPI number; it is the honest qualification of it.
+
+| split | rollout band rel-L2 (mean) | terminal step | vs ≤0.05 |
+|---|---|---|---|
+| in-distribution test | 0.0129 | 0.0194 | MET |
+| crossed dt (OOD probe) | 0.2497 | 0.4962 | NOT MET |
+
+Across every converged seed of the headline configuration, on the same crossed trajectories:
+
+| run | in-distribution | crossed dt | crossed terminal | beats recipe-blind null |
+|---|---|---|---|---|
+| seed1 | 0.0129 | 0.2497 | 0.4962 | yes |
+| seed2 | 0.0119 | 0.0641 | 0.1107 | yes |
+| seed5 | 0.0131 | 0.2909 | 0.7716 | yes |
+| seed6 | 0.0126 | 0.1061 | 0.1793 | yes |
+| **mean** | 0.0126 | 0.1777 | — | 4/4 |
+| **range** | 0.00114 | 0.2268 | — | — |
+
+**The seed range on the crossed split (0.2268) exceeds the crossed mean itself (0.1777), and is 199x the in-distribution range (0.00114).** The same pipeline that is reproducible to four decimal places in distribution is not reproducible to within a factor of 4.5 out of it. Consequently the cost of removing the adaptive timestep is reported as a band, **5x to 23x**, not as a point estimate, and no crossed-split comparison in this repo is a verdict below 8 seeds per arm.
+
+What does not depend on the unstable magnitude: **4/4 seeds beat the recipe-blind null on the crossed split**, so the operator learned recipe-dependent dynamics rather than a protocol-shaped constant. That conclusion is stable; the size of the protocol's help is not.
+
+How much the adaptive timestep actually flattened the problem (`runs/confound.json`):
+
+| split | n | mean displacement µm/step | CV | max/min (per traj) | max/min (per step) |
+|---|---|---|---|---|---|
+| train | 900 | 0.1709 | 0.3150 | 5.4 | 7.0 |
+| test | 250 | 0.1728 | 0.3114 | 5.1 | 6.7 |
+| crossed | 225 | 0.0737 | 1.1138 | 139.0 | 194.1 |
+
+Per-step displacement spans **6.7×** across the adaptive test split against **194.1×** across the crossed one, so the protocol compressed the rate law's range by about **28.8×**. It did not remove it: displacement still varies by 6.7× in distribution, which is why the recipe-blind null is beaten rather than tied.
+
+Only **33.8%** of crossed trajectories (76 of 225) have a mean per-step displacement inside the training 1st–99th percentile (0.073–0.330 µm). The crossed split is therefore mostly genuine extrapolation, not a reshuffle.
 
 ## Clause 3b — what the surrogate is worth, in simulator calls
 
@@ -157,7 +189,7 @@ Recorded because it changes the solver's seconds-per-wafer by a factor of 40 and
 | what | file | state | written |
 |---|---|---|---|
 | clause 1 — accuracy | `runs/seed1/test_eval.json` | found | 2026-09-09 04:07 UTC |
-| clause 1b — crossed dt | `runs/seed1/test_crossed_eval.json` | **NOT RUN — file absent** | — |
+| clause 1b — crossed dt | `runs/seed1/test_crossed_eval.json` | found | 2026-09-09 04:27 UTC |
 | clause 2 — speed | `runs/speed.json` | found | 2026-09-09 04:13 UTC |
 | clause 3 — inverse design | `runs/seed1/design.json` | **NOT RUN — file absent** | — |
 | clause 3b — simulator-call baseline | `runs/inverse_baseline.json` | **NOT RUN — file absent** | — |

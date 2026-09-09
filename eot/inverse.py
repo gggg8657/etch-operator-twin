@@ -62,19 +62,35 @@ class RecipeParam(torch.nn.Module):
         self.z = torch.nn.Parameter(z0.to(device))
 
     def _to_unit(self, v):
-        lo, hi = self.lo.cpu(), self.hi.cpu()
+        """Inverse of `values`. Same clamp, same reason."""
+        lo, hi = self.lo.cpu().clamp_min(1e-12), self.hi.cpu().clamp_min(1e-12)
         lm = self.log_mask.cpu()
-        u = torch.where(lm, (torch.log(v) - torch.log(lo)) / (torch.log(hi) - torch.log(lo)),
-                        (v - lo) / (hi - lo))
+        v_s = torch.as_tensor(v, dtype=torch.float32).clamp_min(1e-12)
+        u = torch.where(lm,
+                        (torch.log(v_s) - torch.log(lo)) / (torch.log(hi) - torch.log(lo)),
+                        (v_s - self.lo.cpu()) / (self.hi.cpu() - self.lo.cpu()))
         return u
 
     def unit(self):
         return torch.sigmoid(self.z)
 
     def values(self):
+        """Unit cube -> recipe box, log-interpolating the knobs sampled in log space.
+
+        `lo` must be clamped away from zero before the log even though the
+        zero-valued knob (oxygen flux, lo = 0) is *not* log-masked.
+        `torch.where` computes both branches and differentiates both: with
+        log(0) = -inf, the unused branch produces 0 * inf = NaN in the backward
+        pass, `torch.where` propagates it through the mask, and the whole recipe
+        goes NaN on the first step. Symptom was a silent one -- the optimiser
+        reported nan loss, proposed a nan recipe, and the failure surfaced only
+        as a crashed verification subprocess with an empty stderr.
+        """
         u = self.unit()
         lin = self.lo + u * (self.hi - self.lo)
-        lg = torch.exp(torch.log(self.lo) + u * (torch.log(self.hi) - torch.log(self.lo)))
+        lo_s = self.lo.clamp_min(1e-12)
+        hi_s = self.hi.clamp_min(1e-12)
+        lg = torch.exp(torch.log(lo_s) + u * (torch.log(hi_s) - torch.log(lo_s)))
         return torch.where(self.log_mask, lg, lin)
 
     def margin(self):

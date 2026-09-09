@@ -42,6 +42,26 @@ def g(x, n=1):
     return NM if x is None else f"{x:,.{n}f}"
 
 
+def crossed_arm(spread):
+    """Every converged run of the headline configuration that has a crossed-dt
+    evaluation. The crossed number's seed spread is the whole point, so this
+    reports the arm and never a single run."""
+    if not spread:
+        return []
+    arm = []
+    for r in spread.get("runs", []):
+        d = Path(r["run"])
+        cx = d / "test_crossed_eval.json"
+        ev = d / "test_eval.json"
+        if r.get("blind") or not (cx.exists() and ev.exists()):
+            continue
+        k = json.loads(cx.read_text())["kpi_clause_rel_l2"]
+        arm.append({"run": d.name, "in_dist": r["band_rel_l2"], "crossed": k["value"],
+                    "crossed_terminal": k["value_terminal_step"],
+                    "beats_blind": bool(k.get("beats_recipe_blind"))})
+    return sorted(arm, key=lambda a: a["run"])
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", default="runs/base")
@@ -288,31 +308,86 @@ def main():
                      ["crossed dt (OOD probe)", f(kx["value"]), f(kx["value_terminal_step"]),
                       "MET" if kx["met_both_readings"] else "NOT MET"]],
                     ["split", "rollout band rel-L2 (mean)", "terminal step", "vs ≤0.05"]), ""]
-        ratio = kx["value"] / k["value"] if k["value"] else None
-        L += [f"Removing the adaptive timestep costs a factor of **{ratio:.1f}** in band "
-              f"rel-L2. The operator still beats every null on the crossed split "
-              f"(persistence {f(kx['persistence_null'])}, recipe-blind "
-              f"{f(kx['recipe_blind_null'])}, uniform-recession "
-              f"{f(kx['uniform_recession_null'])}), so it has learned real dynamics — but the "
-              "in-distribution number is materially helped by the protocol, and clause 1 "
-              "should be read with that attached.", ""]
+        # The crossed-dt number is NOT reportable as a single draw. Measured
+        # across the converged arm its seed range is 0.2268 against an
+        # in-distribution range of 0.00114 -- 200x noisier on the same pipeline.
+        # A ratio computed from one seed here would be somewhere in a 4.5x band
+        # and would read as a property of the protocol. So: the arm, or nothing.
+        arm = crossed_arm(spread)
+        if len(arm) >= 2:
+            vals = [a["crossed"] for a in arm]
+            ind = [a["in_dist"] for a in arm]
+            rng = max(vals) - min(vals)
+            L += ["Across every converged seed of the headline configuration, on the "
+                  "same crossed trajectories:", "",
+                  table([[a["run"], f(a["in_dist"]), f(a["crossed"]),
+                          f(a["crossed_terminal"]), "yes" if a["beats_blind"] else "**no**"]
+                         for a in arm]
+                        + [["**mean**", f(sum(ind) / len(ind)), f(sum(vals) / len(vals)), "—",
+                            f"{sum(a['beats_blind'] for a in arm)}/{len(arm)}"],
+                           ["**range**", f(max(ind) - min(ind), 5), f(rng, 4), "—", "—"]],
+                        ["run", "in-distribution", "crossed dt", "crossed terminal",
+                         "beats recipe-blind null"]), "",
+                  f"**The seed range on the crossed split ({f(rng)}) exceeds the crossed "
+                  f"mean itself ({f(sum(vals) / len(vals))}), and is "
+                  f"{rng / max(max(ind) - min(ind), 1e-12):,.0f}x the in-distribution "
+                  f"range ({f(max(ind) - min(ind), 5)}).** The same pipeline that is "
+                  "reproducible to four decimal places in distribution is not "
+                  "reproducible to within a factor of 4.5 out of it. Consequently the "
+                  "cost of removing the adaptive timestep is reported as a band, "
+                  f"**{min(vals) / max(ind_ := sum(ind) / len(ind), 1e-12):,.0f}x to "
+                  f"{max(vals) / ind_:,.0f}x**, not as a point estimate, and no "
+                  "crossed-split comparison in this repo is a verdict below 8 seeds "
+                  "per arm.", "",
+                  f"What does not depend on the unstable magnitude: "
+                  f"**{sum(a['beats_blind'] for a in arm)}/{len(arm)} seeds beat the "
+                  "recipe-blind null on the crossed split**, so the operator learned "
+                  "recipe-dependent dynamics rather than a protocol-shaped constant. "
+                  "That conclusion is stable; the size of the protocol's help is not.", ""]
+        else:
+            L += [f"Crossed-dt, headline run only: **{f(kx['value'])}** mean / "
+                  f"{f(kx['value_terminal_step'])} terminal — NOT MET. Only "
+                  f"{len(arm)} seed(s) have a crossed evaluation, and this quantity's "
+                  "seed spread is large, so this is one draw and not a value.", ""]
         if cf:
-            rows = []
-            for sp in cf["splits"]:
-                t = sp["per_trajectory_mean_displacement"]
-                rows.append([sp["split"], sp["n_trajectories"], f(t["mean"]), f(t["cv"]),
-                             f(t["max_over_min"], 1),
-                             f(sp["r2_displacement_on_full_conditioning"]),
-                             f(sp["r2_displacement_on_recipe_without_dt"])])
+            splits = cf["splits"]
+            items = splits.items() if isinstance(splits, dict) else \
+                [(sp.get("split"), sp) for sp in splits]
+            rows, disp = [], {}
+            for name, sp in items:
+                # schema moved: per_trajectory_mean_displacement -> per_trajectory_mean
+                t = sp.get("per_trajectory_mean") or sp.get("per_trajectory_mean_displacement")
+                ps = sp.get("per_step", {})
+                disp[name] = ps.get("max_over_min")
+                row = [name, sp.get("n_trajectories"), f(t.get("mean")), f(t.get("cv")),
+                       f(t.get("max_over_min"), 1), f(ps.get("max_over_min"), 1)]
+                for key in ("r2_displacement_on_full_conditioning",
+                            "r2_displacement_on_recipe_without_dt"):
+                    if key in sp:
+                        row.append(f(sp[key]))
+                rows.append(row)
+            hdr = ["split", "n", "mean displacement µm/step", "CV", "max/min (per traj)",
+                   "max/min (per step)"]
+            if len(rows) and len(rows[0]) > len(hdr):
+                hdr += ["R² on recipe+dt", "R² on recipe alone"]
             L += ["How much the adaptive timestep actually flattened the problem "
-                  "(`runs/confound.json`):", "",
-                  table(rows, ["split", "n", "mean displacement µm/step", "CV",
-                               "max/min", "R² on recipe+dt", "R² on recipe alone"]), "",
-                  "Per-step displacement spans **5.1×** across the adaptive test split against "
-                  "**34.2×** across the crossed one, so the protocol compressed the rate law's "
-                  "range by about 6.7×. It did not remove it: displacement still varies by 5× "
-                  "in-distribution and the conditioning explains ~0.88 of its variance, which "
-                  "is why the recipe-blind null is beaten rather than tied.", ""]
+                  "(`runs/confound.json`):", "", table(rows, hdr), ""]
+            if disp.get("test") and disp.get("crossed"):
+                L += [f"Per-step displacement spans **{disp['test']:.1f}×** across the "
+                      f"adaptive test split against **{disp['crossed']:.1f}×** across the "
+                      f"crossed one, so the protocol compressed the rate law's range by "
+                      f"about **{disp['crossed'] / disp['test']:.1f}×**. It did not remove "
+                      f"it: displacement still varies by {disp['test']:.1f}× in "
+                      "distribution, which is why the recipe-blind null is beaten rather "
+                      "than tied.", ""]
+            ov = cf.get("overlap")
+            if ov:
+                L += [f"Only **{ov['fraction_inside']:.1%}** of crossed trajectories "
+                      f"({ov['crossed_trajectories_inside_train_range']} of "
+                      f"{ov['crossed_trajectories_total']}) have a mean per-step "
+                      f"displacement inside the training 1st–99th percentile "
+                      f"({ov['train_p1_um']:.3f}–{ov['train_p99_um']:.3f} µm). The crossed "
+                      "split is therefore mostly genuine extrapolation, not a reshuffle.", ""]
     else:
         L += [NM, ""]
 

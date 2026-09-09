@@ -15,6 +15,21 @@ viennaps` resolves to 5.9.0 on its own, so the pin is not optional.
 """
 from __future__ import annotations
 
+import os
+
+# ViennaPS 4.6.2 SEGFAULTs above ~96 OpenMP threads on this 192-core host.
+# Measured, deterministic, bisected: exit 0 at 2/8/16/32/64/80/96 threads and
+# exit 139 at 112/128/192 (the unset default is nproc = 192, so an unpinned
+# import crashes here 3 times out of 3). This is not load-dependent flakiness --
+# it reproduces at every thread count above the threshold and never below it.
+#
+# The pin has to happen before viennaps is imported, so it lives here rather
+# than in each caller. Callers that want more threads set OMP_NUM_THREADS
+# themselves and stay under the cliff; nothing in this repo needs more than 16.
+if "OMP_NUM_THREADS" not in os.environ:
+    os.environ["OMP_NUM_THREADS"] = "8"
+
+
 import time
 from dataclasses import dataclass, asdict, field
 
