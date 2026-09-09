@@ -65,6 +65,10 @@ def fit_norm(train_npz: str | Path) -> dict:
     c = cond_vector(d["recipe"], d["dt"])
     return {
         "mean_step_displacement_um": mean_step_displacement(d["sdf"]),
+        # dt range actually seen in training. Inverse design that treats total
+        # etch time as unknown searches inside this, not outside it.
+        "dt_lo": float(np.min(d["dt"])),
+        "dt_hi": float(np.max(d["dt"])),
         "cond_mean": c.mean(axis=0).tolist(),
         "cond_std": (c.std(axis=0) + 1e-8).tolist(),
         "cond_keys": COND_KEYS,

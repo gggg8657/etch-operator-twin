@@ -94,6 +94,11 @@ def main():
     ap.add_argument("--init-from", default=None)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--device", default="cuda:0")
+    # The splits are already resident numpy arrays, so worker processes buy
+    # nothing but shared-memory pressure -- two arms plus a generation job
+    # exhausted /dev/shm and killed a run with a DataLoader bus error. 0 keeps
+    # indexing in process, where it is a slice of an in-memory array anyway.
+    ap.add_argument("--num-workers", type=int, default=0)
     a = ap.parse_args()
 
     torch.manual_seed(a.seed)
@@ -121,11 +126,11 @@ def main():
 
     if a.rollout_steps > 0:
         loader = DataLoader(tr_traj, batch_size=max(a.batch // 4, 1), shuffle=True,
-                            num_workers=4, drop_last=True, persistent_workers=True)
+                            num_workers=a.num_workers, drop_last=True)
     else:
         loader = DataLoader(tr_pairs, batch_size=a.batch, shuffle=True,
-                            num_workers=4, drop_last=True, persistent_workers=True)
-    va_loader = DataLoader(va_traj, batch_size=16, shuffle=False, num_workers=2)
+                            num_workers=a.num_workers, drop_last=True)
+    va_loader = DataLoader(va_traj, batch_size=16, shuffle=False, num_workers=0)
     sched = torch.optim.lr_scheduler.OneCycleLR(
         opt, max_lr=a.lr, total_steps=a.epochs * len(loader), pct_start=0.1)
 

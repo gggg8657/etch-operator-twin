@@ -88,7 +88,7 @@ class RecipeParam(torch.nn.Module):
         return float(torch.minimum(u, 1 - u).min())
 
 
-def build_cond(values: torch.Tensor, geom: dict, dt: float, norm: dict, device) -> torch.Tensor:
+def build_cond(values: torch.Tensor, geom: dict, dt, norm: dict, device) -> torch.Tensor:
     """Differentiable version of `data.cond_vector` + standardisation.
 
     Must stay numerically identical to the training-time path; if it drifts, the
@@ -104,7 +104,8 @@ def build_cond(values: torch.Tensor, geom: dict, dt: float, norm: dict, device) 
         values[3],
         torch.tensor(float(geom["trench_width"]), device=device),
         torch.tensor(float(geom["mask_height"]), device=device),
-        torch.tensor(float(np.log(dt)), device=device),
+        (torch.log(dt) if torch.is_tensor(dt)
+         else torch.tensor(float(np.log(dt)), device=device)),
     ])
     return ((c - mean) / std)[None]
 
@@ -123,22 +124,45 @@ def design(
     band_um: float = 1.5,
     device="cuda:0",
     seed: int = 0,
+    optimise_dt: bool = False,
 ):
     """Descend on the recipe to match `target_phi` after `n_steps` operator steps.
 
     Loss is taken in a band around the target interface: matching the far field
     of an SDF is free and would let a bad recipe post a small loss.
+
+    `optimise_dt` decides whether **total etch time is known**. With it False the
+    caller supplies the target's own dt, so `T = n_steps * dt` is pinned to the
+    ground truth -- and since dt was itself derived from a probe of the true
+    recipe's etch rate, that hands the optimiser the degree of freedom that sets
+    depth, which is the dominant term in shape error. That is the easy protocol
+    and its numbers are an optimistic bound. With it True, dt is searched inside
+    the range seen in training alongside the recipe, which is the problem a real
+    target poses: a profile arrives with no duration attached.
     """
     torch.manual_seed(seed)
     p = RecipeParam(init=init, device=device).to(device)
-    opt = torch.optim.Adam(p.parameters(), lr=lr)
+    params = list(p.parameters())
+    z_dt = None
+    if optimise_dt:
+        lo, hi = norm["dt_lo"], norm["dt_hi"]
+        u0 = (np.log(dt) - np.log(lo)) / (np.log(hi) - np.log(lo))
+        z_dt = torch.nn.Parameter(
+            torch.logit(torch.tensor(float(np.clip(u0, 1e-3, 1 - 1e-3)), device=device)))
+        params.append(z_dt)
+    opt = torch.optim.Adam(params, lr=lr)
     scale = norm["sdf_scale_um"]
     band = (target_phi.abs() * scale < band_um).float()
     hist = []
-    best = (float("inf"), None)
+    best = (float("inf"), None, float(dt))
     for it in range(iters):
         opt.zero_grad(set_to_none=True)
-        cond = build_cond(p.values(), geom, dt, norm, device)
+        if z_dt is not None:
+            lo, hi = norm["dt_lo"], norm["dt_hi"]
+            dt_t = torch.exp(np.log(lo) + torch.sigmoid(z_dt) * (np.log(hi) - np.log(lo)))
+        else:
+            dt_t = dt
+        cond = build_cond(p.values(), geom, dt_t, norm, device)
         phi = phi0
         for _ in range(n_steps):
             phi = model(phi, cond)
@@ -150,12 +174,16 @@ def design(
         v = float(loss)
         hist.append(v)
         if v < best[0]:
-            best = (v, p.values().detach().cpu().numpy().copy())
+            best = (v, p.values().detach().cpu().numpy().copy(),
+                    float(dt_t) if z_dt is not None else float(dt))
     return {
         "loss_history": hist,
         "final_surrogate_loss": hist[-1],
         "best_surrogate_loss": best[0],
         "recipe_values": best[1].tolist(),
+        "dt": best[2],
+        "dt_was_optimised": bool(optimise_dt),
+        "dt_given": float(dt),
         "recipe_keys": p.keys,
         "box_margin": p.margin(),
         "iters": iters,

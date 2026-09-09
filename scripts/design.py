@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import multiprocessing as mp
 import sys
 import time
 from pathlib import Path
@@ -40,12 +41,45 @@ from eot.metrics import shape_error  # noqa: E402
 from eot.operator import EtchOperator  # noqa: E402
 
 
-def simulate_recipe(rec: S.Recipe, dt: float, n_steps: int, grid_delta: float, n: int):
-    tr = S.simulate(rec, n_steps=n_steps, dt=dt, grid_delta=grid_delta, n=n)
+# ---------------------------------------------------------------------------
+# ViennaPS must not run in this process.
+#
+# Measured, reproducibly: a single S.simulate() call in a process that has a live
+# CUDA context leaves cuFFT permanently broken -- every subsequent backward pass
+# through the spectral layers dies with CUFFT_EXEC_FAILED. A backward that
+# succeeds before the call fails after it, with nothing else changed. ViennaPS
+# 4.6.2 ships its own GPU path (viennaps.d2.gpu, GpuMode) and evidently disturbs
+# the context or the loaded CUDA libraries.
+#
+# So every simulation goes to a *spawn* worker with a fresh address space. Spawn,
+# not fork: a forked child inherits the parent's CUDA context, which is the thing
+# being protected. The pool is created before the model touches the GPU.
+# ---------------------------------------------------------------------------
+_POOL = None
+
+
+def _sim_worker(job):
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from eot import solver as _S
+
+    values, geom, dt, n_steps, grid_delta, n = job
+    rec = _S.Recipe(**dict(zip(DESIGN_KEYS, [float(v) for v in values])),
+                    trench_width=float(geom["trench_width"]),
+                    mask_height=float(geom["mask_height"]))
+    tr = _S.simulate(rec, n_steps=n_steps, dt=float(dt), grid_delta=grid_delta, n=n)
     return tr.sdf[-1], tr.sdf[0]
 
 
+def simulate_recipe(rec: S.Recipe, dt: float, n_steps: int, grid_delta: float, n: int):
+    values = [getattr(rec, k) for k in DESIGN_KEYS]
+    geom = {"trench_width": rec.trench_width, "mask_height": rec.mask_height}
+    job = (values, geom, dt, n_steps, grid_delta, n)
+    return _POOL.apply(_sim_worker, (job,))
+
+
 def main():
+    global _POOL
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", default="runs/base")
     ap.add_argument("--data", default="data")
@@ -56,7 +90,16 @@ def main():
     ap.add_argument("--device", default="cuda:0")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default=None)
+    ap.add_argument("--optimise-dt", action="store_true",
+                    help="Search total etch time alongside the recipe. Off (the "
+                         "default) pins T = n_steps*dt to the target's own value, "
+                         "which is the easy protocol -- dt was derived from a probe "
+                         "of the true recipe's rate, so it hands over the degree of "
+                         "freedom that sets depth. Both variants get reported.")
     a = ap.parse_args()
+
+    # before anything touches the GPU
+    _POOL = mp.get_context("spawn").Pool(1)
 
     run = Path(a.run)
     cfg = json.loads((run / "args.json").read_text())
@@ -112,7 +155,8 @@ def main():
                                 np.exp(np.log(np.maximum(lo, 1e-6)) + u * (np.log(hi) - np.log(np.maximum(lo, 1e-6)))),
                                 lo + u * (hi - lo))
             d = design(model, tgt, phi0, geom, dt, norm, n_steps, init=init,
-                       iters=a.iters, device=device, seed=a.seed + r)
+                       iters=a.iters, device=device, seed=a.seed + r,
+                       optimise_dt=a.optimise_dt)
             if best is None or d["best_surrogate_loss"] < best["best_surrogate_loss"]:
                 best = d
         row["operator_gd_surrogate"] = {
@@ -120,19 +164,26 @@ def main():
             "box_margin": best["box_margin"],
             "recipe": dict(zip(DESIGN_KEYS, best["recipe_values"])),
             "restarts": a.restarts, "iters": a.iters,
+            "dt_was_optimised": best["dt_was_optimised"],
+            "dt_found": best["dt"], "dt_true": best["dt_given"],
+            "dt_rel_err": abs(best["dt"] - best["dt_given"]) / max(best["dt_given"], 1e-12),
         }
         gd_rec = recipe_from_values(best["recipe_values"], geom)
+        # If total etch time was searched, the verification must use the time the
+        # optimiser chose -- verifying with the target's own dt would silently
+        # hand back the degree of freedom the whole variant exists to remove.
+        gd_dt = best["dt"]
         # what the surrogate believed it achieved, in the same shape metric
         with torch.no_grad():
             cond = build_cond(torch.tensor(best["recipe_values"], dtype=torch.float32, device=device),
-                              geom, dt, norm, device)
+                              geom, gd_dt, norm, device)
             phi = phi0
             for _ in range(n_steps):
                 phi = model(phi, cond)
         row["surrogate_opinion"] = shape_error(
             phi[0, 0].cpu().numpy() * scale, tgt_np, phi0_np, gx, gy)
         t0 = time.perf_counter()
-        gd_final, _ = simulate_recipe(gd_rec, dt, n_steps, grid_delta, n_grid)
+        gd_final, _ = simulate_recipe(gd_rec, gd_dt, n_steps, grid_delta, n_grid)
         row["operator_gd"] = shape_error(gd_final, tgt_np, phi0_np, gx, gy)
         row["operator_gd"]["sim_seconds"] = time.perf_counter() - t0
 
@@ -184,6 +235,9 @@ def main():
 
     summary = {
         "n_targets": len(rows),
+        "dt_optimised": bool(a.optimise_dt),
+        "protocol": ("total etch time searched (T unknown, honest)" if a.optimise_dt
+                     else "total etch time pinned to the target (T known, optimistic bound)"),
         "area_error_vs_removed": {k: agg(k) for k in
                                   ["true_resim", "operator_gd", "surrogate_opinion", "random_search"]},
         "hausdorff_um": {k: agg(k, "hausdorff_um") for k in
@@ -194,8 +248,13 @@ def main():
         },
     }
     gd = summary["area_error_vs_removed"]["operator_gd"]["mean"]
+    ae_gd = [r["operator_gd"]["area_error_vs_removed"] for r in rows]
     summary["kpi_clause_shape_error"] = {
         "target": 0.05,
+        "frac_targets_under_5pct": float(np.mean([v <= 0.05 for v in ae_gd])),
+        "p90": float(np.percentile(ae_gd, 90)),
+        "max": float(np.max(ae_gd)),
+        "dt_optimised": bool(a.optimise_dt),
         "headline_metric": "normalised area error vs target-removed area, "
                            "measured in ViennaPS on the recipe the operator proposed",
         "value": gd,
@@ -207,6 +266,8 @@ def main():
     out = Path(a.out or (run / "design.json"))
     out.write_text(json.dumps({"summary": summary, "targets": rows}, indent=2))
     print(json.dumps(summary, indent=2))
+    _POOL.close()
+    _POOL.join()
 
 
 if __name__ == "__main__":

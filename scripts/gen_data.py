@@ -126,6 +126,10 @@ def main():
                          "covers a comparable depth. independent: dt drawn without "
                          "reference to the recipe, so per-step depth varies with the "
                          "rate law -- the crossed test split.")
+    ap.add_argument("--dt-lo", type=float, default=0.01)
+    ap.add_argument("--dt-hi", type=float, default=1.0)
+    ap.add_argument("--suffix", default="",
+                    help="appended to split filenames, e.g. '_crossed'")
     ap.add_argument("--splits", nargs="*", default=None,
                     help="subset of train/val/test to build")
     a = ap.parse_args()
@@ -153,13 +157,15 @@ def main():
         # separate seed block per dt-mode so the crossed split cannot reuse a
         # recipe the adaptive splits already spent
         seed0 = seed0 + (5_000_000 if a.dt_mode == "independent" else 0)
-        info = build_split(name, n_s, seed0, a.steps, a.grid_delta, a.n, a.workers, out_dir,
-                           dt_mode=a.dt_mode)
+        info = build_split(name + a.suffix, n_s, seed0, a.steps, a.grid_delta, a.n,
+                           a.workers, out_dir, dt_mode=a.dt_mode,
+                           dt_lo=a.dt_lo, dt_hi=a.dt_hi)
         report["splits"].append(info)
         print(json.dumps(info, indent=2), flush=True)
 
-    Path(out_dir / "gen_report.json").write_text(json.dumps(report, indent=2))
-    print("wrote", out_dir / "gen_report.json")
+    rp = out_dir / (f"gen_report{a.suffix}.json" if a.suffix else "gen_report.json")
+    Path(rp).write_text(json.dumps(report, indent=2))
+    print("wrote", rp)
 
 
 if __name__ == "__main__":

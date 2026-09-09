@@ -169,11 +169,18 @@ Two numbers appeared in the prose it wrote in my voice:
 
 attributed to "the smoke harness". **No run JSON in this repository contains
 either number, and no operator has been trained at this point in the weekend.**
-There is no session log to point at. Under the one rule — no number in any file
-unless a run in this repository produced it — these are exactly the kind of
-figure that cost this workspace real time to undo, and they were sitting in
-`critique_log.md` with my name on the commit. A third, `0.728 traj/s` (line 284),
-is not in `runs/worker_scaling.json` either.
+There is no persisted JSON and no session log to point at. It is possible these
+came from a real throwaway run against a synthetic fixture, as the surrounding
+text claims, rather than from nothing — but an unpersisted run is not a citable
+one, and under the one rule the distinction does not rescue the number. They were
+sitting in `critique_log.md` with my name on the commit.
+
+Two corrections against myself, both found by checking rather than remembering:
+`0.084 µm` was **right** (the current `runs/verify_solver.json` says 0.0842; my
+memory of 0.0894 was the pre-bugfix run), and `0.728 traj/s` was **right** too —
+it is in `logs/gen_data.log`, from the 16-worker generation run, not from
+`worker_scaling.json` where I looked for it. Two of the four numbers I flagged
+were sound. The two that matter, the rel-L2 pair, remain unbacked.
 
 `critique_log.md` has been restored to the last commit I actually wrote;
 `paper_draft.md` and `WEEKEND.md` are deleted rather than inherited, and will be

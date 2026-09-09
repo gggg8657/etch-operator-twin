@@ -1,0 +1,78 @@
+{
+  "steps": 10,
+  "grid_delta": 0.2,
+  "grid_n": 128,
+  "window": {
+    "x": [
+      -10.0,
+      10.0
+    ],
+    "y": [
+      -18.0,
+      2.0
+    ]
+  },
+  "recipe_box": {
+    "ion_flux": [
+      5.0,
+      30.0,
+      "log"
+    ],
+    "etchant_flux": [
+      500.0,
+      5000.0,
+      "log"
+    ],
+    "oxygen_flux": [
+      0.0,
+      400.0,
+      "lin"
+    ],
+    "ion_energy": [
+      50.0,
+      200.0,
+      "lin"
+    ]
+  },
+  "geom_box": {
+    "trench_width": [
+      4.0,
+      9.0,
+      "lin"
+    ],
+    "mask_height": [
+      1.0,
+      3.0,
+      "lin"
+    ]
+  },
+  "recipe_keys": [
+    "ion_flux",
+    "etchant_flux",
+    "oxygen_flux",
+    "ion_energy",
+    "trench_width",
+    "mask_height"
+  ],
+  "target_depth_range": [
+    4.0,
+    10.0
+  ],
+  "splits": [
+    {
+      "split": "test",
+      "requested": 250,
+      "kept": 225,
+      "rejected_out_of_window": 25,
+      "seed0": 8000000,
+      "dt_mode": "independent",
+      "generate_wall_s": 367.88557666167617,
+      "workers": 16,
+      "solver_s_per_trajectory_mean_1thread": 14.982940262688532,
+      "solver_s_per_trajectory_median_1thread": 12.96976089477539,
+      "file": "data_crossed/test.npz",
+      "bytes": 119691671
+    }
+  ],
+  "dt_mode": "independent"
+}
