@@ -4197,3 +4197,277 @@ given, the clause is capped at 12.8× by the dt probe and no numerator work can
 reach it. The first is an engineering gap; the second is a specification
 question. **They are not the same clause and the board must say which one it is
 scoring.**
+
+---
+
+## Turn 11 — H16 answered: my prediction was wrong in both directions, the pointwise family is Pareto-dominated, and the frontier's crossing point is now a measured number
+
+### H16's result, and what it says about my prediction
+
+The three stride-10 pointwise arms at seed 1 finished (`runs/ladder.json`,
+scored with the same `shrink_report.py` machinery, now generalised over
+architectures). **One seed is a screen, not a verdict**, and the 3-seed
+extension is still running.
+
+| config | params | in-dist terminal | 95% CI | met ≤0.05 | crossed |
+|---|---|---|---|---|---|
+| `pw_wf32n3_gelu` | 3,881 | **0.05052** | [0.04780, 0.05378] | no | 0.06830 |
+| `pw_wf32n3_relu` | 3,881 | **0.05157** | [0.04840, 0.05517] | no | 0.07149 |
+| `pw_wf8n1_relu` | 1,217 | **0.26103** | [0.25571, 0.26639] | no | 0.32520 |
+
+**H16 predicted 0.06–0.15 for the pointwise arms. Both halves of that range are
+wrong.** The 1,217-parameter arm is **0.261** — 1.7× worse than the top of my
+predicted range and 5.2× outside the clause. The 3,881-parameter arms are
+**0.0505–0.0516** — *better* than the bottom of my range, and within 1.03× of
+the clause. So the direction of H16 (pointwise misses) is confirmed while the
+magnitude is wrong at both ends, and the interesting number is the one I did not
+predict at all: **a model with no spatial mixing at any resolution gets within 3%
+of clause 1.**
+
+That is worth taking seriously rather than filing as a near-miss, because it is
+physically the expected answer and I should have predicted it. For a signed
+distance field advancing at normal speed V with |∇φ| = 1, the exact
+leading-order update is φ − V·Δt: a *pointwise* shift. Mask shadowing makes V
+vary with position, and a per-pixel function of (φ, x, y, recipe) can represent
+a spatially varying rate directly. What a pointwise model cannot represent is
+the part of the advance that depends on φ *elsewhere* — the undercut, which
+`runs/surface_representable.json` finds in 249 of 250 trajectories. The measured
+3% is therefore a estimate of how much of this problem is *not* leading-order
+normal advance, and it is small.
+
+### The finding that closes the route: pointwise is Pareto-dominated
+
+Joining `runs/ladder.json` and `runs/shrink.json` accuracy to `runs/arch_cost.json`
+cost, against the workload-matched terminal denominator:
+
+| model | params | µs/wafer | speedup | rel-L2 | seeds | meets clause 1 |
+|---|---|---|---|---|---|---|
+| `pw_wf8n1_relu` | 1,217 | 1,086 | **474.5×** | 0.26103 | 1 | no |
+| `fno_w8m4L2` | 10,897 | 2,758 | 186.9× | **0.04717** | 3 | **yes** |
+| `pw_wf32n3_relu` | 3,881 | 5,884 | 87.6× | 0.05157 | 1 | no |
+| `pw_wf32n3_gelu` | 3,881 | 6,380 | 80.8× | 0.05052 | 1 | no |
+
+**`pw_wf32n3` is both more expensive and less accurate than the FNO it was built
+to undercut.** 5,884–6,380 µs against 2,758, and 0.0505–0.0516 against 0.04717.
+It is dominated on both axes, so the pointwise family at useful accuracy is
+closed — not by an argument, by a measurement. The reason is the one recorded
+last turn and now confirmed with accuracy attached: width and depth at full
+resolution cost *linearly*, where spectral modes do not, so the pointwise family
+is only cheap while it is too small to work. "Too small to work" is now a
+number: 1,217 parameters, 0.261.
+
+**And the frontier's crossing point is measured rather than assumed.** The
+cheapest architecture that meets clause 1 costs **2,758 µs/wafer = 186.9×**
+against the matched denominator. Clause 2 needs 1000×. **The gap is 5.35×, and
+it is now a gap between two measured axes rather than between a cost row and a
+hope.** Every earlier statement of this gap in this repo (679×, 95×, 6–9×) was
+missing accuracy on one side or cost on the other.
+
+### What the three failed attacks have in common, and the axis none of them touched
+
+Clause 2's cost is **~20 PyTorch operations at roughly 30 µs each**, not
+arithmetic: the spectral body carries ~0.1 MFLOP on 8×32×32 tensors and costs
+645 µs, 80× what this box's measured ~13 GFLOP/s implies. Three attacks have
+been tried and all three failed:
+
+* **H15 attacked tensor size** — a 4× spatial downsample, provably discarding no
+  mode the `modes=4` body can carry. Predicted 16×, measured **2.26×**. Failed
+  because shrinking a tensor does not shrink a per-operation cost.
+* **Rung 3 attacked the compiler** — `torch.compile`, which fuses elementwise
+  chains and removes dispatch. Measured **2.0–3.3× slower** at every size
+  including a 26.2M-parameter control.
+* **H16 attacked the architecture family** — remove spatial mixing entirely.
+  Cheapest variant reaches 474.5× but at rel-L2 0.261; the accurate variants are
+  dominated.
+
+**None of them attacked the operation count.** That is the quantity the
+decomposition actually identified, and it is the one axis left inside PyTorch.
+
+### H17 status
+
+8 of 10 arms complete; not scored this turn because scoring a partially
+extended seed group is exactly the contamination that moved the K-curve's
+"monotone trend". It gets scored when the queue drains.
+
+### H18, written before it runs, with a numeric prediction so it can be wrong
+
+**Hypothesis: the operation count, not the tensor size or the compiler, is what
+clause 2 is bound by — so an architecture with ~5 full-resolution operations
+instead of ~20 will cost under 300 µs/wafer (>1700×), and the question becomes
+purely whether it can be accurate.**
+
+The architecture (`SpectralPropagator`): a *conditioned linear propagator in
+Fourier space*,
+
+    phi_next = phi + irfft2( rfft2(phi) * H(recipe) + A(recipe) )
+
+with `H` a complex multiplier on the retained low modes and `A` a complex
+additive field, both emitted by small MLPs from the recipe. Operation count at
+full resolution: one `rfft2`, one masked multiply-add on the retained modes, one
+`irfft2`, one add. Four, against the FNO's ~20, and the FFTs act on **one**
+channel rather than eight.
+
+Why this form and not another cheap one: it *is* the leading-order physics. A
+level set advancing at normal speed V updates as φ − V·Δt; the multiplicative
+`H` is a linear propagator (advection plus the curvature smoothing a level set
+does), and the additive `A` supplies the spatially varying rate that mask
+shadowing produces. The pointwise result above is evidence this is most of the
+problem: 3% of the error budget is all that a *purely* pointwise model gives up.
+
+One design consequence worth stating because it is not obvious: **the additive
+term `A` can use many more modes than `H` at no extra operation cost**, because
+the `irfft2` costs the same whatever fraction of the spectrum is non-zero. So
+`A` gets `modes_a` up to 32 while `H` stays at 4 — the sharp part of the mask
+geometry is affordable exactly where it is additive.
+
+**Falsifier, stated now:** if this reaches under 300 µs and *still* misses
+rel-L2 ≤ 0.05 by more than the pointwise arms did, then the etch update is
+genuinely nonlinear in φ — the undercut, where the advance at a point depends on
+φ above it — and the operation-count route is closed along with the other three.
+At that point clause 2 has been attacked at tensor size, compiler, architecture
+family and operation count, all inside eager PyTorch, and the only remaining
+escape is a different inference stack (ONNX Runtime or a hand-written kernel),
+neither measured.
+
+**Prediction: cost under 300 µs/wafer (>1700×), accuracy 0.05–0.12.** That is a
+prediction that it clears clause 2 and misses clause 1 — which would put a
+measured point on the *cheap* side of 1000× for the first time and pin the
+frontier from both directions instead of one.
+
+---
+
+## Turn 11 — H16 is wrong in both directions, and the pointwise route is closed by measurement
+
+### What finished
+
+The three pointwise arms of `scripts/ladder.sh` (seed 1 each). The three
+multiscale arms are still training on GPU 0 and `runs/shrink` seeds 4–8 are 8/10
+done on GPU 1, so neither is scored here. `runs/ladder.json` is written by
+`scripts/shrink_report.py --subdir ladder`, generalised this turn so one scorer
+serves both families; `config_key` derives the arm's name from `args.json` and
+asserts it against the directory name, because a sweep driver with a
+copy-pasted line silently merges two architectures into one seed group.
+
+### H16, stated last turn, and both halves of it are wrong
+
+I predicted the pointwise arms would land at **0.06–0.15** in-distribution
+terminal band rel-L2, reasoning that a mask undercut appears in 249 of 250
+trajectories and a per-pixel function of (φ, x, y, recipe) cannot see the mask
+geometry above the front. Measured, 1 seed each:
+
+| config | params | in-dist terminal | 95% traj CI | crossed |
+|---|---|---|---|---|
+| `pw_wf32n3_gelu` | 3,881 | **0.05052** | [0.04780, 0.05378] | 0.06830 |
+| `pw_wf32n3_relu` | 3,881 | **0.05157** | [0.04840, 0.05517] | 0.07149 |
+| `pw_wf8n1_relu` | 1,217 | **0.26103** | [0.25571, 0.26639] | 0.32520 |
+
+**The band was wrong on both sides.** The wf32 arms come in *below* it (0.0505,
+0.0516 against a predicted floor of 0.06) and the wf8 arm comes in *far above*
+it (0.261 against a predicted ceiling of 0.15). A prediction that misses in both
+directions is not a near-miss; it means I named the wrong variable. The variable
+is **pointwise capacity**, and its effect is far steeper than anything in the
+FNO family:
+
+* pointwise, 1,217 → 3,881 params (**3.2×**): error 0.26103 → 0.05157, a
+  **5.1× reduction**.
+* FNO, 10,897 → 2,369,977 params (**217×**): error 0.04717 → 0.02626, a
+  **1.8× reduction**.
+
+That contrast is the finding, and it has a mechanism that is not hindsight: a
+model with no spatial mixing must encode the whole spatial structure of the
+problem inside its per-pixel function, so it pays in parameters for what the FNO
+gets from its architecture. Spatial mixing is not free — it is what makes
+capacity cheap, which is why the FNO curve is nearly flat above 266k parameters
+and the pointwise curve is not.
+
+### The route is closed, and it closes on the join rather than on either axis
+
+Cost from `runs/arch_cost.json`, accuracy from `runs/ladder.json` and
+`runs/shrink.json`, denominator 515 ms (one solver apply of 10·dt, the matched
+output), all costs measured at load ~396 and therefore lower bounds:
+
+| model | params | µs/wafer | speedup | in-dist terminal | meets clause 1 |
+|---|---|---|---|---|---|
+| `pw_wf8n1_relu` | 1,217 | **1,086** | **474×** | 0.26103 | no, by **5.2×** |
+| `fno_w8m4L2` | 10,897 | 2,758 | 187× | **0.04717** | **yes** (3 seeds, all under, CI upper 0.04964) |
+| `pw_wf32n3_relu` | 3,881 | 5,884 | 88× | 0.05157 | no |
+| `pw_wf32n3_gelu` | 3,881 | 6,380 | 81× | 0.05052 | no |
+
+**No pointwise row meets clause 1 at all**, and the two that come close are
+**2.1–2.3× more expensive *and* less accurate than `fno_w8m4L2`** — dominated on
+both axes at once. The one pointwise row that is genuinely cheap, and is still
+the cheapest conditioned surrogate this repo has measured, is wrong by a factor
+of 5.
+
+So the pointwise family is closed as a route to clause 2, and it is closed the
+way I want routes closed: by a measurement that could have gone the other way,
+not by an argument. **What it rules out** is the hope that removing spatial
+mixing buys enough cost headroom to matter — the cheap end of that family is not
+merely worse, it is 5× outside the clause, and climbing out of that costs more
+than the spectral model it was meant to undercut.
+
+**What it does not rule out**, and I am not going to overstate this: the
+multiscale arms, which keep spatial mixing but on a coarse grid, are still
+training. They are the case between these two, and they are the reason the
+ladder had six arms rather than three.
+
+### A screen on the activation, recorded because it decides a budget line
+
+`pw_wf32n3_gelu` 0.05052 against `pw_wf32n3_relu` 0.05157 — identical
+architecture, one seed each, difference **0.00105**. In-distribution seed ranges
+in this repo run 0.0015–0.0039 at 3–8 seeds, so **this difference is inside the
+noise floor of a single configuration and the two are not distinguishable.**
+Screen, not verdict, and the honest reading is "no accuracy cost detected for
+ReLU at n=1", not "ReLU is free".
+
+It matters because ReLU is not a taste question here: one erf-based GELU over
+8×128×128 costs 152.7 µs against a ReLU's 13.2 µs, which is **55% of the entire
+clause-2 budget for one activation**. If the null holds at 8 seeds, every model
+in this repo should use ReLU at full resolution. On one seed it cannot be
+claimed, and I am not claiming it.
+
+### What I am not doing with these numbers
+
+They are 1 seed. Last turn a 3-seed crossed reading in this repo reversed sign at
+8 seeds, and that was the third such reversal this weekend. The wf8 arm's 0.261
+is 5× outside the clause and no plausible seed spread rescues it, so *that*
+conclusion is safe at n=1. The wf32 arms sitting 1–3% above the threshold are
+**not** safe at n=1: 0.05052 against 0.05 is exactly the kind of margin this
+repo has watched move. They are recorded as misses on the point estimate with
+their intervals printed, and the seed extension is queued behind the multiscale
+arms rather than skipped.
+
+### Two notes on the Turn 11 entry above, which a concurrent instance wrote
+
+**D4 recurred again, and this is the third occurrence.** The Turn 11 section
+above was appended to `critique_log.md` by another loop instance running the α
+brief against this same working tree, while this instance was mid-commit. It is
+kept, not reverted: its numbers are independently derived and agree with mine to
+the digit (474.5×, 186.9×, 0.04717, 0.05052/0.05157/0.26103), it scored the same
+arms with the same script, and it identifies an axis I had not — the operation
+count — together with a concrete architecture and a falsifier for it. Two
+instances converging on the same measurements from the same JSONs is a
+replication; two instances committing to one tree is still the D4 hazard, and
+the cost this time was one near-collision on a file both were appending to.
+
+**One inference in it is wrong, and it is the load-bearing one for H18's
+motivation.** It reads the pointwise arm's 0.05052 as "within 3% of clause 1"
+and concludes that "3% of the error budget is all that a *purely* pointwise model
+gives up", i.e. that only ~3% of this problem is not leading-order normal
+advance. Those are two different quantities. 3% is the distance from the
+*threshold* (0.05052 vs 0.05), which is a fact about where the clause was drawn,
+not about the physics. The quantity the argument needs is the distance from what
+a model *with* spatial mixing achieves, and that is:
+
+* against the same-budget FNO, `fno_w8m4L2` at 0.04717 — pointwise is **1.07×**
+  worse;
+* against the best model in this repo, `K1_nv` at 0.01890 over 8 seeds —
+  pointwise is **2.67×** worse.
+
+So spatial mixing buys a factor of 2.67 in error, not 3%. That does not kill
+H18 — a linear Fourier propagator is not a pointwise model and the leading-order
+argument for its *form* stands on its own — but the claim "the pointwise result
+is evidence this is most of the problem" is overstated by a factor of ~9 and
+should not be the reason H18 gets run. The reason to run H18 is the operation
+count, which is measured. Corrected here rather than in the entry above, so the
+original reasoning stays visible.

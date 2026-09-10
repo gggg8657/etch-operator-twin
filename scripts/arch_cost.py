@@ -313,6 +313,23 @@ LADDER.update({
 SPECS.update(LADDER)
 
 
+# H18: attack the OPERATION COUNT, the one axis the three failed attacks on
+# clause 2 never touched. See eot.operator.SpectralPropagator for why this form
+# is the leading-order physics and not merely a cheap shape.
+SPECS.update({
+    f"specprop_m{m}_ma{ma}_K10": dict(
+        build="from eot.operator import SpectralPropagator\n"
+              f"M = SpectralPropagator(cond_dim=7, modes={m}, modes_a={ma})",
+        call="M(phi, cond)", n_apply=1,
+        note=f"conditioned linear Fourier propagator, modes={m}, "
+             f"modes_a={ma}. Four full-resolution operations (rfft2, masked "
+             "multiply-add, irfft2, add) against the FNO's ~20, and the "
+             "transforms act on one channel not eight. Accuracy UNMEASURED at "
+             "the time this row was priced.")
+    for m, ma in [(4, 4), (4, 16), (8, 32)]
+})
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--rounds", type=int, default=16)

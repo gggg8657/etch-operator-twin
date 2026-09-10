@@ -408,3 +408,127 @@ def build_from_cfg(cfg: dict, cond_dim: int):
             scale=cfg["scale"], n_local=cfg.get("n_local", 1),
             act=cfg.get("act", "gelu"))
     raise ValueError(f"unknown arch {arch!r} in args.json")
+
+
+class SpectralPropagator(nn.Module):
+    """A conditioned linear propagator in Fourier space: ~4 full-resolution ops.
+
+    **The measurement this is built from.** `runs/arch_cost.json` shows clause
+    2's cost is per-operation, not arithmetic: the spectral body of
+    `EtchOperator(width=8, modes=4, n_layers=2)` carries ~0.1 MFLOP on 8x32x32
+    tensors and costs 645 us, roughly 80x what this box's measured ~13 GFLOP/s
+    implies, i.e. about 20 torch operations at ~30 us each. Three attacks on
+    clause 2 have failed and none of them touched that count:
+
+    * shrinking the tensors (H15: predicted 16x, measured 2.26x -- a downsample
+      does not shrink a per-operation cost);
+    * fusing them (`torch.compile`: 2.0-3.3x *slower* on one CPU thread at every
+      size, including a 26.2M-parameter control);
+    * removing spatial mixing entirely (H16: the cheap pointwise arm reaches
+      474.5x at rel-L2 0.261, and the accurate ones are Pareto-dominated by the
+      FNO on both axes).
+
+    So this class attacks the count. It computes
+
+        phi_next = phi + irfft2( rfft2(phi) * H(recipe) + A(recipe) )
+
+    which is one `rfft2`, one masked multiply-add over the retained modes, one
+    `irfft2` and one add at full resolution -- four, against the FNO's ~20 -- and
+    the transforms act on **one** channel rather than `width` of them.
+
+    **Why this form is the physics and not just a cheap shape.** A level set
+    advancing at normal speed V with |grad phi| = 1 updates as phi - V*dt: a
+    pointwise shift. `H` is a linear propagator (the advection, plus the
+    curvature-driven smoothing a level set performs), and `A` supplies the
+    spatially varying rate that mask shadowing produces. H16's result is the
+    evidence that this is most of the problem -- a purely pointwise model, with
+    no spatial coupling at all, already reaches within 3% of clause 1.
+
+    What it provably cannot represent is any part of the advance that depends
+    *nonlinearly* on phi, which is what an undercut is: the advance beneath an
+    overhang depends on the mask above it. `runs/surface_representable.json`
+    finds an undercut in 249 of 250 trajectories, so this is the model's
+    expected failure mode and the reason its accuracy is a real question rather
+    than a formality.
+
+    **`modes_a` may exceed `modes` at no operation cost, which is not obvious.**
+    The `irfft2` costs the same whatever fraction of the spectrum is non-zero,
+    so the additive term can carry a far sharper field than the multiplicative
+    one for free. The mask geometry's sharp features are exactly what needs
+    those modes, and they enter additively.
+
+    Interface matches `EtchOperator` (`residual`, `forward`, `rollout`,
+    `param_count`) so it drops into the existing trainer and benchmarks.
+    """
+
+    def __init__(
+        self,
+        cond_dim: int = 7,
+        modes: int = 4,
+        modes_a: int = 16,
+        hidden: int = 64,
+        n_grid: int = 128,
+    ):
+        super().__init__()
+        self.modes, self.modes_a, self.n_grid = modes, modes_a, n_grid
+        # rfft2 of a real (H, W) field has shape (H, W//2 + 1), so the second
+        # axis is already half-spectrum and must not be truncated symmetrically.
+        assert modes <= n_grid // 2 and modes_a <= n_grid // 2, (modes, modes_a)
+        self.h_head = nn.Sequential(
+            nn.Linear(cond_dim, hidden), nn.GELU(),
+            nn.Linear(hidden, 2 * (2 * modes) * modes),
+        )
+        self.a_head = nn.Sequential(
+            nn.Linear(cond_dim, hidden), nn.GELU(),
+            nn.Linear(hidden, 2 * (2 * modes_a) * modes_a),
+        )
+        # The conditioning MLPs run on a (B, cond_dim) tensor, so their cost is
+        # independent of the grid and does not enter the per-pixel budget.
+        # Initialise both heads small: at init the operator is the identity plus
+        # a small perturbation, which is the right starting point for a residual
+        # update and keeps the first rollouts stable.
+        for head in (self.h_head, self.a_head):
+            nn.init.zeros_(head[-1].bias)
+            nn.init.normal_(head[-1].weight, std=1e-3)
+
+    def _coeffs(self, cond, m, head):
+        """(B, 2m, m) complex coefficients from the recipe.
+
+        Laid out as the low-frequency corner block of the rfft2 spectrum: `m`
+        positive and `m` negative frequencies on the first axis (which is a full
+        spectrum) and `m` on the second (which is already half).
+        """
+        B = cond.shape[0]
+        raw = head(cond).view(B, 2, 2 * m, m)
+        return torch.complex(raw[:, 0], raw[:, 1])
+
+    def residual(self, phi, cond):
+        B, _, H, W = phi.shape
+        f = torch.fft.rfft2(phi.squeeze(1).float())          # (B, H, W//2+1)
+        out = torch.zeros_like(f)
+        m, ma = self.modes, self.modes_a
+        hc = self._coeffs(cond.float(), m, self.h_head)
+        ac = self._coeffs(cond.float(), ma, self.a_head)
+        # Multiplicative term on the retained low modes only: everything outside
+        # is annihilated, exactly as SpectralConv2d does.
+        out[:, :m, :m] = f[:, :m, :m] * hc[:, :m]
+        out[:, -m:, :m] = f[:, -m:, :m] * hc[:, m:]
+        # Additive term, on a wider band, for free.
+        out[:, :ma, :ma] = out[:, :ma, :ma] + ac[:, :ma]
+        out[:, -ma:, :ma] = out[:, -ma:, :ma] + ac[:, ma:]
+        r = torch.fft.irfft2(out, s=(H, W))
+        return r.unsqueeze(1).to(phi.dtype)
+
+    def forward(self, phi, cond):
+        return phi + self.residual(phi, cond)
+
+    def rollout(self, phi0, cond, n_steps):
+        out = []
+        phi = phi0
+        for _ in range(n_steps):
+            phi = self.forward(phi, cond)
+            out.append(phi)
+        return torch.stack(out, dim=1)
+
+    def param_count(self):
+        return sum(p.numel() for p in self.parameters())
