@@ -5727,3 +5727,132 @@ of 1.88 on its own. So I expect improvement and I do not expect clause 1.
 the linearity is, and the next change is a pointwise nonlinearity inserted
 before the transform — which costs one elementwise ReLU, measured at 13.2 µs
 against the 85 µs of headroom `m4_ma64` leaves under the 511 µs budget.
+
+## Turn 14, continued — the adversary answered the rung-4 question with a better idea than mine, and pricing it exposed that every cost row in this repo is load-dependent enough to straddle the clause
+
+### Rung 4, asked properly for once
+
+The addendum's rung 4 says to ask `codex` *"how would you make this clause
+pass?"* rather than *"what is wrong with this"*. Asked properly, with the
+measured state handed over (0.08886 at 1188×, oracle floor 0.00003, converged,
+φ-blind null at 0.32064), it proposed three routes. Its first is better than the
+fallback I had registered an hour earlier, and I am taking it.
+
+**Quoting the proposal:**
+
+> **Feed a small spectral summary of `phi` into `A`.** Here \(P_8\) extracts the
+> two existing-style \(8\times8\) frequency blocks: 256 real numbers. […]
+> Replace the recipe-only `7→64` input layer with `263→64`: **16,384 additional
+> MACs**. […] **No additional FFT or full-grid activation.** […] This allows
+> input geometry to change **every output frequency**, through a nonlinear
+> 64-dimensional representation. Currently, the learned high-frequency residual
+> comes from recipe alone. This is the highest-value place to spend the
+> remaining budget.
+
+**Why it beats what I had written down.** My registered falsifier for H21 said:
+if bandwidth is not the constraint, add a pointwise nonlinearity before the
+transform. That is strictly worse and I should have seen it — a nonlinearity
+applied to φ *before* `rfft2` still has its output squeezed through the
+mode-diagonal `H`, so the nonlinear content it creates outside the retained
+modes is annihilated. Conditioning `A` on `φ̂` puts the nonlinearity *after* the
+bottleneck, where it can write to every mode up to `modes_a`. The distinction is
+between where in the pipeline the nonlinearity sits relative to the truncation,
+and I had not thought about it that way.
+
+It also independently reached the conclusion I had just measured — *"I would not
+jump directly to a dense `H64` head: it adds another roughly one-million-weight
+projection"* — which matches `runs/arch_cost_h21.json` exactly (m64_ma64 is
+2,130,944 params against m4's 1,070,144, and 693.4 µs against 401.8). It reached
+it by reading the code; I reached it by timing. Agreement between an argument and
+a measurement is worth more than the agreement between two instances of the same
+model that turn 13 had to retract.
+
+It was also careful in a way worth crediting: *"These are engineering timing
+budgets, not measured results or promises of 0.05"*, and *"Whether they achieve
+the required 43% error reduction must be established by training … the projection
+floor alone cannot predict it."* Both correct.
+
+Implemented as `SpectralPropagator(state_modes=s)`, committed as `eb26883`, with
+four property tests: `state_modes=0` reproduces the old class bitwise and at
+1,070,144 parameters (five trained checkpoints depend on that); at `modes=0` the
+residual is exactly φ-independent and at `modes=0, state_modes=8` it is not; and
+**superposition fails** at `state_modes>0`, which is the complement of the
+existing test that pins linearity as this class's defining property. The last one
+is the hypothesis's mechanism stated as an assertion.
+
+### Its cost estimate was optimistic by at least 1.6×, and measuring it turned up something worse
+
+`runs/arch_cost_h22.json`, every row in one invocation so they share machine
+load:
+
+| config | params | µs/wafer | speedup | Δ vs anchor |
+|---|---|---|---|---|
+| `m4_ma64` (anchor, **same invocation**) | 1,070,144 | 530.6 | 958.7× | — |
+| `m4_ma64_sm4` | 1,074,368 | 617.3 | 824.1× | **+86.7 µs (+16.3%)** |
+| `m4_ma64_sm8` | 1,087,040 | 665.5 | 764.4× | **+134.9 µs (+25.4%)** |
+| `m4_ma64_sm16` | 1,137,728 | 619.8 | 820.8× | **+89.2 µs (+16.8%)** |
+
+codex allowed **25–55 µs**. The matched-load delta is **87–135 µs**, so its
+estimate is optimistic by 1.6–2.5×. Its reasoning was arithmetic — 16,384 extra
+MACs against a 524,288-MAC projection already there — and arithmetic is exactly
+the thing this repo has now been wrong about four times, because per-operation
+dispatch overhead is what costs. Extracting two corner blocks, splitting real
+and imaginary parts and concatenating is a handful of small operations at
+~13–30 µs each, and that is the whole delta. sm8 costing *more* than sm16 is the
+same signature: non-monotone in the thing that should drive it, monotone in
+nothing, i.e. overhead-dominated and noisy.
+
+### The thing I did not go looking for: the anchor moved 1.32× and crossed the clause
+
+**The same model, `specprop_m4_ma64`, has now been priced three times this
+weekend and read 426.4, 401.8 and 530.6 µs/wafer.** That is a 1.32× spread on an
+unchanged architecture, and it **straddles the clause boundary**: 1187.7×,
+1283.8× and **958.7×**. One of those three readings fails clause 2.
+
+The cause is in the JSONs, because `arch_cost.py` records it:
+
+| run | loadavg (1 min) | µs/wafer | speedup |
+|---|---|---|---|
+| `arch_cost_h20.json` | 481.2 | 426.4 | 1187.7× |
+| `arch_cost_h21.json` | **74.6** | **401.8** | **1283.8×** |
+| `arch_cost_h22.json` | 430.4 | 530.6 | 958.7× |
+
+This box has 192 cores and two other portfolio tracks on it; loadavg ranged
+74–490 across three measurements taken in one evening. The repo already knew the
+*solver* side varies ~40× with load (`runs/worker_scaling.json`, and it is
+listed as failure 1 in `WEEKEND.md`). **What is new is that the operator side
+varies enough to change the verdict**, and every clause-2 number in this repo is
+a ratio of two quantities that both move with load.
+
+Three consequences, and none of them is "re-run it and take the best":
+
+1. **No single-invocation absolute speedup is a verdict.** The 1187.7× that
+   turn 13 called "the first architecture in this repo with no cost obstruction
+   to clause 2" was measured at loadavg 481 and is not wrong, but it is one
+   draw from a distribution whose spread crosses the threshold. It needs a
+   quoted load and a repeat.
+2. **Within-invocation deltas survive.** All rows in one invocation share the
+   load, which is why the `+16.3%` figures above are usable and the `824.1×` is
+   not. Every future comparison must include its own anchor row in the same
+   invocation — `arch_cost_h21` and `h22` both do, which is the only reason this
+   was visible at all.
+3. **The clause needs an idle-box reading with repeats**, not a single number.
+   That is now the top item for when the GPUs drain.
+
+I am not going to quietly restate the speedups at their most flattering load.
+The correction goes the other way: **`m4_ma64`'s clause-2 status is currently
+`[not measured]` to a verdict standard**, with three readings spanning
+958.7–1283.8× and the protocol that produced each.
+
+### What is running
+
+* GPU 0 — `scripts/mcurve.sh`, H21's accuracy-versus-`modes` curve at
+  `ma=64`, m ∈ {16, 32, 64} × 3 seeds. m64 is over budget on cost and is trained
+  anyway because it is the end of the axis: if the full multiplicative band does
+  not close the gap, bandwidth is not the constraint.
+* GPU 1 — `scripts/h19_seeds.sh`, the depth-vs-dt comparison extended to 8
+  matched seeds per arm.
+* Queued behind mcurve on GPU 0 — `scripts/h22.sh`, state_modes ∈ {4, 8, 16} ×
+  3 seeds, via `queue_after.sh` rather than oversubscribing the lease.
+
+Predictions for all three are written in their driver scripts before launch.

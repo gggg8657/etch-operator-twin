@@ -1,0 +1,227 @@
+{
+  "question": "which candidate surrogate architectures fit the clause-2 budget, measured before any of them is trained",
+  "protocol": {
+    "estimator": "CPU-seconds per wafer on one verified thread, fresh subprocess per config",
+    "rounds": 16,
+    "warm_rollouts_untimed": 3,
+    "budget_warm_s": 0.0005087107139999995,
+    "budget_cold_s": 0.0007389038889999999,
+    "solver_warm_cpu_s": 0.5087107139999996,
+    "solver_cold_cpu_s": 0.7389038889999999,
+    "speedup_target": 1000.0,
+    "budget_provenance": {
+      "paired": true,
+      "measured_in_this_invocation": true,
+      "solver_wafers": 16,
+      "split": "test",
+      "same_wafers_as_accuracy": "the recipes and dt values of the split the operator's accuracy is scored on",
+      "denominators_cpu_s": {
+        "terminal_one_apply": 0.5087107139999996,
+        "all_frames_ten_applies_excl_raster": 1.0011209974999957,
+        "fixed_duration": 0.3181327864999999
+      },
+      "all_frames_raster_excluded_cpu_s": 2.8692668100000027,
+      "stored_warm_median_cpu_s": 0.2767124970000001,
+      "drift_vs_stored": 1.1496870938214248,
+      "loadavg_1min_at_start": 525.19,
+      "matched_denominator_for_one_application": "terminal_one_apply",
+      "why": "a stride-10 operator emits the terminal state in one application, so the terminal one-apply column is the like-for-like denominator for it. All three are reported per row so the choice is visible rather than adopted."
+    },
+    "no_accuracy_claimed": "cost only. Accuracy for these rows is in runs/shrink.json and runs/multiscale.json."
+  },
+  "models": {
+    "specprop_m4_ma64_K10": {
+      "note": "modes=4, modes_a=64. Oracle floor at this modes_a is in runs/spectral_floor_fine.json; ma>=63 is the only band that admits clause 1 at all.",
+      "params": 1070144,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 430.41,
+        "after": 397.12
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0005306370000000005,
+        "per_wafer_cpu_s": 0.0005306370000000005,
+        "min_cpu_s": 0.0004814949999998319,
+        "max_cpu_s": 0.0005927969999999227,
+        "spread_factor": 1.2311592020688267,
+        "over_budget_factor": 1.0431016791991548,
+        "under_budget": false,
+        "speedup_vs_solver": 958.6793118459495,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 958.6793118459495,
+          "all_frames_ten_applies_excl_raster": 1886.640014736995,
+          "fixed_duration": 599.5299734093168
+        },
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          858.1533206140818,
+          1056.523357459947
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.0023893235000000956,
+        "per_wafer_cpu_s": 0.0023893235000000956,
+        "min_cpu_s": 0.00202964299999997,
+        "max_cpu_s": 0.0026495109999999933,
+        "spread_factor": 1.3054074041592696,
+        "over_budget_factor": 3.23360525715151,
+        "under_budget": false,
+        "speedup_vs_solver": 309.25234234709967,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          278.8831180546153,
+          364.0560872035185
+        ],
+        "n": 16
+      }
+    },
+    "specprop_m4_ma64_sm4_K10": {
+      "note": "state-conditioned additive head, state_modes=4. Nonlinear in phi through the head's GELU, with dense input-mode to output-mode coupling, at no new full-grid operation. Accuracy UNMEASURED at the time this row was priced.",
+      "params": 1074368,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 397.12,
+        "after": 401.8
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0006172829999999685,
+        "per_wafer_cpu_s": 0.0006172829999999685,
+        "min_cpu_s": 0.0005458699999998373,
+        "max_cpu_s": 0.0008113439999999361,
+        "spread_factor": 1.4863319105284736,
+        "over_budget_factor": 1.213426379692819,
+        "under_budget": false,
+        "speedup_vs_solver": 824.1126258134851,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 824.1126258134851,
+          "all_frames_ten_applies_excl_raster": 1621.8185135505867,
+          "fixed_duration": 515.3759078089241
+        },
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          626.9975669999897,
+          931.9264916557993
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.002575718500000046,
+        "per_wafer_cpu_s": 0.002575718500000046,
+        "min_cpu_s": 0.002328953999999994,
+        "max_cpu_s": 0.0029198889999999533,
+        "spread_factor": 1.2537340797628294,
+        "over_budget_factor": 3.485864045844867,
+        "under_budget": false,
+        "speedup_vs_solver": 286.87292070153893,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          253.05889675943564,
+          317.26856305448786
+        ],
+        "n": 16
+      }
+    },
+    "specprop_m4_ma64_sm8_K10": {
+      "note": "state-conditioned additive head, state_modes=8. Nonlinear in phi through the head's GELU, with dense input-mode to output-mode coupling, at no new full-grid operation. Accuracy UNMEASURED at the time this row was priced.",
+      "params": 1087040,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 401.8,
+        "after": 423.67
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0006655005000000269,
+        "per_wafer_cpu_s": 0.0006655005000000269,
+        "min_cpu_s": 0.0006504989999998045,
+        "max_cpu_s": 0.0006954810000001643,
+        "spread_factor": 1.0691499910074778,
+        "over_budget_factor": 1.3082101117296845,
+        "under_budget": false,
+        "speedup_vs_solver": 764.4032033033469,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 764.4032033033469,
+          "all_frames_ten_applies_excl_raster": 1504.312915617577,
+          "fixed_duration": 478.03538314394507
+        },
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          731.451634192565,
+          782.0315081193859
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.0025376290000000967,
+        "per_wafer_cpu_s": 0.0025376290000000967,
+        "min_cpu_s": 0.0021183869999998883,
+        "max_cpu_s": 0.0028429700000001112,
+        "spread_factor": 1.3420446783332134,
+        "over_budget_factor": 3.4343153930809764,
+        "under_budget": false,
+        "speedup_vs_solver": 291.1788480506693,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          259.90562299284585,
+          348.8049582064273
+        ],
+        "n": 16
+      }
+    },
+    "specprop_m4_ma64_sm16_K10": {
+      "note": "state-conditioned additive head, state_modes=16. Nonlinear in phi through the head's GELU, with dense input-mode to output-mode coupling, at no new full-grid operation. Accuracy UNMEASURED at the time this row was priced.",
+      "params": 1137728,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 423.67,
+        "after": 426.08
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0006197535000000975,
+        "per_wafer_cpu_s": 0.0006197535000000975,
+        "min_cpu_s": 0.00042111999999994154,
+        "max_cpu_s": 0.0006626910000000485,
+        "spread_factor": 1.5736393427055009,
+        "over_budget_factor": 1.2182827743629911,
+        "under_budget": false,
+        "speedup_vs_solver": 820.8274967384928,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 820.8274967384928,
+          "all_frames_ten_applies_excl_raster": 1615.3535195845416,
+          "fixed_duration": 513.3214842674544
+        },
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          767.6439154899679,
+          1207.99466660351
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.0025444310000000137,
+        "per_wafer_cpu_s": 0.0025444310000000137,
+        "min_cpu_s": 0.0021703529999999027,
+        "max_cpu_s": 0.003086566000000124,
+        "spread_factor": 1.422149300137011,
+        "over_budget_factor": 3.4435209204860664,
+        "under_budget": false,
+        "speedup_vs_solver": 290.4004427708969,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          239.39351661359916,
+          340.45332210936795
+        ],
+        "n": 16
+      }
+    }
+  },
+  "components": {}
+}
