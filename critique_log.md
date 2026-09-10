@@ -5856,3 +5856,121 @@ The correction goes the other way: **`m4_ma64`'s clause-2 status is currently
   3 seeds, via `queue_after.sh` rather than oversubscribing the lease.
 
 Predictions for all three are written in their driver scripts before launch.
+
+### CORRECTION, mine, within the same turn: the denominator does NOT move, and load does not explain the spread
+
+I wrote two paragraphs ago that *"every clause-2 number in this repo is a ratio
+of two quantities that both move with load"* and headed the table *"the cause is
+in the JSONs"*. Both claims are wrong and the same JSONs refute them. The
+denominator is measured in the same invocation as the numerator, so I could have
+checked before asserting:
+
+| invocation | loadavg | **solver denominator** | operator | speedup |
+|---|---|---|---|---|
+| `arch_cost_h20.json` | 481.2 | **0.5064 s** | 426.4 µs | 1187.7× |
+| `arch_cost_h21.json` | 74.6 | **0.5158 s** | 401.8 µs | 1283.8× |
+| `arch_cost_h22.json` | 430.4 | **0.5087 s** | 530.6 µs | 958.7× |
+
+**The solver side is stable to 1.9% across a 6.5× range of loadavg.** Only the
+operator moves, by 1.32×, so the ratio inherits the operator's whole variance
+instead of cancelling any of it.
+
+**And "load explains it" does not survive the third point.** The ordering is not
+monotone: loadavg 481 gave the *faster* reading (426.4 µs) and loadavg 430 gave
+the slower one (530.6 µs). I fitted an explanation to two points and the third
+was already in front of me. Load remains the most plausible mechanism — four
+tiny dispatches are far more exposed to cache and memory-bandwidth contention
+than a 0.5-second compute-bound C++ solve, which is exactly why the two sides
+would diverge — but that is now a *hypothesis with a mechanism*, not a finding,
+and I am labelling it as one.
+
+What *is* established, and it is enough to force the correction:
+
+* the between-invocation ranges are **disjoint** — h22's [858–1057×] against
+  h21's [1169–1401×] — so this is not the within-round noise each row already
+  reports;
+* `specprop_m4_ma64`'s clause-2 status is **`[not measured]`** to a verdict
+  standard, with three readings spanning 958.7–1283.8× and one of them failing;
+* every published speedup in this repo is a single invocation and inherits the
+  same exposure.
+
+`scripts/cost_reproducibility.py` measures the distribution instead of arguing
+about it: 14 independent invocations of one pricing, each a fresh subprocess
+with its own warmup and its own recorded loadavg, reporting the
+between-invocation spread, the worst within-invocation spread, and a rank
+correlation against load. It holds the denominator fixed on purpose — the
+question is about the operator side alone, and re-measuring the solver would
+fold two variances into one answer. Running now.
+
+**The rule this produces, which is cheap and general:** a clause verdict needs a
+*distribution whose whole range sits on one side of the threshold*, not a point
+estimate. This repo learned that lesson for accuracy months of turns ago — it is
+the entire seed-count discipline, 8 seeds and an exact test — and never applied
+it to cost, where every number has been one invocation of one process. The
+asymmetry is indefensible now that it is written down: I have been demanding 8
+seeds before believing a 0.01 difference in rel-L2 and quoting a 1.32×-variable
+cost to four significant figures.
+
+### The distribution, measured: 3 of 14 invocations meet clause 2, and the published 1187.7× was a favourable draw
+
+`runs/cost_repro_specprop_m4_ma64_K10.json`, 14 independent invocations, fresh
+subprocess each, workload-matched denominator held fixed at 0.5158 CPU-s:
+
+| | |
+|---|---|
+| per-wafer cost | **449.8 – 553.4 µs** (median 526.3), spread **1.23×** |
+| speedup | **932.1 – 1146.7×** (median ~980×) |
+| invocations meeting 1000× | **3 of 14** |
+| loadavg during the run | 413.1 – 422.0 |
+| Spearman(µs, loadavg) | 0.134 |
+| verdict | **STRADDLES the threshold** |
+
+**So `specprop_m4_ma64` does not meet clause 2 on this box under load.** The
+median invocation reads ~980× and 79% of invocations fail. Turn 13 published
+1187.7× and turn 14 published 1283.8×; both are real measurements and both are
+draws from the upper tail of a distribution whose median fails.
+
+The Spearman of 0.134 is **not** evidence against the load hypothesis — loadavg
+varied only 413–422 across this run, so there is no contrast to correlate
+against. What the run does show is that the *whole distribution* at loadavg ~420
+(932–1147×) sits below the single reading taken at loadavg 74.6 (1283.8×), which
+is outside its entire range. That is consistent with load shifting the
+distribution and is the strongest evidence for it so far, but it is one point
+against fourteen and I am not calling it settled. The matching 14-invocation run
+on an idle box is queued.
+
+**What this changes in the documents.** The clause-2 row for every specprop
+architecture becomes a distribution with a stated load, not a point. The
+statement "the first architecture in this repo with no cost obstruction to
+clause 2" is withdrawn as written; what survives is "the first architecture in
+this repo whose cost distribution reaches the clause at all", which is true —
+3/14 invocations is not zero, and every earlier family was orders away.
+
+### A second denominator error, mine, in the script written to fix a measurement problem
+
+The first run of `cost_reproducibility.py` reported **"0/14 invocations meet
+1000×, FAIL at every invocation"**. That verdict was an artefact. The script
+defaulted to `runs/speed_symmetric.json`'s `solver.marginal_warm.median_cpu` =
+**0.2767 CPU-s**, because that is the flag `cost_floor.py` carries and I copied
+it. That is the **fixed-2.0-minute denominator this repo retired** — the
+dataset's median trajectory etches for 2.62 minutes and the like-for-like cost
+is 0.5158 CPU-s — so every reading came out 1.86× too slow.
+
+`tests/test_workload.py` exists specifically to stop that denominator being
+reinstated, and I reinstated it inside a new script the test does not cover, in
+the same turn in which I was correcting someone else's measurement hygiene. The
+wrong file is kept as `runs/cost_repro_*.WRONG_DENOMINATOR.json` rather than
+deleted.
+
+Two things worth extracting rather than just apologising for:
+
+1. **The spread survived the error and the verdict did not.** A constant wrong
+   denominator cancels out of a ratio between two readings, so 1.23× was right
+   in both runs; only the threshold comparison was destroyed. The part of the
+   analysis that did not depend on an absolute scale was immune, which is a
+   reason to prefer relative claims wherever they answer the question.
+2. **The guard is now an assertion, not a comment.** The script refuses
+   0.2767 by value and refuses any denominator below 0.4 CPU-s, and
+   `fixed_duration` is not an allowed choice of the flag. A comment saying
+   "use the workload-matched one" is what the repo already had, in a docstring,
+   and it did not stop me.
