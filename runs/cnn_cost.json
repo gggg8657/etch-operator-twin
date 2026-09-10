@@ -1,0 +1,435 @@
+{
+  "question": "does a compact operator clear the 1000x clause once it actually takes a recipe? cost_floor.json's 748x row does not condition on one.",
+  "protocol": {
+    "estimator": "median CPU-seconds per application over timed calls inside a process, then the spread of that median across separate processes",
+    "reps_processes": 6,
+    "calls_per_process": 20,
+    "why_repeats": "this box's between-process spread is 1.37x (runs/speed_spread.json), so one draw is not a measurement -- the same mistake cost_floor.json's 47us/33us surface rows made",
+    "applications_per_wafer": 1,
+    "budget_source": "runs/speed_symmetric.json, solver CPU-seconds / 1000",
+    "budget": {
+      "marginal_warm": 0.0002767124970000001,
+      "cold_single_wafer": 0.0007389038889999999
+    },
+    "no_accuracy_claimed": "every row is a price. Whether a model this small reaches rel-L2 <= 0.05 is not measured here and may not be inferred from here.",
+    "what_differs_from_cost_floor": "cost_floor.json's conv rows are Conv2d(1,8,3)->Conv2d(8,1,3) on a bare field: no recipe embedding, no broadcast, no coordinate channels. CompactCNN keeps all three and the residual form, so it is priceable as a surrogate."
+  },
+  "models": {
+    "cond_only_w1_c1_L0": {
+      "config": {
+        "width": 1,
+        "n_layers": 0,
+        "cond_ch": 1
+      },
+      "params": 296,
+      "marginal_warm": {
+        "cpu_s_per_application": {
+          "median": 8.154150000000415e-05,
+          "min": 7.986800000003846e-05,
+          "max": 0.00015102049999993206,
+          "max_over_min": 1.8908761957211815,
+          "n": 6,
+          "per_process": [
+            8.077399999995016e-05,
+            0.00014970649999990204,
+            7.986800000003846e-05,
+            0.00015102049999993206,
+            8.09729999999842e-05,
+            8.211000000002411e-05
+          ]
+        },
+        "budget_s": 0.0002767124970000001,
+        "over_budget_factor": 0.29467949906145413,
+        "under_budget": true,
+        "speedup_vs_solver": 3393.5173745882284
+      },
+      "cold_single_wafer": {
+        "cpu_s_per_application": {
+          "median": 0.0011820929999999397,
+          "min": 0.0011606710000000575,
+          "max": 0.001750590999999968,
+          "max_over_min": 1.5082577233340726,
+          "n": 6,
+          "per_process": [
+            0.0011606710000000575,
+            0.001343120000000031,
+            0.0011969789999999314,
+            0.0011657019999999907,
+            0.001167206999999948,
+            0.001750590999999968
+          ]
+        },
+        "budget_s": 0.0007389038889999999,
+        "over_budget_factor": 1.59979263554795,
+        "under_budget": false,
+        "speedup_vs_solver": 625.0810122384936
+      }
+    },
+    "cond_only_w4_c4_L0": {
+      "config": {
+        "width": 4,
+        "n_layers": 0,
+        "cond_ch": 4
+      },
+      "params": 425,
+      "marginal_warm": {
+        "cpu_s_per_application": {
+          "median": 0.00010501450000000023,
+          "min": 0.00010178950000006015,
+          "max": 0.00017165450000000693,
+          "max_over_min": 1.6863674544025218,
+          "n": 6,
+          "per_process": [
+            0.00010275349999999683,
+            0.00010178950000006015,
+            0.0001293844999999405,
+            0.00010409100000008387,
+            0.00017165450000000693,
+            0.0001059379999999166
+          ]
+        },
+        "budget_s": 0.0002767124970000001,
+        "over_budget_factor": 0.37950761580529624,
+        "under_budget": true,
+        "speedup_vs_solver": 2634.993234267644
+      },
+      "cold_single_wafer": {
+        "cpu_s_per_application": {
+          "median": 0.0015127220000000774,
+          "min": 0.0013669510000000606,
+          "max": 0.002285856000000086,
+          "max_over_min": 1.672229655635048,
+          "n": 6,
+          "per_process": [
+            0.0014241290000001072,
+            0.0014201000000000352,
+            0.0013669510000000606,
+            0.0016013150000000476,
+            0.002230428000000062,
+            0.002285856000000086
+          ]
+        },
+        "budget_s": 0.0007389038889999999,
+        "over_budget_factor": 2.047251371280951,
+        "under_budget": false,
+        "speedup_vs_solver": 488.4598022637088
+      }
+    },
+    "cnn_w4_L1_c4": {
+      "config": {
+        "width": 4,
+        "n_layers": 1,
+        "cond_ch": 4
+      },
+      "params": 573,
+      "marginal_warm": {
+        "cpu_s_per_application": {
+          "median": 0.0004237927500000127,
+          "min": 0.0003033545000000193,
+          "max": 0.0005394304999999378,
+          "max_over_min": 1.778218223233555,
+          "n": 6,
+          "per_process": [
+            0.0005394304999999378,
+            0.000537326500000046,
+            0.0003033545000000193,
+            0.00030534949999999617,
+            0.0005222525000000422,
+            0.0003253329999999832
+          ]
+        },
+        "budget_s": 0.0002767124970000001,
+        "over_budget_factor": 1.5315273238274185,
+        "under_budget": false,
+        "speedup_vs_solver": 652.9429703551838
+      },
+      "cold_single_wafer": {
+        "cpu_s_per_application": {
+          "median": 0.003924281499999904,
+          "min": 0.002900928999999941,
+          "max": 0.0042768179999999045,
+          "max_over_min": 1.4742925455948737,
+          "n": 6,
+          "per_process": [
+            0.0042768179999999045,
+            0.002900928999999941,
+            0.004209689000000072,
+            0.0036589169999998727,
+            0.004189645999999936,
+            0.0029651079999999386
+          ]
+        },
+        "budget_s": 0.0007389038889999999,
+        "over_budget_factor": 5.310949852098972,
+        "under_budget": false,
+        "speedup_vs_solver": 188.29023580495382
+      }
+    },
+    "cnn_w8_L1_c8": {
+      "config": {
+        "width": 8,
+        "n_layers": 1,
+        "cond_ch": 8
+      },
+      "params": 1209,
+      "marginal_warm": {
+        "cpu_s_per_application": {
+          "median": 0.0008815102499999394,
+          "min": 0.0004951819999999829,
+          "max": 0.001833101500000045,
+          "max_over_min": 3.7018742603731725,
+          "n": 6,
+          "per_process": [
+            0.0008839064999999202,
+            0.0004951819999999829,
+            0.0004965979999999037,
+            0.0008791139999999587,
+            0.001833101500000045,
+            0.001066695999999978
+          ]
+        },
+        "budget_s": 0.0002767124970000001,
+        "over_budget_factor": 3.1856539171772176,
+        "under_budget": false,
+        "speedup_vs_solver": 313.90729376092804
+      },
+      "cold_single_wafer": {
+        "cpu_s_per_application": {
+          "median": 0.004221617499999941,
+          "min": 0.0033785490000000085,
+          "max": 0.005672268999999952,
+          "max_over_min": 1.6789068324893135,
+          "n": 6,
+          "per_process": [
+            0.0035800590000001353,
+            0.00414041399999987,
+            0.0033785490000000085,
+            0.005672268999999952,
+            0.004887011999999968,
+            0.004302821000000012
+          ]
+        },
+        "budget_s": 0.0007389038889999999,
+        "over_budget_factor": 5.713351307046568,
+        "under_budget": false,
+        "speedup_vs_solver": 175.028620901825
+      }
+    },
+    "cnn_w8_L2_c8": {
+      "config": {
+        "width": 8,
+        "n_layers": 2,
+        "cond_ch": 8
+      },
+      "params": 1793,
+      "marginal_warm": {
+        "cpu_s_per_application": {
+          "median": 0.0014119857499999555,
+          "min": 0.0013175644999999792,
+          "max": 0.002397446999999997,
+          "max_over_min": 1.8196050364138037,
+          "n": 6,
+          "per_process": [
+            0.00234056699999996,
+            0.0013468639999999477,
+            0.0013175644999999792,
+            0.002397446999999997,
+            0.0014771074999999634,
+            0.0013340669999999388
+          ]
+        },
+        "budget_s": 0.0002767124970000001,
+        "over_budget_factor": 5.102717677402025,
+        "under_budget": false,
+        "speedup_vs_solver": 195.97400115405472
+      },
+      "cold_single_wafer": {
+        "cpu_s_per_application": {
+          "median": 0.004227745000000005,
+          "min": 0.004049916000000042,
+          "max": 0.006567192999999971,
+          "max_over_min": 1.6215627682154155,
+          "n": 6,
+          "per_process": [
+            0.004049916000000042,
+            0.006567192999999971,
+            0.004311672999999905,
+            0.0063627250000000135,
+            0.004143817000000105,
+            0.004130243000000089
+          ]
+        },
+        "budget_s": 0.0007389038889999999,
+        "over_budget_factor": 5.721643995840447,
+        "under_budget": false,
+        "speedup_vs_solver": 174.77494243385044
+      }
+    },
+    "cnn_w16_L2_c8": {
+      "config": {
+        "width": 16,
+        "n_layers": 2,
+        "cond_ch": 8
+      },
+      "params": 5369,
+      "marginal_warm": {
+        "cpu_s_per_application": {
+          "median": 0.0023316714999999655,
+          "min": 0.002051044000000002,
+          "max": 0.00487656000000003,
+          "max_over_min": 2.3775989203547194,
+          "n": 6,
+          "per_process": [
+            0.0023660954999998873,
+            0.0022972475000000436,
+            0.00487656000000003,
+            0.0020598280000000413,
+            0.002051044000000002,
+            0.004107305000000061
+          ]
+        },
+        "budget_s": 0.0002767124970000001,
+        "over_budget_factor": 8.426332476049915,
+        "under_budget": false,
+        "speedup_vs_solver": 118.67559259527091
+      },
+      "cold_single_wafer": {
+        "cpu_s_per_application": {
+          "median": 0.009506222000000064,
+          "min": 0.006078220000000023,
+          "max": 0.009944827000000211,
+          "max_over_min": 1.6361413374310527,
+          "n": 6,
+          "per_process": [
+            0.009896842000000072,
+            0.009260865000000118,
+            0.006206320999999848,
+            0.006078220000000023,
+            0.009944827000000211,
+            0.00975157900000001
+          ]
+        },
+        "budget_s": 0.0007389038889999999,
+        "over_budget_factor": 12.865302431775488,
+        "under_budget": false,
+        "speedup_vs_solver": 77.72844869391804
+      }
+    },
+    "cnn_w16_L4_c16": {
+      "config": {
+        "width": 16,
+        "n_layers": 4,
+        "cond_ch": 16
+      },
+      "params": 10401,
+      "marginal_warm": {
+        "cpu_s_per_application": {
+          "median": 0.0041511937500000595,
+          "min": 0.0031978060000000808,
+          "max": 0.005774247999999926,
+          "max_over_min": 1.805690526567209,
+          "n": 6,
+          "per_process": [
+            0.004204307000000074,
+            0.004143498500000065,
+            0.0041588890000000545,
+            0.0038388890000000675,
+            0.0031978060000000808,
+            0.005774247999999926
+          ]
+        },
+        "budget_s": 0.0002767124970000001,
+        "over_budget_factor": 15.001829678838314,
+        "under_budget": false,
+        "speedup_vs_solver": 66.65853575251604
+      },
+      "cold_single_wafer": {
+        "cpu_s_per_application": {
+          "median": 0.007741584499999954,
+          "min": 0.007129759999999985,
+          "max": 0.012215957,
+          "max_over_min": 1.7133756255470065,
+          "n": 6,
+          "per_process": [
+            0.007129759999999985,
+            0.008173010000000147,
+            0.007578277999999994,
+            0.007260928,
+            0.012215957,
+            0.007904890999999914
+          ]
+        },
+        "budget_s": 0.0007389038889999999,
+        "over_budget_factor": 10.477119711031802,
+        "under_budget": false,
+        "speedup_vs_solver": 95.44607941694679
+      }
+    },
+    "cnn_w32_L4_c24": {
+      "config": {
+        "width": 32,
+        "n_layers": 4,
+        "cond_ch": 24
+      },
+      "params": 38969,
+      "marginal_warm": {
+        "cpu_s_per_application": {
+          "median": 0.01107277250000005,
+          "min": 0.010037854000000013,
+          "max": 0.020158760499999984,
+          "max_over_min": 2.0082739298658816,
+          "n": 6,
+          "per_process": [
+            0.010320641000000075,
+            0.011144910499999994,
+            0.010037854000000013,
+            0.011000634500000106,
+            0.020158760499999984,
+            0.01924097300000005
+          ]
+        },
+        "budget_s": 0.0002767124970000001,
+        "over_budget_factor": 40.01544064704835,
+        "under_budget": false,
+        "speedup_vs_solver": 24.99035331936955
+      },
+      "cold_single_wafer": {
+        "cpu_s_per_application": {
+          "median": 0.017709171000000024,
+          "min": 0.01607655699999988,
+          "max": 0.029425749000000057,
+          "max_over_min": 1.830351424126464,
+          "n": 6,
+          "per_process": [
+            0.01750554900000001,
+            0.029425749000000057,
+            0.019657748000000197,
+            0.017301628000000013,
+            0.01607655699999988,
+            0.017912793000000038
+          ]
+        },
+        "budget_s": 0.0007389038889999999,
+        "over_budget_factor": 23.966812549825445,
+        "under_budget": false,
+        "speedup_vs_solver": 41.72436355151797
+      }
+    }
+  },
+  "verdict": {
+    "configs_under_budget_warm": [
+      "cond_only_w1_c1_L0",
+      "cond_only_w4_c4_L0"
+    ],
+    "configs_under_budget_cold": [],
+    "best_warm": {
+      "config": "cond_only_w1_c1_L0",
+      "speedup": 3393.5173745882284
+    },
+    "best_cold": {
+      "config": "cond_only_w1_c1_L0",
+      "speedup": 625.0810122384936
+    },
+    "clause_reachable_on_cost": true
+  }
+}

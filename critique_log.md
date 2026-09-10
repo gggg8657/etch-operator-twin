@@ -3371,7 +3371,14 @@ claimed beside them, which is what a reader needs to interpret a null.
 
 ---
 
-## Turn 8, H13 — written before the run: "no difference detected" is worthless without an interval
+## Turn 8, H14 — written before the run: "no difference detected" is worthless without an interval
+
+*(Renumbered from H13. A concurrent instance of this loop had already committed
+H13 for the crossed-split plateau / independent-dt hypothesis below, and mine was
+still uncommitted, so mine moves — the same rule that sent my mixed-stride
+hypothesis from H10 to H12. Third label collision this weekend; they are cheap to
+fix and expensive to leave, because a citation to "H13" in a shared log would
+otherwise be ambiguous.)*
 
 Last turn I reported `K2_sm` at seed-level `p = 0.1879` against an attainable
 floor of 0.0061 and called the null **informative** rather than underpowered.
@@ -3395,16 +3402,16 @@ unrejected. That is assumption-free — no normality, no variance homogeneity �
 it turns "no difference detected" into "no difference larger than *this*
 detected", which is the only form of a null a reader can use.
 
-**H13: the seed-level intervals at 2–3 seeds are wide enough to contain effects
+**H14: the seed-level intervals at 2–3 seeds are wide enough to contain effects
 the K-curve treats as real, so several of last turn's readings — including my own
 `K2_sm` null and the "distinguishable" verdicts whose p sat exactly on the floor —
 are much weaker than their p-values suggest.**
 
-The distinguishing prediction. If H13 is right, `K2_sm`'s interval will cover a
+The distinguishing prediction. If H14 is right, `K2_sm`'s interval will cover a
 sizeable fraction of the K=1→K=5 gap (0.01890 → 0.02330, i.e. 0.0044), meaning
 the null cannot rule out an effect of the same order as the curve's own
 structure; and the `K5_sm`/`K10_sm` intervals, whose p-values sat exactly on
-their floors, will have lower bounds barely above zero. If H13 is wrong, the
+their floors, will have lower bounds barely above zero. If H14 is wrong, the
 intervals will be tight relative to 0.0044 and last turn's readings stand as
 stated.
 
@@ -3508,3 +3515,131 @@ in coverage.
 Its own confound, stated rather than hidden: it carries half the adaptive data,
 so an in-distribution regression could be volume rather than coupling. The
 full-mix arm brackets that from the other side and is queued behind it.
+
+### H13 answered: half falsified, half confirmed, and the half I got wrong is the one I published
+
+95% intervals on the arm-minus-anchor mean difference, from inverting the exact
+seed-level permutation test (`runs/seed_level_test.json`). Yardstick =
+|K5_sm − K1_nv| in-distribution = **0.00440**, the smallest gap this repo has
+treated as a real effect in the K-curve.
+
+| arm | split | seeds | d | p | 95% interval | width | covers yardstick |
+|---|---|---|---|---|---|---|---|
+| K2_nv | in-dist | 7v8 | +0.00278 | 0.0002 | [+0.00203, +0.00354] | 0.00151 | no |
+| K2_ov | in-dist | 6v8 | +0.00116 | 0.0050 | [+0.00045, +0.00184] | 0.00140 | no |
+| **K2_sm** | **in-dist** | **3v8** | **+0.00052** | **0.1879** | **[−0.00038, +0.00133]** | **0.00171** | **no** |
+| K5_nv | in-dist | 8v8 | +0.01446 | 0.0002 | [+0.01294, +0.01597] | 0.00303 | no |
+| K5_ov | in-dist | 6v8 | +0.00448 | 0.0003 | [+0.00379, +0.00517] | 0.00138 | yes |
+| K5_sm | in-dist | 3v8 | +0.00440 | 0.0061 | [+0.00348, +0.00527] | 0.00179 | yes |
+| K10_nv | in-dist | 8v8 | +0.02890 | 0.0002 | [+0.02579, +0.03216] | 0.00638 | no |
+| K10_sm | in-dist | 2v8 | +0.00719 | 0.0222 | [+0.00605, +0.00828] | 0.00223 | no |
+| K2_nv | crossed | 7v8 | +0.00207 | 0.7274 | [−0.01061, +0.01475] | 0.02536 | **yes** |
+| K2_ov | crossed | 6v8 | −0.00259 | 0.6653 | [−0.01556, +0.01038] | 0.02593 | **yes** |
+| **K2_sm** | **crossed** | **3v8** | **−0.00263** | **0.7455** | **[−0.01995, +0.01447]** | **0.03442** | **yes** |
+| K5_nv | crossed | 8v8 | +0.02247 | 0.0009 | [+0.01120, +0.03374] | 0.02254 | no |
+| K5_ov | crossed | 6v8 | +0.01686 | 0.0206 | [+0.00344, +0.03028] | 0.02683 | yes |
+| K5_sm | crossed | 3v8 | +0.02792 | 0.0061 | [+0.00944, +0.04545] | 0.03602 | no |
+| K10_sm | crossed | 2v8 | +0.05007 | 0.0222 | [+0.02908, +0.07106] | 0.04197 | no |
+
+**H13 is falsified in-distribution.** I predicted the intervals at 2–3 seeds
+would be wide enough to contain effects the curve treats as real. In-distribution
+they are not: `K2_sm`'s interval is [−0.00038, +0.00133], so the difference from
+the anchor is bounded above by **0.00133 — 3.3× smaller than the 0.00440
+yardstick**. That is a genuinely strong null, and stronger than the p-value I
+quoted for it. My worry that "p sitting on its floor" made `K5_sm` and `K10_sm`
+weak is also wrong in-distribution: their intervals are 0.00179 and 0.00223 wide
+and exclude zero comfortably. The reason is mundane and checkable — the
+in-distribution per-seed spread is tiny (anchor range 0.00172 over 8 seeds) and
+250 trajectories go into each seed's mean, so three seeds locate a mean well.
+
+**H13 is confirmed on the crossed split, and it invalidates a claim I made last
+turn.** Every K=2 crossed interval is ~±0.02, covering the yardstick four to
+eight times over. So `p = 0.665–0.745` there bounds nothing: an effect of
+0.02 band rel-L2 — larger than the entire K=1→K=10 in-distribution
+degradation — sits comfortably inside. **WITHDRAWN:** last turn's *"the crossed
+split shows no detectable difference at K=2 under all three variants, so the
+crossed penalty appears between K=2 and K=5"*, and with it the claim that this
+was *"an independent consistency check on H12"* tracking the distinct-start count
+5 → 2 → 1. It is not a pattern between three measurements; it is one
+uninformative null and two detections. Whether the crossed penalty begins at K=2
+or at K=5 **is not measured**, and the crossed split needs more seeds — not a
+different test — before it can be.
+
+Why the two splits differ so much is not mysterious and is worth recording: the
+crossed subset is 121 trajectories against 250, and its per-seed spread is an
+order of magnitude larger (anchor crossed range 0.03511 against in-distribution
+0.00172). So the same seed count buys ~20× less resolution there, and every
+crossed comparison in this repo inherits that.
+
+**The rule this turn establishes.** A p-value at n = 2–3 does not license a null,
+and the p-floor I used last turn as a power check does not either — it measures
+resolution, not power, and the two came apart in exactly the direction that
+flattered a conclusion. From here every seed-level comparison in this repo is
+reported as an interval against a stated yardstick, and `runs/seed_level_test.json`
+carries `interval_covers_yardstick` per row so a null that bounds nothing cannot
+be read as a null that bounds something.
+
+### H14 answered: half right, and it splits by reading rather than by seed count
+
+`runs/seed_level_test.json`, 95% intervals on the arm-minus-anchor mean
+difference by inverting the exact permutation test. Yardstick = 0.00440, the
+`|K5_sm − K1_nv|` in-distribution gap, the smallest structure this repo has
+called a real effect in the K-curve.
+
+| arm | seeds | split | difference | p | 95% interval | width | covers yardstick |
+|---|---|---|---|---|---|---|---|
+| K2_nv | 7v8 | in-dist | +0.00278 | 0.0002 | [+0.00203, +0.00354] | 0.00151 | no |
+| K2_ov | 6v8 | in-dist | +0.00116 | 0.0050 | [+0.00045, +0.00184] | 0.00140 | no |
+| **K2_sm** | 3v8 | in-dist | +0.00052 | 0.1879 | **[−0.00038, +0.00133]** | 0.00171 | **no** |
+| K5_nv | 8v8 | in-dist | +0.01446 | 0.0002 | [+0.01294, +0.01597] | 0.00303 | no |
+| K5_ov | 6v8 | in-dist | +0.00448 | 0.0003 | [+0.00379, +0.00517] | 0.00138 | yes |
+| K5_sm | 3v8 | in-dist | +0.00440 | 0.0061 | [+0.00348, +0.00527] | 0.00179 | yes |
+| K10_nv | 8v8 | in-dist | +0.02890 | 0.0002 | [+0.02579, +0.03216] | 0.00638 | no |
+| K10_sm | 2v8 | in-dist | +0.00719 | 0.0222 | [+0.00605, +0.00828] | 0.00223 | no |
+| K2_nv | 7v8 | crossed | +0.00207 | 0.7274 | [−0.01061, +0.01475] | 0.02536 | yes |
+| K2_ov | 6v8 | crossed | −0.00259 | 0.6653 | [−0.01556, +0.01038] | 0.02593 | yes |
+| **K2_sm** | 3v8 | crossed | −0.00263 | 0.7455 | **[−0.01995, +0.01447]** | 0.03442 | **yes** |
+| K5_nv | 8v8 | crossed | +0.02247 | 0.0009 | [+0.01120, +0.03374] | 0.02254 | no |
+| K5_ov | 6v8 | crossed | +0.01686 | 0.0206 | [+0.00344, +0.03028] | 0.02683 | yes |
+| K5_sm | 3v8 | crossed | +0.02792 | 0.0061 | [+0.00944, +0.04545] | 0.03602 | no |
+| K10_sm | 2v8 | crossed | +0.05007 | 0.0222 | [+0.02908, +0.07106] | 0.04197 | no |
+
+**H14's prediction was that small seed counts would make the intervals wide. It
+is wrong about that, and the real variable is the split, not n.** In
+distribution, every interval is 0.0014–0.0064 wide — *including* the 2-seed and
+3-seed arms — because the per-seed spread in that split is tiny. On the crossed
+split every interval is 0.022–0.042 wide, an order of magnitude worse, at every
+seed count including 8. So width tracks the split's own seed variability and
+barely tracks n at all, which is the opposite of what I predicted and the more
+useful fact: adding seeds to the crossed split will not fix it.
+
+**Two of last turn's readings survive, stronger than stated.** `K2_sm`
+in-distribution is bounded to **[−0.00038, +0.00133]**, so the difference from
+K=1 is at most 0.00133 — **3.3× smaller than the yardstick**. That is a genuinely
+strong null, not the "resolution" hand-wave I justified it with, and the earlier
+worry that a 3-seed null must be weak is falsified for this split. Likewise
+`K10_sm` in-distribution, whose p sat exactly on its 2-seed floor, has interval
+[+0.00605, +0.00828] — narrow, excludes zero, and a real effect despite the
+p-value being the weakest the enumeration can emit.
+
+**One of last turn's readings does not survive, and it was mine.** I wrote that
+*"the crossed split shows no detectable difference at K=2 under all three
+variants (p = 0.665–0.745)"* and concluded that *"the crossed penalty appears
+**between K=2 and K=5**, tracking the distinct-start count (5, 2, 1) — an
+independent consistency check on H12"*. The intervals kill that. `K2_sm`'s
+crossed interval is **[−0.01995, +0.01447]**, which covers the yardstick 4.5×
+over; `K2_nv` and `K2_ov` are the same story. Those nulls bound nothing. A
+crossed penalty at K=2 of +0.014 — three times the yardstick — is entirely
+consistent with the data, so **"the penalty appears between K=2 and K=5" is
+withdrawn**: the data cannot locate where it appears, and the apparent
+"tracking" of the start count was one uninformative null sitting next to two
+detections. That is not a pattern, and citing it as a consistency check on H12
+was reading structure into the absence of resolution.
+
+The general lesson, which is now the rule I will follow: **report the interval,
+not the p-value.** Every null in this repo's K-curve analysis was reported as a
+p-value, and the p-value could not distinguish `K2_sm` in-distribution (bounded
+to a third of the yardstick — a real result) from `K2_sm` crossed (bounded to
+4.5× the yardstick — no information). Both read "p ≈ 0.2–0.75, no difference
+detected". One is a finding and one is an empty cell, and only the interval says
+which.

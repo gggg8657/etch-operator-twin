@@ -54,6 +54,15 @@ from eot import runlock  # noqa: E402
 # passing cell: the smallest entry is barely a model and the largest is the
 # smallest thing with any depth and channel mixing.
 LADDER = [
+    # n_layers=0 removes the body entirely, leaving only what CONDITIONING
+    # costs: the recipe MLP, the broadcast to H x W, the coordinate channels,
+    # the 1x1 lift and the 1x1 projection. It cannot learn surface evolution at
+    # all. Its price is therefore a hard floor for every conditioned model that
+    # emits this field, and if the floor is over budget then no such model can
+    # pass, whatever its body -- which is a statement about the task's output
+    # and conditioning rather than about our taste in architectures.
+    ("cond_only_w1_c1_L0", dict(width=1, n_layers=0, cond_ch=1)),
+    ("cond_only_w4_c4_L0", dict(width=4, n_layers=0, cond_ch=4)),
     ("cnn_w4_L1_c4", dict(width=4, n_layers=1, cond_ch=4)),
     ("cnn_w8_L1_c8", dict(width=8, n_layers=1, cond_ch=8)),
     ("cnn_w8_L2_c8", dict(width=8, n_layers=2, cond_ch=8)),
@@ -110,6 +119,12 @@ def main():
     ap.add_argument("--calls", type=int, default=20, help="timed calls inside each")
     ap.add_argument("--sym", default="runs/speed_symmetric.json")
     ap.add_argument("--out", default="runs/cnn_cost.json")
+    ap.add_argument("--only", nargs="*", default=None,
+                    help="restrict the ladder to these labels. Used to resolve "
+                         "the boundary configuration with more repeats once the "
+                         "full ladder has located it: the between-invocation "
+                         "spread here reaches 2x, so the cell that straddles the "
+                         "budget needs more processes than the cells that do not.")
     a = ap.parse_args()
 
     runlock.acquire(a.out, what="cnn_cost")
@@ -118,8 +133,11 @@ def main():
     sc = sym["solver"]["cold_single_wafer"]["median_cpu"]
     budget = {"marginal_warm": sw / 1000.0, "cold_single_wafer": sc / 1000.0}
 
+    ladder = [(l, k) for l, k in LADDER if not a.only or l in a.only]
+    if not ladder:
+        raise SystemExit(f"--only {a.only} matched nothing in the ladder")
     rows = {}
-    for label, kw in LADDER:
+    for label, kw in ladder:
         row = {"config": kw}
         for reading, n_warm in (("marginal_warm", 3), ("cold_single_wafer", 0)):
             meds, params = [], 0

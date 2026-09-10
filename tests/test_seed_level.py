@@ -57,6 +57,49 @@ def test_a_null_is_only_informative_when_the_floor_clears_the_threshold():
     assert ok["smallest_attainable_two_sided_p"] <= 0.05
 
 
+def test_the_interval_excludes_zero_exactly_when_the_test_rejects():
+    """The duality that makes the interval trustworthy: inverting the test at
+    level alpha must exclude 0 if and only if the test of no difference rejects
+    at alpha. If these disagree, one of the two is wrong and the interval cannot
+    be quoted beside the p-value.
+    """
+    from seed_level_test import invert_to_interval
+
+    rng = np.random.default_rng(0)
+    for _ in range(12):
+        n_a, n_b = int(rng.integers(3, 6)), int(rng.integers(3, 7))
+        a = rng.normal(0.02, 0.002, n_a)
+        b = rng.normal(0.02 + rng.choice([0.0, 0.004]), 0.002, n_b)
+        t = exact_two_sample(a, b)
+        iv = invert_to_interval(a, b)
+        if t["smallest_attainable_two_sided_p"] > 0.05:
+            continue  # no interval can exist at this level; covered elsewhere
+        rejects = t["p"] <= 0.05
+        assert iv["empty"] is False, iv
+        assert iv["contains_zero"] == (not rejects), (t["p"], iv)
+
+
+def test_the_interval_contains_its_own_point_estimate():
+    from seed_level_test import invert_to_interval
+
+    a = np.array([0.0250, 0.0261, 0.0244])
+    b = np.array([0.0189, 0.0181, 0.0184, 0.0193, 0.0198, 0.0189, 0.0188, 0.0187])
+    iv = invert_to_interval(a, b)
+    assert iv["lo"] <= iv["point"] <= iv["hi"], iv
+
+
+def test_a_truncated_interval_is_flagged_rather_than_reported_as_finite():
+    """A search range that clips the interval must say so, or a truncated bound
+    gets read as a real one -- which would understate the uncertainty in exactly
+    the direction that makes a null look strong."""
+    from seed_level_test import invert_to_interval
+
+    a = np.array([0.02, 0.02, 0.02])          # zero spread -> tiny search span
+    b = np.array([0.02, 0.02, 0.02, 0.02])
+    iv = invert_to_interval(a, b, span=0.0)
+    assert iv["empty"] or iv["truncated_at_search_edge"], iv
+
+
 if __name__ == "__main__":
     n = 0
     for k, v in sorted(globals().items()):

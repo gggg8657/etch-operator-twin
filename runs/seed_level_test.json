@@ -45,8 +45,21 @@
         ],
         "arm_mean": 0.021687101125717163,
         "anchor_mean": 0.018902862367220222,
+        "interval": {
+          "alpha": 0.05,
+          "point": 0.0027842387584969402,
+          "lo": 0.00203009159793546,
+          "hi": 0.003538385919058422,
+          "width": 0.0015082943211229619,
+          "empty": false,
+          "contains_zero": false,
+          "truncated_at_search_edge": false,
+          "method": "inversion of the exact two-sample permutation test: the set of shifts delta with p(arm - delta, anchor) > alpha",
+          "n_grid": 801
+        },
         "can_reject_at_0.05": true,
-        "reading": "distinguishable"
+        "reading": "distinguishable, and the difference is somewhere in [0.00203, 0.00354]",
+        "interval_covers_yardstick": false
       },
       "crossed_in_coverage": {
         "statistic": "difference of per-seed arm means",
@@ -78,8 +91,21 @@
         ],
         "arm_mean": 0.05640178655935045,
         "anchor_mean": 0.05433350959205846,
+        "interval": {
+          "alpha": 0.05,
+          "point": 0.0020682769672919904,
+          "lo": -0.010609925377360871,
+          "hi": 0.014746479311944866,
+          "width": 0.025356404689305737,
+          "empty": false,
+          "contains_zero": true,
+          "truncated_at_search_edge": false,
+          "method": "inversion of the exact two-sample permutation test: the set of shifts delta with p(arm - delta, anchor) > alpha",
+          "n_grid": 801
+        },
         "can_reject_at_0.05": true,
-        "reading": "no difference detected, and the test HAD the resolution to detect one"
+        "reading": "no difference detected; the 95% interval on the mean difference is [-0.01061, 0.01475], so effects up to 0.01475 are NOT ruled out",
+        "interval_covers_yardstick": true
       }
     },
     "K2_ov": {
@@ -117,8 +143,21 @@
         ],
         "arm_mean": 0.020057928784129524,
         "anchor_mean": 0.018902862367220222,
+        "interval": {
+          "alpha": 0.05,
+          "point": 0.001155066416909302,
+          "lo": 0.00044619415639702946,
+          "hi": 0.0018442477812962328,
+          "width": 0.0013980536248992034,
+          "empty": false,
+          "contains_zero": false,
+          "truncated_at_search_edge": false,
+          "method": "inversion of the exact two-sample permutation test: the set of shifts delta with p(arm - delta, anchor) > alpha",
+          "n_grid": 801
+        },
         "can_reject_at_0.05": true,
-        "reading": "distinguishable"
+        "reading": "distinguishable, and the difference is somewhere in [0.00045, 0.00184]",
+        "interval_covers_yardstick": false
       },
       "crossed_in_coverage": {
         "statistic": "difference of per-seed arm means",
@@ -149,8 +188,21 @@
         ],
         "arm_mean": 0.05174285693212153,
         "anchor_mean": 0.05433350959205846,
+        "interval": {
+          "alpha": 0.05,
+          "point": -0.0025906526599369303,
+          "lo": -0.015556457492333642,
+          "hi": 0.010375152172459767,
+          "width": 0.02593160966479341,
+          "empty": false,
+          "contains_zero": true,
+          "truncated_at_search_edge": false,
+          "method": "inversion of the exact two-sample permutation test: the set of shifts delta with p(arm - delta, anchor) > alpha",
+          "n_grid": 801
+        },
         "can_reject_at_0.05": true,
-        "reading": "no difference detected, and the test HAD the resolution to detect one"
+        "reading": "no difference detected; the 95% interval on the mean difference is [-0.01556, 0.01038], so effects up to 0.01556 are NOT ruled out",
+        "interval_covers_yardstick": true
       }
     },
     "K2_sm": {
@@ -185,8 +237,21 @@
         ],
         "arm_mean": 0.01942266942809025,
         "anchor_mean": 0.018902862367220222,
+        "interval": {
+          "alpha": 0.05,
+          "point": 0.0005198070608700284,
+          "lo": -0.00038464534575094207,
+          "hi": 0.0013273538524958958,
+          "width": 0.0017119991982468379,
+          "empty": false,
+          "contains_zero": true,
+          "truncated_at_search_edge": false,
+          "method": "inversion of the exact two-sample permutation test: the set of shifts delta with p(arm - delta, anchor) > alpha",
+          "n_grid": 801
+        },
         "can_reject_at_0.05": true,
-        "reading": "no difference detected, and the test HAD the resolution to detect one"
+        "reading": "no difference detected; the 95% interval on the mean difference is [-0.00038, 0.00133], so effects up to 0.00133 are NOT ruled out",
+        "interval_covers_yardstick": false
       },
       "crossed_in_coverage": {
         "statistic": "difference of per-seed arm means",
@@ -214,8 +279,21 @@
         ],
         "arm_mean": 0.05170391970660445,
         "anchor_mean": 0.05433350959205846,
+        "interval": {
+          "alpha": 0.05,
+          "point": -0.0026295898854540103,
+          "lo": -0.019946136270837647,
+          "hi": 0.014470499670112338,
+          "width": 0.034416635940949986,
+          "empty": false,
+          "contains_zero": true,
+          "truncated_at_search_edge": false,
+          "method": "inversion of the exact two-sample permutation test: the set of shifts delta with p(arm - delta, anchor) > alpha",
+          "n_grid": 801
+        },
         "can_reject_at_0.05": true,
-        "reading": "no difference detected, and the test HAD the resolution to detect one"
+        "reading": "no difference detected; the 95% interval on the mean difference is [-0.01995, 0.01447], so effects up to 0.01995 are NOT ruled out",
+        "interval_covers_yardstick": true
       }
     },
     "K5_nv": {
@@ -255,8 +333,21 @@
         ],
         "arm_mean": 0.033359996248502284,
         "anchor_mean": 0.018902862367220222,
+        "interval": {
+          "alpha": 0.05,
+          "point": 0.014457133881282062,
+          "lo": 0.012942670272119074,
+          "hi": 0.015971597490445053,
+          "width": 0.0030289272183259795,
+          "empty": false,
+          "contains_zero": false,
+          "truncated_at_search_edge": false,
+          "method": "inversion of the exact two-sample permutation test: the set of shifts delta with p(arm - delta, anchor) > alpha",
+          "n_grid": 801
+        },
         "can_reject_at_0.05": true,
-        "reading": "distinguishable"
+        "reading": "distinguishable, and the difference is somewhere in [0.01294, 0.01597]",
+        "interval_covers_yardstick": false
       },
       "crossed_in_coverage": {
         "statistic": "difference of per-seed arm means",
@@ -289,8 +380,21 @@
         ],
         "arm_mean": 0.07680096283116308,
         "anchor_mean": 0.05433350959205846,
+        "interval": {
+          "alpha": 0.05,
+          "point": 0.022467453239104623,
+          "lo": 0.011195960412449552,
+          "hi": 0.03373894606575967,
+          "width": 0.022542985653310116,
+          "empty": false,
+          "contains_zero": false,
+          "truncated_at_search_edge": false,
+          "method": "inversion of the exact two-sample permutation test: the set of shifts delta with p(arm - delta, anchor) > alpha",
+          "n_grid": 801
+        },
         "can_reject_at_0.05": true,
-        "reading": "distinguishable"
+        "reading": "distinguishable, and the difference is somewhere in [0.01120, 0.03374]",
+        "interval_covers_yardstick": false
       }
     },
     "K5_ov": {
@@ -328,8 +432,21 @@
         ],
         "arm_mean": 0.023380587142581743,
         "anchor_mean": 0.018902862367220222,
+        "interval": {
+          "alpha": 0.05,
+          "point": 0.00447772477536152,
+          "lo": 0.003789772639781727,
+          "hi": 0.0051656769109413156,
+          "width": 0.0013759042711595885,
+          "empty": false,
+          "contains_zero": false,
+          "truncated_at_search_edge": false,
+          "method": "inversion of the exact two-sample permutation test: the set of shifts delta with p(arm - delta, anchor) > alpha",
+          "n_grid": 801
+        },
         "can_reject_at_0.05": true,
-        "reading": "distinguishable"
+        "reading": "distinguishable, and the difference is somewhere in [0.00379, 0.00517]",
+        "interval_covers_yardstick": true
       },
       "crossed_in_coverage": {
         "statistic": "difference of per-seed arm means",
@@ -360,8 +477,21 @@
         ],
         "arm_mean": 0.0711925528666451,
         "anchor_mean": 0.05433350959205846,
+        "interval": {
+          "alpha": 0.05,
+          "point": 0.016859043274586635,
+          "lo": 0.0034425694516312666,
+          "hi": 0.03027551709754206,
+          "width": 0.026832947645910793,
+          "empty": false,
+          "contains_zero": false,
+          "truncated_at_search_edge": false,
+          "method": "inversion of the exact two-sample permutation test: the set of shifts delta with p(arm - delta, anchor) > alpha",
+          "n_grid": 801
+        },
         "can_reject_at_0.05": true,
-        "reading": "distinguishable"
+        "reading": "distinguishable, and the difference is somewhere in [0.00344, 0.03028]",
+        "interval_covers_yardstick": true
       }
     },
     "K5_sm": {
@@ -396,8 +526,21 @@
         ],
         "arm_mean": 0.02330350295267999,
         "anchor_mean": 0.018902862367220222,
+        "interval": {
+          "alpha": 0.05,
+          "point": 0.004400640585459768,
+          "lo": 0.003479614085145373,
+          "hi": 0.005267489056343903,
+          "width": 0.0017878749711985296,
+          "empty": false,
+          "contains_zero": false,
+          "truncated_at_search_edge": false,
+          "method": "inversion of the exact two-sample permutation test: the set of shifts delta with p(arm - delta, anchor) > alpha",
+          "n_grid": 801
+        },
         "can_reject_at_0.05": true,
-        "reading": "distinguishable"
+        "reading": "distinguishable, and the difference is somewhere in [0.00348, 0.00527]",
+        "interval_covers_yardstick": true
       },
       "crossed_in_coverage": {
         "statistic": "difference of per-seed arm means",
@@ -425,8 +568,21 @@
         ],
         "arm_mean": 0.08225638694424932,
         "anchor_mean": 0.05433350959205846,
+        "interval": {
+          "alpha": 0.05,
+          "point": 0.02792287735219086,
+          "lo": 0.009436414566262305,
+          "hi": 0.04545314378712313,
+          "width": 0.03601672922086083,
+          "empty": false,
+          "contains_zero": false,
+          "truncated_at_search_edge": false,
+          "method": "inversion of the exact two-sample permutation test: the set of shifts delta with p(arm - delta, anchor) > alpha",
+          "n_grid": 801
+        },
         "can_reject_at_0.05": true,
-        "reading": "distinguishable"
+        "reading": "distinguishable, and the difference is somewhere in [0.00944, 0.04545]",
+        "interval_covers_yardstick": false
       }
     },
     "K10_nv": {
@@ -466,8 +622,21 @@
         ],
         "arm_mean": 0.04780721565848216,
         "anchor_mean": 0.018902862367220222,
+        "interval": {
+          "alpha": 0.05,
+          "point": 0.028904353291261935,
+          "lo": 0.025786509703071794,
+          "hi": 0.032163917042551615,
+          "width": 0.006377407339479821,
+          "empty": false,
+          "contains_zero": false,
+          "truncated_at_search_edge": false,
+          "method": "inversion of the exact two-sample permutation test: the set of shifts delta with p(arm - delta, anchor) > alpha",
+          "n_grid": 801
+        },
         "can_reject_at_0.05": true,
-        "reading": "distinguishable"
+        "reading": "distinguishable, and the difference is somewhere in [0.02579, 0.03216]",
+        "interval_covers_yardstick": false
       },
       "crossed_in_coverage": {
         "statistic": "difference of per-seed arm means",
@@ -500,8 +669,21 @@
         ],
         "arm_mean": 0.09897937383291058,
         "anchor_mean": 0.05433350959205846,
+        "interval": {
+          "alpha": 0.05,
+          "point": 0.04464586424085212,
+          "lo": 0.03380779043000809,
+          "hi": 0.05548393805169616,
+          "width": 0.02167614762168807,
+          "empty": false,
+          "contains_zero": false,
+          "truncated_at_search_edge": false,
+          "method": "inversion of the exact two-sample permutation test: the set of shifts delta with p(arm - delta, anchor) > alpha",
+          "n_grid": 801
+        },
         "can_reject_at_0.05": true,
-        "reading": "distinguishable"
+        "reading": "distinguishable, and the difference is somewhere in [0.03381, 0.05548]",
+        "interval_covers_yardstick": false
       }
     },
     "K10_sm": {
@@ -535,8 +717,21 @@
         ],
         "arm_mean": 0.02609735588543117,
         "anchor_mean": 0.018902862367220222,
+        "interval": {
+          "alpha": 0.05,
+          "point": 0.007194493518210946,
+          "lo": 0.006046920658108106,
+          "hi": 0.008281667806729422,
+          "width": 0.0022347471486213162,
+          "empty": false,
+          "contains_zero": false,
+          "truncated_at_search_edge": false,
+          "method": "inversion of the exact two-sample permutation test: the set of shifts delta with p(arm - delta, anchor) > alpha",
+          "n_grid": 801
+        },
         "can_reject_at_0.05": true,
-        "reading": "distinguishable"
+        "reading": "distinguishable, and the difference is somewhere in [0.00605, 0.00828]",
+        "interval_covers_yardstick": false
       },
       "crossed_in_coverage": {
         "statistic": "difference of per-seed arm means",
@@ -563,10 +758,28 @@
         ],
         "arm_mean": 0.10440419210228792,
         "anchor_mean": 0.05433350959205846,
+        "interval": {
+          "alpha": 0.05,
+          "point": 0.05007068251022946,
+          "lo": 0.02908457611546869,
+          "hi": 0.07105678890499025,
+          "width": 0.041972212789521554,
+          "empty": false,
+          "contains_zero": false,
+          "truncated_at_search_edge": false,
+          "method": "inversion of the exact two-sample permutation test: the set of shifts delta with p(arm - delta, anchor) > alpha",
+          "n_grid": 801
+        },
         "can_reject_at_0.05": true,
-        "reading": "distinguishable"
+        "reading": "distinguishable, and the difference is somewhere in [0.02908, 0.07106]",
+        "interval_covers_yardstick": false
       }
     }
+  },
+  "yardstick": {
+    "value": 0.004400640585459768,
+    "what": "|K5_sm - K1_nv| terminal-step in-distribution, the smallest gap this repo has treated as a real effect in the K-curve",
+    "why": "an interval is only interpretable against an effect size that matters; a null whose interval covers this yardstick has not ruled out a difference of the same order as the curve's own structure"
   },
   "audit_of_the_K2_sm_claim": {
     "claim_made": "K=2 at matched gradient steps is statistically indistinguishable from K=1 in-distribution",
@@ -578,7 +791,7 @@
       8
     ],
     "smallest_attainable_p": 0.006060606060606061,
-    "verdict": "no difference detected, and the test HAD the resolution to detect one",
+    "verdict": "no difference detected; the 95% interval on the mean difference is [-0.00038, 0.00133], so effects up to 0.00133 are NOT ruled out",
     "how_the_claim_should_read": "the trajectory-paired test finds no difference across trajectories at seed-averaged predictions, and the seed-level test at these seed counts is reported beside it with its own resolution stated. The word 'indistinguishable' was doing work the trajectory test cannot do, and is withdrawn in favour of whichever of the two readings applies."
   }
 }

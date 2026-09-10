@@ -1,0 +1,35 @@
+{
+  "data": "data",
+  "run": "runs/shrink/w32m12L4_K10_s1",
+  "epochs": 800,
+  "batch": 32,
+  "lr": 0.002,
+  "width": 32,
+  "modes": 12,
+  "layers": 4,
+  "rollout_steps": 0,
+  "stride": 10,
+  "strides": null,
+  "eval_stride": 10,
+  "overlap_pairs": false,
+  "band_weight": 0.0,
+  "blind": false,
+  "init_from": null,
+  "seed": 1,
+  "force": false,
+  "device": "cuda:0",
+  "num_workers": 0,
+  "params": 2369977,
+  "n_train_pairs": 900,
+  "trained_strides": [
+    10
+  ],
+  "pairs_per_stride": [
+    900
+  ],
+  "pair_starts": [
+    0
+  ],
+  "applications_per_wafer": 1,
+  "gpu": "NVIDIA H100 NVL"
+}
