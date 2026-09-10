@@ -5187,3 +5187,140 @@ number with an unvalidated instrument and published the result within the same
 turn.** The guess was closer than the correction. What settled it was writing
 `tests/test_specprop.py` — the `modes_a`-is-free test failed, and that failure
 was the only reason the weight-transpose bug was found at all.
+
+---
+
+## Turn 13 — the falsification a concurrent instance found applies to my own architecture, and it kills H18 before the training finishes
+
+### Accepting the falsification, and extending it to the thing nobody had connected it to
+
+A concurrent α instance falsified H15's Nyquist argument with a control it built
+into its own sweep (commit `ac880e0`). I had argued a coarse spectral body is
+representationally free because the body truncates to `modes=4` and a 4×
+downsample leaves Nyquist at 16; at s=8 Nyquist is 8, still twice `modes=4`, so
+the argument predicts s=4 and s=8 score identically at matched parameters. They
+differ by **1.31×** (0.04231 vs 0.05541), intervals non-overlapping, and one
+crosses the clause while the other misses.
+
+Its diagnosis is right and I accept it without re-deriving it: **my bound was on
+what the body can OUTPUT, while the downsample acts on what it can SEE.**
+`avg_pool2d` destroys interface-local structure in the input before the body
+reads it, and no mode-truncation bound on an output constrains the information
+at the input. I conflated the two for two turns.
+
+**What nobody had said is that the same conflation is inside
+`SpectralPropagator`, which I built two turns ago on the same reasoning and
+which was training while the falsification landed.** Its update is
+`phi + irfft2(rfft2(phi)*H + A)`, so the residual it emits is band-limited to
+`modes_a` and its dependence on `phi` runs through only the lowest
+`modes`×`modes` of the input spectrum. I had chosen `modes_a` ∈ {4, 16, 32} by
+analogy with FNO practice, without ever asking what the *data* requires.
+
+### The bound, computed with no network, no checkpoint and no training
+
+`scripts/spectral_floor.py`. The model can only emit `phi_t + r` with `r`
+band-limited to `modes_a`; the best such `r` is the spectral projection of the
+true residual, which a perfect `H` and `A` attain. So the projection error is a
+**lower bound on any `SpectralPropagator` at that `modes_a`** — an oracle, in the
+same style as `runs/surface_representable.json`. Test split, terminal step at
+stride 10 (the deployment the cost rows priced), the repo's own band metric:
+
+| `modes_a` | oracle floor | p90 | fraction of 250 under 0.05 |
+|---|---|---|---|
+| 4 | **0.87906** | 1.11331 | 0.000 |
+| 16 | **0.44070** | 0.56059 | 0.000 |
+| 32 | **0.28516** | 0.36273 | 0.000 |
+| 56 | 0.12467 | 0.15853 | 0.000 |
+| 60 | 0.08383 | 0.10733 | 0.016 |
+| 62 | 0.05322 | 0.06811 | 0.432 |
+| **63** | **0.03298** | 0.04392 | **1.000** |
+| 64 (control) | **0.00003** | 0.00004 | 1.000 |
+
+Do-nothing persistence baseline: **3.89893**, so the floors are far below the
+trivial predictor and the ladder is measuring something.
+
+**The `modes_a=64` row is the control that makes this trustworthy rather than a
+bug report on my own code.** At 128×128 Nyquist is 64, so that row keeps the
+whole spectrum and must round-trip to numerical zero. It reads 0.00003. Without
+it I could not distinguish "the architecture is doomed" from "my projection
+slices the half-spectrum wrongly" — and slicing the `rfft2` second axis
+symmetrically is exactly the mistake that would have manufactured a doom
+verdict, so `project()` documents why it does not.
+
+**So all three arms launched for H18 are provably unable to meet clause 1**, and
+not narrowly: `m4_ma4`'s floor is **17.6× the threshold**. H18's accuracy
+prediction of 0.05–0.12 was impossible for every configuration I ran it on. I
+priced three architectures, cleared clause 2 with them, wrote it into four
+documents, and none of them could ever have met clause 1 — a bound I could have
+computed in ten minutes before spending the GPU time.
+
+**Why the floor is so harsh, which is the physics and worth keeping:** the
+residual of a signed-distance field over a 10-step etch is **broadband**. The
+surface advances several µm and the change is spatially localised at the
+interface, so its spectrum is nearly flat and truncating even half of it leaves
+0.285 relative error in the band. Low-mode truncation is standard FNO practice
+because FNO benchmarks are smooth PDE solutions; an interface displacement is
+not one. That is a statement about this problem class, not about my
+implementation.
+
+**The three doomed arms are being left to finish, for a reason.** They test the
+bound: the floor predicts they land at or above 0.879, 0.441 and 0.285. An
+oracle bound that the trained models violate would mean the bound is wrong, and
+one that they approach would mean the architecture is optimisation-limited
+rather than representation-limited. Either is worth the GPU time already spent;
+killing them would throw away the only empirical check on the floor.
+
+### H20: the fix is the property the class was actually designed around
+
+`modes_a` is **free in operations** — `irfft2` costs the same whatever fraction
+of the spectrum is non-zero — which was the one non-obvious design note in the
+class from the start. I simply chose the wrong value. Priced
+(`runs/arch_cost_h20.json`, paired workload-matched denominator, all rows in one
+invocation):
+
+| config | params | µs/wafer | speedup | range | full-field ops |
+|---|---|---|---|---|---|
+| `specprop_m4_ma64` | 1,070,144 | **426.4** | **1187.7×** | **[1062–1218×]** | 4 |
+| `specprop_m4_ma63` | 1,037,124 | 509.5 | 994.1× | [946–1129×] | 4 |
+| `specprop_m8_ma64` | 1,082,624 | 512.9 | 987.4× | [920–1013×] | 6 |
+| `specprop_m16_ma64` | 1,132,544 | 537.4 | 942.4× | [906–1380×] | 6 |
+| `fno_w8m4L2` (reference) | 10,897 | 3,598.6 | 140.7× | [137–177×] | 45 |
+
+**`specprop_m4_ma64` clears 1000× across its entire measured range and has an
+oracle floor of 0.00003 — the first architecture in this repo with no
+representational obstruction to clause 1 and no cost obstruction to clause 2.**
+
+Recorded because it is counter-intuitive and I do not want it read as a typo:
+`ma=64` is *cheaper* than `ma=63` (426 vs 510 µs). Keeping the whole spectrum
+needs no sub-slicing or masking, while 63 does. The ranges overlap slightly, so
+part of this may be load; the direction is nonetheless reproducible in the op
+count (4 full-field ops at ma=64, and the ma=63 path adds masking work).
+
+### The risk, and the null that measures it rather than caveating it
+
+`A` depends **only on the recipe**. In this dataset the initial geometry is
+determined by `trench_width` and `mask_height`, which *are* conditioning inputs,
+so a full-spectrum `A` can in principle encode the entire terminal residual for a
+recipe. The model would then be a **lookup table that ignores φ** — scoring well
+here and not being an operator at all. That is the same dataset limitation the
+pointwise arms have, and at `ma=64` it is maximally available.
+
+So the null is pre-registered and launched *alongside* the candidate, not run
+afterwards if the number looks too good. `modes=0` removes the multiplicative
+term, leaving `phi + irfft2(A(recipe))`, whose residual is **provably
+φ-independent** — `tests/test_arch.py` pins `max|residual(φ₁) − residual(φ₂)| = 0`
+exactly, not approximately.
+
+**Decision rule, written before either arm finishes:**
+
+* `m4_ma64` meets 0.05 and `m0_ma64` does **not** → the φ-dependence does real
+  work and the model is an operator.
+* **Both** meet 0.05 → this dataset cannot distinguish an operator from a recipe
+  lookup. The clause-1 pass would be real but uninformative about operator
+  learning, and that has to appear in the same sentence as the number.
+* Neither → the floor was not the binding constraint and the optimisation is.
+
+**Prediction: `m4_ma64` lands 0.02–0.06, and `m0_ma64` lands within 0.01 of
+it** — i.e. I expect the lookup degeneracy to be *real* on this dataset. Stating
+that in advance specifically because it is the outcome that would most tempt a
+favourable reading of a clause-1 pass.

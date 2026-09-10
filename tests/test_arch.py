@@ -131,6 +131,62 @@ def test_unknown_arch_raises():
     raise AssertionError("an unknown arch was accepted")
 
 
+
+
+def test_specprop_null_residual_is_exactly_phi_independent():
+    """`modes=0` is H20's pre-registered null and its whole value is that the
+    residual cannot depend on phi. Pinned as EXACT equality, not a tolerance:
+    if a future edit lets any phi-dependent path leak into the modes=0 branch,
+    the null stops being a null and the H20 decision rule silently breaks."""
+    m = build_from_cfg({"arch": "specprop", "modes": 0, "modes_a": 64,
+                        "width": 8, "layers": 2}, 7)
+    m.eval()
+    cond = torch.randn(1, 7)
+    with torch.no_grad():
+        r1 = m.residual(torch.randn(1, 1, 128, 128), cond)
+        r2 = m.residual(torch.zeros(1, 1, 128, 128), cond)
+        r3 = m.residual(torch.randn(1, 1, 128, 128) * 100, cond)
+    assert torch.equal(r1, r2), float((r1 - r2).abs().max())
+    assert torch.equal(r1, r3), float((r1 - r3).abs().max())
+    assert not m.has_mult
+    assert m.h_head is None
+
+
+def test_specprop_with_modes_does_depend_on_phi():
+    """The complement: the candidate arm must actually use phi, or the null
+    comparison is vacuous."""
+    m = build_from_cfg({"arch": "specprop", "modes": 4, "modes_a": 64,
+                        "width": 8, "layers": 2}, 7)
+    # At init both heads are ~zero, so give H real weights before testing.
+    torch.nn.init.normal_(m.h_head[-1].weight, std=0.1)
+    m.eval()
+    cond = torch.randn(1, 7)
+    with torch.no_grad():
+        r1 = m.residual(torch.randn(1, 1, 128, 128), cond)
+        r2 = m.residual(torch.zeros(1, 1, 128, 128), cond)
+    assert not torch.allclose(r1, r2), "modes>0 residual ignored phi"
+
+
+def test_specprop_projection_is_the_floor_scripts_measure():
+    """The oracle floor in runs/spectral_floor.json is only a bound if the model
+    really cannot emit content outside modes_a. Verify directly: the residual's
+    spectrum must be zero everywhere outside the retained block."""
+    ma = 8
+    m = build_from_cfg({"arch": "specprop", "modes": 4, "modes_a": ma,
+                        "width": 8, "layers": 2}, 7)
+    torch.nn.init.normal_(m.a_head[-1].weight, std=0.5)
+    torch.nn.init.normal_(m.h_head[-1].weight, std=0.5)
+    m.eval()
+    with torch.no_grad():
+        r = m.residual(torch.randn(1, 1, 128, 128), torch.randn(1, 7))
+    f = torch.fft.rfft2(r.squeeze(1).float())
+    keep = torch.zeros_like(f, dtype=torch.bool)
+    keep[:, :ma, :ma] = True
+    keep[:, -ma:, :ma] = True
+    outside = f[~keep].abs().max()
+    assert float(outside) < 1e-4, f"residual has content outside modes_a: {outside}"
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:
