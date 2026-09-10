@@ -60,15 +60,29 @@ def main():
          "We learn a recipe-conditioned Fourier neural operator for 2-D plasma-etch surface "
          "evolution against a ViennaPS ground truth, and measure it against a KPI with three "
          "clauses. The accuracy clause is met comfortably on the distribution the operator "
-         "was trained for and missed by roughly an order of magnitude on a crossed split "
-         "that removes an artefact of how the training timesteps were chosen. The speedup "
-         "clause is unreachable at 1000× under every reading we can defend, and the "
-         "measurement that decides it is the *denominator*, not the model. The value of the "
+         "was trained for and missed on a crossed split that removes an artefact of how the "
+         "training timesteps were chosen — by a margin that depends on coverage rather than "
+         "on the split: modest for trajectories inside the trained per-step-displacement "
+         "range, and more than an order of magnitude for those outside it, under all three "
+         "coverage rules we fixed in advance (§4.1). The speedup "
+         "clause is unreachable at 1000× under every reading we can defend, and two separate "
+         "measurements were needed to say why. The *denominator* decided every figure we "
+         "first reported — each of them timed a cold reference against a warmed surrogate, "
+         "and all three are withdrawn here. The *model* decides whether the clause is "
+         "reachable at all: a convolution small enough to fit the implied budget emits the "
+         "same field, so the gap is capacity we chose rather than a speedup the task "
+         "forbids. The cheap way to spend less capacity — predicting the front compactly "
+         "instead of as a field — is closed twice over, once because the etch undercuts its "
+         "mask and once because converting a compact front back into the field the metric "
+         "scores costs more than the entire speedup budget. The value of the "
          "surrogate for inverse design is reported in the only currency that has meaning "
          "here — simulator calls saved.", "",
-         "The contribution is less the operator than the protocol: three of the four "
-         "numbers this project nearly reported were wrong in ways that a JSON artefact and "
-         "a plausible protocol paragraph would not have caught.", "",
+         "The contribution is less the operator than the protocol. Most of the numbers this "
+         "project nearly reported were wrong, and the errors were not in the model: they "
+         "were in denominators, in warm-up asymmetries, in seed counts below the noise "
+         "floor, and five consecutive times in a reconstruction used to measure something "
+         "else. Each was caught by a round-trip or a null whose answer was known in advance, "
+         "never by inspection of a plausible protocol paragraph.", "",
          "## 1. Problem", "",
          "Plasma etch takes a masked wafer and a recipe — ion flux, etchant flux, oxygen "
          "flux, ion energy — and evolves the exposed surface. The forward problem is a "
@@ -429,6 +443,139 @@ def main():
               f"{invb['calls_to_match_gradient']['n_never_matched']} targets never matched "
               "within budget.", ""]
     else:
+        L += [NM, ""]
+
+    # ---- 4.5 the reopened work: why clause 2 is not an implementation problem
+    #
+    # Sections 4.1-4.4 predate the 2026-09-10 reopening, so every finding from it
+    # lived only in critique_log.md. This section is generated from the run JSONs
+    # of that work; nothing in it is typed.
+    cf = rd("runs/cost_floor.json")
+    rf = rd("runs/repr_floor_aligned.json") or rd("runs/repr_floor.json")
+    sr = rd("runs/surface_representable.json")
+    spr = rd("runs/speed_spread.json")
+    L += ["### 4.5 Why the speedup clause is not an implementation problem", ""]
+    if spr:
+        k = spr["kpi_clause"]
+        lo, hi = k["value_range_over_invocations"]
+        L += [f"Section 4.2 leaves the clause short by "
+              f"{k['shortfall_factor_at_median']:.0f}x at "
+              f"**{k['value_median_over_invocations']:.2f}x** "
+              f"({lo:.2f}-{hi:.2f}x over {k['n_invocations']} whole invocations). "
+              "The obvious reading of such a gap is that the implementation is "
+              "unfinished. We tested that reading directly, and it is wrong in "
+              "one direction and right in another.", ""]
+    if cf:
+        v, pr = cf["verdict"], cf["protocol"]
+        L += ["**The output representation does not bound the clause; our "
+              "architecture does.** We priced models chosen to be *useless* -- an "
+              "identity map, a single convolution -- against the budget the clause "
+              f"implies, which is the measured reference cost divided by 1000: "
+              f"**{pr['budget_warm_s'] * 1e6:.0f} us** per wafer warm. No accuracy "
+              "is claimed by any row; a row that is fast and predicts nothing is "
+              "the point.", "",
+              "| model | output | CPU-s / wafer, warm | speedup | a real surrogate? |",
+              "|---|---|---|---|---|"]
+        for name, m in cf["models"].items():
+            L.append(f"| `{name}` | {m['output']} | "
+                     f"{m['warm']['median_cpu_s'] * 1e6:,.0f} us | "
+                     f"{m['warm']['speedup_vs_solver']:,.1f}x | "
+                     f"{'yes' if m['is_a_real_surrogate'] else 'no'} |")
+        # Two caveats the table cannot carry in a cell, both of which cut
+        # against the surface rows this section goes on to close.
+        surf = [m for n, m in cf["models"].items() if "surface" in m["output"]]
+        if len(surf) >= 2:
+            a_, b_ = surf[0]["warm"]["median_cpu_s"], surf[-1]["warm"]["median_cpu_s"]
+            L += ["",
+                  f"Two caveats on the surface rows, since this section goes on to "
+                  f"rule them out. First, each row is one process's median, and the "
+                  f"between-process spread of this machine is a measured 1.37x "
+                  f"(`runs/speed_spread.json`) -- the two surface rows differ by "
+                  f"{max(a_, b_) / min(a_, b_):.2f}x, i.e. by nothing, which is why "
+                  f"the row that *adds* a rasterisation appears cheaper than the row "
+                  f"it adds it to. Second, that rasterisation is a broadcast to "
+                  f"signed **vertical** distance, which is not the Euclidean "
+                  f"quantity clause 1 compares against; the honest reconstruction "
+                  f"costs are in the second table below and are three orders of "
+                  f"magnitude larger. Neither row should be read as a route."]
+        L += ["",
+              f"So a 3x3 convolution emits a full {pr.get('grid', '128x128')} field "
+              f"inside the budget's own order of magnitude, while the deployed "
+              f"operator is **{[m for n, m in cf['models'].items() if m['is_a_real_surrogate']][0]['warm']['over_budget_factor']:.0f}x "
+              f"over** it. The hypothesis we had written down first -- that "
+              "producing a field of this size could not fit the budget under any "
+              "architecture -- is falsified, and the honest statement of the gap "
+              "changes from *a speedup this task does not admit* to *a speedup we "
+              "spent on capacity whose necessity we have not measured*.", ""]
+    if sr and rf:
+        sv, rv = sr["verdict"], rf["verdict"]
+        rc = rf.get("cost", {})
+        L += ["**But the cheap way to spend less does not survive either, and it "
+              "fails twice for unrelated reasons.** The representation that makes "
+              "the surrogate cheap is a compact description of the front rather "
+              "than a field. It has two forms and both are closed.", "",
+              f"*One height per column cannot express the geometry.* The etch "
+              f"undercuts the mask, so a column can be solid above *and* below a "
+              f"void. Over every emitted frame of the test split, that occurs in "
+              f"**{100 * sv['frac_frames_affected']:.1f}%** of frames and "
+              f"**{sv['n_real_trapped_voids']:,}** distinct trapped voids, the worst "
+              f"**{sv['worst_reentrant_void_um']:.1f} um** deep "
+              f"({sv['worst_in_grid_cells']:.0f} grid cells), and it "
+              f"{'grows' if sv['grows_with_etch_time'] else 'does not grow'} with "
+              "etch time. A height output would silently fill every one of those "
+              "cavities in.", ""]
+        if rc:
+            L += ["*Keeping every crossing expresses the geometry, but then "
+                  "converting back to a field costs more than the whole budget.* "
+                  "Clause 1 is scored as a field, so a compact prediction has to be "
+                  "rasterised before it can be measured, and that rasterisation "
+                  "lands on the surrogate's side of the ratio. The last column is "
+                  "the best speedup the route could reach **with a free model**:", "",
+                  "| reconstruction | CPU-s / call | vs budget | ceiling with a free model |",
+                  "|---|---|---|---|"]
+            base = None
+            if spr:
+                base = rd("runs/speed_symmetric.json")
+            solver_warm = (base or {}).get("solver", {}).get(
+                "marginal_warm", {}).get("median_cpu")
+            for name, c in sorted(rc.items(),
+                                  key=lambda kv: kv[1]["cpu_s_per_call"]["median"]):
+                cc = c["cpu_s_per_call"]["median"]
+                budget = rf["protocol"].get("budget_warm_s") or (
+                    solver_warm / 1000 if solver_warm else None)
+                vs = f"{cc / budget:.1f}x" if budget else NM
+                ceil = f"{solver_warm / cc:,.2f}x" if solver_warm else NM
+                L.append(f"| `{name}` | {cc * 1e6:,.0f} us | {vs} | {ceil} |")
+            L += ["",
+                  "Two of these share no code -- one rasterises onto an upsampled "
+                  "grid and distance-transforms it, the other computes exact "
+                  "point-to-segment distance with no grid at all -- and they agree "
+                  "within a factor of four. That is what entitles the conclusion to "
+                  "be about the problem rather than about our code. The only "
+                  "reconstruction cheap enough computes signed *vertical* distance, "
+                  "which is not the Euclidean quantity the metric compares against, "
+                  "and is single-height, so the undercut result closes it as well.", ""]
+        L += ["We report no value for how much the compact representation *loses* "
+              "in accuracy. Our reconstruction of it was wrong five separate ways "
+              "-- an inverted sign convention, a hard-coded phase at the window's "
+              "top, an ignored non-unit field gradient, a half-cell sampling "
+              "offset, and a band restriction that discarded genuine band points "
+              "beside steep sidewalls -- and each error produced a plausible floor "
+              "that was really our own. Four of the five were invisible in the "
+              "output and appeared only against a case whose answer is known in "
+              "advance, which is why the reconstruction is now pinned by "
+              "round-trip tests and why the remaining figure is quoted as an "
+              "upper bound rather than as a loss.", "",
+              "**The conclusion is narrower than it looks and worth stating "
+              "precisely.** The constraint is not that surrogates cannot be fast, "
+              "nor that this front cannot be described compactly. It is that "
+              "*clause 1 scores a field*, and a field is the expensive thing to "
+              "produce. The same surfaces satisfy clause 3's contour-based shape "
+              "error comfortably. We do not rewrite clause 1's metric to suit the "
+              "representation it excludes -- choosing a metric after seeing which "
+              "method it rules out is the one move this work refuses -- but the "
+              "location of the constraint is a result in itself.", ""]
+    elif not (cf or rf):
         L += [NM, ""]
 
     L += ["## 5. Threats to validity", "",

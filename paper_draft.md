@@ -4,9 +4,9 @@
 
 ## Abstract
 
-We learn a recipe-conditioned Fourier neural operator for 2-D plasma-etch surface evolution against a ViennaPS ground truth, and measure it against a KPI with three clauses. The accuracy clause is met comfortably on the distribution the operator was trained for and missed by roughly an order of magnitude on a crossed split that removes an artefact of how the training timesteps were chosen. The speedup clause is unreachable at 1000× under every reading we can defend, and the measurement that decides it is the *denominator*, not the model. The value of the surrogate for inverse design is reported in the only currency that has meaning here — simulator calls saved.
+We learn a recipe-conditioned Fourier neural operator for 2-D plasma-etch surface evolution against a ViennaPS ground truth, and measure it against a KPI with three clauses. The accuracy clause is met comfortably on the distribution the operator was trained for and missed on a crossed split that removes an artefact of how the training timesteps were chosen — by a margin that depends on coverage rather than on the split: modest for trajectories inside the trained per-step-displacement range, and more than an order of magnitude for those outside it, under all three coverage rules we fixed in advance (§4.1). The speedup clause is unreachable at 1000× under every reading we can defend, and two separate measurements were needed to say why. The *denominator* decided every figure we first reported — each of them timed a cold reference against a warmed surrogate, and all three are withdrawn here. The *model* decides whether the clause is reachable at all: a convolution small enough to fit the implied budget emits the same field, so the gap is capacity we chose rather than a speedup the task forbids. The cheap way to spend less capacity — predicting the front compactly instead of as a field — is closed twice over, once because the etch undercuts its mask and once because converting a compact front back into the field the metric scores costs more than the entire speedup budget. The value of the surrogate for inverse design is reported in the only currency that has meaning here — simulator calls saved.
 
-The contribution is less the operator than the protocol: three of the four numbers this project nearly reported were wrong in ways that a JSON artefact and a plausible protocol paragraph would not have caught.
+The contribution is less the operator than the protocol. Most of the numbers this project nearly reported were wrong, and the errors were not in the model: they were in denominators, in warm-up asymmetries, in seed counts below the noise floor, and five consecutive times in a reconstruction used to measure something else. Each was caught by a round-trip or a null whose answer was known in advance, never by inspection of a plausible protocol paragraph.
 
 ## 1. Problem
 
@@ -161,6 +161,45 @@ The forward map is degenerate over (rate × time): distinct processes reach the 
 ### 4.4 What the surrogate is worth, in simulator calls
 
 `[not measured]`
+
+### 4.5 Why the speedup clause is not an implementation problem
+
+Section 4.2 leaves the clause short by 95x at **10.55x** (8.86-12.16x over 8 whole invocations). The obvious reading of such a gap is that the implementation is unfinished. We tested that reading directly, and it is wrong in one direction and right in another.
+
+**The output representation does not bound the clause; our architecture does.** We priced models chosen to be *useless* -- an identity map, a single convolution -- against the budget the clause implies, which is the measured reference cost divided by 1000: **277 us** per wafer warm. No accuracy is claimed by any row; a row that is fast and predicts nothing is the point.
+
+| model | output | CPU-s / wafer, warm | speedup | a real surrogate? |
+|---|---|---|---|---|
+| `identity_field` | field 128x128 | 1 us | 244,661.8x | no |
+| `conv1x1_field` | field 128x128 | 10 us | 26,667.2x | no |
+| `conv3x3_w8_field` | field 128x128 | 370 us | 748.2x | no |
+| `fno_w8_m4_field` | field 128x128 | 1,782 us | 155.3x | no |
+| `fno_w64_m20_field_DEPLOYED` | field 128x128 | 87,835 us | 3.2x | yes |
+| `mlp_surface_128` | surface, 128 heights | 47 us | 5,830.1x | no |
+| `mlp_surface_128_plus_raster` | surface -> field 128x128 | 33 us | 8,374.8x | no |
+
+Two caveats on the surface rows, since this section goes on to rule them out. First, each row is one process's median, and the between-process spread of this machine is a measured 1.37x (`runs/speed_spread.json`) -- the two surface rows differ by 1.44x, i.e. by nothing, which is why the row that *adds* a rasterisation appears cheaper than the row it adds it to. Second, that rasterisation is a broadcast to signed **vertical** distance, which is not the Euclidean quantity clause 1 compares against; the honest reconstruction costs are in the second table below and are three orders of magnitude larger. Neither row should be read as a route.
+
+So a 3x3 convolution emits a full 128x128 field inside the budget's own order of magnitude, while the deployed operator is **317x over** it. The hypothesis we had written down first -- that producing a field of this size could not fit the budget under any architecture -- is falsified, and the honest statement of the gap changes from *a speedup this task does not admit* to *a speedup we spent on capacity whose necessity we have not measured*.
+
+**But the cheap way to spend less does not survive either, and it fails twice for unrelated reasons.** The representation that makes the surrogate cheap is a compact description of the front rather than a field. It has two forms and both are closed.
+
+*One height per column cannot express the geometry.* The etch undercuts the mask, so a column can be solid above *and* below a void. Over every emitted frame of the test split, that occurs in **83.3%** of frames and **7,681** distinct trapped voids, the worst **16.8 um** deep (84 grid cells), and it grows with etch time. A height output would silently fill every one of those cavities in.
+
+*Keeping every crossing expresses the geometry, but then converting back to a field costs more than the whole budget.* Clause 1 is scored as a field, so a compact prediction has to be rasterised before it can be measured, and that rasterisation lands on the surrogate's side of the ratio. The last column is the best speedup the route could reach **with a free model**:
+
+| reconstruction | CPU-s / call | vs budget | ceiling with a free model |
+|---|---|---|---|
+| `rebuild_vertical` | 66 us | 0.2x | 4,223.59x |
+| `rebuild_edt` | 1,170 us | 4.2x | 236.43x |
+| `rebuild_polyline_band` | 34,567 us | 124.9x | 8.01x |
+| `rebuild_multi_fine_u8` | 133,364 us | 482.0x | 2.07x |
+
+Two of these share no code -- one rasterises onto an upsampled grid and distance-transforms it, the other computes exact point-to-segment distance with no grid at all -- and they agree within a factor of four. That is what entitles the conclusion to be about the problem rather than about our code. The only reconstruction cheap enough computes signed *vertical* distance, which is not the Euclidean quantity the metric compares against, and is single-height, so the undercut result closes it as well.
+
+We report no value for how much the compact representation *loses* in accuracy. Our reconstruction of it was wrong five separate ways -- an inverted sign convention, a hard-coded phase at the window's top, an ignored non-unit field gradient, a half-cell sampling offset, and a band restriction that discarded genuine band points beside steep sidewalls -- and each error produced a plausible floor that was really our own. Four of the five were invisible in the output and appeared only against a case whose answer is known in advance, which is why the reconstruction is now pinned by round-trip tests and why the remaining figure is quoted as an upper bound rather than as a loss.
+
+**The conclusion is narrower than it looks and worth stating precisely.** The constraint is not that surrogates cannot be fast, nor that this front cannot be described compactly. It is that *clause 1 scores a field*, and a field is the expensive thing to produce. The same surfaces satisfy clause 3's contour-based shape error comfortably. We do not rewrite clause 1's metric to suit the representation it excludes -- choosing a metric after seeing which method it rules out is the one move this work refuses -- but the location of the constraint is a result in itself.
 
 ## 5. Threats to validity
 

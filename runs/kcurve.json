@@ -13,64 +13,64 @@
     "target": 0.05,
     "anchor": "runs/seed1..8 (stride=1, pinned identical to the historical one-step dataset by tests/test_stride.py)",
     "seed_rule": "8 seeds per arm plus an exact paired test before a comparison is a verdict; fewer is a screen",
-    "completeness_rule": "an arm is scored only if it carries done.json. This script evaluates best.pt directly, so without that rule a run still training, or killed mid-training, is scored at its partial checkpoint and joins the seed group as if finished -- see kcurve_report.is_complete"
+    "completeness_rule": "scripts/seed_spread.completed -- done.json, or a log of exactly epochs 0..n-1 each once, and in both cases test_eval.json no older than best.pt. This script evaluates best.pt directly, so without the rule a run still training, or killed mid-training, is scored at its partial checkpoint and joins the seed group as if finished -- see kcurve_report.is_complete"
   },
   "excluded_incomplete_arms": [
     {
       "run": "runs/kcurve/K10_sm_s1",
-      "epoch_lines": 282,
+      "epoch_lines": 384,
       "epochs_requested": 800,
       "has_checkpoint": true,
-      "why_excluded": "no done.json: still training or killed. Scoring its partial best.pt would enter an undertrained model into the seed group, which is what contaminated every K-curve number before 2026-09-10."
+      "why_excluded": "logged 384/800 epochs, not a complete 0..799"
     },
     {
       "run": "runs/kcurve/K2_nv_s5",
       "epoch_lines": 26,
       "epochs_requested": 80,
       "has_checkpoint": true,
-      "why_excluded": "no done.json: still training or killed. Scoring its partial best.pt would enter an undertrained model into the seed group, which is what contaminated every K-curve number before 2026-09-10."
+      "why_excluded": "unparseable log line (interleaved writers?)"
     },
     {
       "run": "runs/kcurve/K2_ov_s4",
       "epoch_lines": 26,
       "epochs_requested": 80,
       "has_checkpoint": true,
-      "why_excluded": "no done.json: still training or killed. Scoring its partial best.pt would enter an undertrained model into the seed group, which is what contaminated every K-curve number before 2026-09-10."
+      "why_excluded": "unparseable log line (interleaved writers?)"
     },
     {
       "run": "runs/kcurve/K2_ov_s8",
-      "epoch_lines": 18,
+      "epoch_lines": 38,
       "epochs_requested": 80,
       "has_checkpoint": true,
-      "why_excluded": "no done.json: still training or killed. Scoring its partial best.pt would enter an undertrained model into the seed group, which is what contaminated every K-curve number before 2026-09-10."
+      "why_excluded": "logged 38/80 epochs, not a complete 0..79"
     },
     {
       "run": "runs/kcurve/K2_sm_s4",
-      "epoch_lines": 69,
+      "epoch_lines": 90,
       "epochs_requested": 160,
       "has_checkpoint": true,
-      "why_excluded": "no done.json: still training or killed. Scoring its partial best.pt would enter an undertrained model into the seed group, which is what contaminated every K-curve number before 2026-09-10."
+      "why_excluded": "logged 90/160 epochs, not a complete 0..159"
     },
     {
       "run": "runs/kcurve/K5_ov_s4",
       "epoch_lines": 26,
       "epochs_requested": 80,
       "has_checkpoint": true,
-      "why_excluded": "no done.json: still training or killed. Scoring its partial best.pt would enter an undertrained model into the seed group, which is what contaminated every K-curve number before 2026-09-10."
+      "why_excluded": "unparseable log line (interleaved writers?)"
     },
     {
       "run": "runs/kcurve/K5_ov_s8",
-      "epoch_lines": 14,
+      "epoch_lines": 44,
       "epochs_requested": 80,
       "has_checkpoint": true,
-      "why_excluded": "no done.json: still training or killed. Scoring its partial best.pt would enter an undertrained model into the seed group, which is what contaminated every K-curve number before 2026-09-10."
+      "why_excluded": "logged 44/80 epochs, not a complete 0..79"
     },
     {
       "run": "runs/kcurve/K5_sm_s4",
-      "epoch_lines": 161,
+      "epoch_lines": 214,
       "epochs_requested": 400,
       "has_checkpoint": true,
-      "why_excluded": "no done.json: still training or killed. Scoring its partial best.pt would enter an undertrained model into the seed group, which is what contaminated every K-curve number before 2026-09-10."
+      "why_excluded": "logged 214/400 epochs, not a complete 0..399"
     }
   ],
   "arms": {
@@ -85,12 +85,24 @@
         22560
       ],
       "runs": [
+        "runs/seed1",
+        "runs/seed2",
+        "runs/seed3",
         "runs/seed4",
+        "runs/seed5",
+        "runs/seed6",
+        "runs/seed7",
         "runs/seed8"
       ],
-      "n_seeds": 2,
+      "n_seeds": 8,
       "seeds": [
+        1,
+        2,
+        3,
         4,
+        5,
+        6,
+        7,
         8
       ],
       "n_train_pairs": [
@@ -100,37 +112,49 @@
       "in_distribution": {
         "terminal_step": {
           "per_seed": [
+            0.019352013520896435,
+            0.018051594631746413,
+            0.0183573831692338,
             0.019254365239292383,
+            0.019768870061263443,
+            0.018949094800278544,
+            0.018788799880072475,
             0.018700777634978294
           ],
-          "point": 0.01897757143713534,
-          "seed_range": 0.0005535876043140896,
-          "lo": 0.01755320260017179,
-          "hi": 0.020502657359233126,
+          "point": 0.018902862367220222,
+          "seed_range": 0.0017172754295170303,
+          "lo": 0.017529986936127534,
+          "hi": 0.02044093855682877,
           "n": 250,
           "met_point": true,
           "met_every_seed": true,
           "met_upper_ci": true
         },
-        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.012553802769631148
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.012552677310304716
       },
       "crossed_in_coverage": {
         "n_trajectories": 121,
         "terminal_step": {
           "per_seed": [
+            0.07029722317714583,
+            0.04165912236371809,
+            0.03549717906631591,
             0.05579200604053076,
+            0.04790182951222027,
+            0.05240086620011605,
+            0.07060257989666925,
             0.06051727047975152
           ],
-          "point": 0.05815463826014114,
-          "seed_range": 0.004725264439220764,
-          "lo": 0.03651750403165833,
-          "hi": 0.0855747560829055,
+          "point": 0.05433350959205846,
+          "seed_range": 0.035105400830353344,
+          "lo": 0.03469859516223573,
+          "hi": 0.07869597529316096,
           "n": 121,
           "met_point": false,
           "met_every_seed": false,
           "met_upper_ci": false
         },
-        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.035550527472803295
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.033535111461735274
       }
     },
     "K2_nv": {
@@ -367,9 +391,10 @@
         "runs/kcurve/K5_nv_s4",
         "runs/kcurve/K5_nv_s5",
         "runs/kcurve/K5_nv_s6",
-        "runs/kcurve/K5_nv_s7"
+        "runs/kcurve/K5_nv_s7",
+        "runs/kcurve/K5_nv_s8"
       ],
-      "n_seeds": 7,
+      "n_seeds": 8,
       "seeds": [
         1,
         2,
@@ -377,7 +402,8 @@
         4,
         5,
         6,
-        7
+        7,
+        8
       ],
       "n_train_pairs": [
         1800
@@ -392,18 +418,19 @@
             0.0330887555219233,
             0.03533821836486459,
             0.03508089851588011,
-            0.029807031691074373
+            0.029807031691074373,
+            0.031220636017620564
           ],
-          "point": 0.03366561913862824,
+          "point": 0.033359996248502284,
           "seed_range": 0.005531186673790215,
-          "lo": 0.03142549040828433,
-          "hi": 0.03605090863716656,
+          "lo": 0.031153468450857324,
+          "hi": 0.03574874390076148,
           "n": 250,
           "met_point": true,
           "met_every_seed": true,
           "met_upper_ci": true
         },
-        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.02747127213595169
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.02719884270709008
       },
       "crossed_in_coverage": {
         "n_trajectories": 121,
@@ -415,18 +442,19 @@
             0.0766819099518509,
             0.08142581204922239,
             0.0888587531964641,
-            0.07159453510376047
+            0.07159453510376047,
+            0.0723811351609501
           ],
-          "point": 0.07743236678405066,
+          "point": 0.07680096283116308,
           "seed_range": 0.023019203369713512,
-          "lo": 0.055579573419241954,
-          "hi": 0.10459924776581528,
+          "lo": 0.055014799102373065,
+          "hi": 0.10390221720384837,
           "n": 121,
           "met_point": false,
           "met_every_seed": false,
           "met_upper_ci": false
         },
-        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.06132894111500334
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.06090998932361326
       }
     },
     "K5_ov": {
@@ -714,15 +742,15 @@
     "K2_nv": {
       "in_distribution": {
         "paired_unit": "test trajectory, shared by every arm",
-        "mean_diff_vs_K1": 0.002709529688581824,
-        "n_trajectories_arm_better": 63,
+        "mean_diff_vs_K1": 0.0027842387584969402,
+        "n_trajectories_arm_better": 61,
         "sign_test": {
           "n": 250,
-          "n_arm_better": 63,
-          "p": 1.880931263791558e-15
+          "n_arm_better": 61,
+          "p": 2.0259165340982982e-16
         },
         "sign_flip": {
-          "mean_diff": 0.002709529688581824,
+          "mean_diff": 0.0027842387584969402,
           "n_perm": 100000,
           "exact": false,
           "p": 9.99990000099999e-06
@@ -731,18 +759,18 @@
       },
       "crossed_in_coverage": {
         "paired_unit": "test trajectory, shared by every arm",
-        "mean_diff_vs_K1": -0.0017528517007906921,
-        "n_trajectories_arm_better": 37,
+        "mean_diff_vs_K1": 0.0020682769672919856,
+        "n_trajectories_arm_better": 25,
         "sign_test": {
           "n": 121,
-          "n_arm_better": 37,
-          "p": 2.3164303287606523e-05
+          "n_arm_better": 25,
+          "p": 5.303093183678633e-11
         },
         "sign_flip": {
-          "mean_diff": -0.0017528517007906921,
+          "mean_diff": 0.0020682769672919856,
           "n_perm": 100000,
           "exact": false,
-          "p": 0.33088669113308866
+          "p": 0.0014699853001469984
         },
         "smaller_than_anchor_seed_range": false
       }
@@ -750,35 +778,35 @@
     "K2_ov": {
       "in_distribution": {
         "paired_unit": "test trajectory, shared by every arm",
-        "mean_diff_vs_K1": 0.0010803573469941815,
-        "n_trajectories_arm_better": 98,
+        "mean_diff_vs_K1": 0.0011550664169092974,
+        "n_trajectories_arm_better": 94,
         "sign_test": {
           "n": 250,
-          "n_arm_better": 98,
-          "p": 0.0007692188678694969
+          "n_arm_better": 94,
+          "p": 0.00010608802590887635
         },
         "sign_flip": {
-          "mean_diff": 0.0010803573469941815,
+          "mean_diff": 0.0011550664169092974,
           "n_perm": 100000,
           "exact": false,
-          "p": 0.0004599954000459995
+          "p": 1.999980000199998e-05
         },
-        "smaller_than_anchor_seed_range": false
+        "smaller_than_anchor_seed_range": true
       },
       "crossed_in_coverage": {
         "paired_unit": "test trajectory, shared by every arm",
-        "mean_diff_vs_K1": -0.006411781328019607,
-        "n_trajectories_arm_better": 50,
+        "mean_diff_vs_K1": -0.002590652659936929,
+        "n_trajectories_arm_better": 48,
         "sign_test": {
           "n": 121,
-          "n_arm_better": 50,
-          "p": 0.06859363812061438
+          "n_arm_better": 48,
+          "p": 0.02870319917373694
         },
         "sign_flip": {
-          "mean_diff": -0.006411781328019607,
+          "mean_diff": -0.002590652659936929,
           "n_perm": 100000,
           "exact": false,
-          "p": 0.008919910800891991
+          "p": 0.06304936950630494
         },
         "smaller_than_anchor_seed_range": false
       }
@@ -786,24 +814,24 @@
     "K2_sm": {
       "in_distribution": {
         "paired_unit": "test trajectory, shared by every arm",
-        "mean_diff_vs_K1": 0.00044509799095491577,
-        "n_trajectories_arm_better": 133,
+        "mean_diff_vs_K1": 0.0005198070608700315,
+        "n_trajectories_arm_better": 132,
         "sign_test": {
           "n": 250,
-          "n_arm_better": 133,
-          "p": 0.34279866684013444
+          "n_arm_better": 132,
+          "p": 0.4110189397350892
         },
         "sign_flip": {
-          "mean_diff": 0.00044509799095491577,
+          "mean_diff": 0.0005198070608700315,
           "n_perm": 100000,
           "exact": false,
-          "p": 0.2081679183208168
+          "p": 0.1031589684103159
         },
         "smaller_than_anchor_seed_range": true
       },
       "crossed_in_coverage": {
         "paired_unit": "test trajectory, shared by every arm",
-        "mean_diff_vs_K1": -0.006450718553536688,
+        "mean_diff_vs_K1": -0.00262958988545401,
         "n_trajectories_arm_better": 63,
         "sign_test": {
           "n": 121,
@@ -811,10 +839,10 @@
           "p": 0.7162941145766412
         },
         "sign_flip": {
-          "mean_diff": -0.006450718553536688,
+          "mean_diff": -0.00262958988545401,
           "n_perm": 100000,
           "exact": false,
-          "p": 0.002629973700262997
+          "p": 0.008579914200857991
         },
         "smaller_than_anchor_seed_range": false
       }
@@ -822,15 +850,15 @@
     "K5_nv": {
       "in_distribution": {
         "paired_unit": "test trajectory, shared by every arm",
-        "mean_diff_vs_K1": 0.014688047701492906,
-        "n_trajectories_arm_better": 9,
+        "mean_diff_vs_K1": 0.014457133881282062,
+        "n_trajectories_arm_better": 6,
         "sign_test": {
           "n": 250,
-          "n_arm_better": 9,
-          "p": 1.043168521045681e-59
+          "n_arm_better": 6,
+          "p": 3.6166777508175347e-64
         },
         "sign_flip": {
-          "mean_diff": 0.014688047701492906,
+          "mean_diff": 0.014457133881282062,
           "n_perm": 100000,
           "exact": false,
           "p": 9.99990000099999e-06
@@ -839,15 +867,15 @@
       },
       "crossed_in_coverage": {
         "paired_unit": "test trajectory, shared by every arm",
-        "mean_diff_vs_K1": 0.019277728523909517,
-        "n_trajectories_arm_better": 8,
+        "mean_diff_vs_K1": 0.022467453239104627,
+        "n_trajectories_arm_better": 3,
         "sign_test": {
           "n": 121,
-          "n_arm_better": 8,
-          "p": 7.274453323366971e-25
+          "n_arm_better": 3,
+          "p": 2.222056719664464e-31
         },
         "sign_flip": {
-          "mean_diff": 0.019277728523909517,
+          "mean_diff": 0.022467453239104627,
           "n_perm": 100000,
           "exact": false,
           "p": 9.99990000099999e-06
@@ -858,15 +886,15 @@
     "K5_ov": {
       "in_distribution": {
         "paired_unit": "test trajectory, shared by every arm",
-        "mean_diff_vs_K1": 0.0044030157054464015,
-        "n_trajectories_arm_better": 47,
+        "mean_diff_vs_K1": 0.004477724775361518,
+        "n_trajectories_arm_better": 43,
         "sign_test": {
           "n": 250,
-          "n_arm_better": 47,
-          "p": 2.7558656066658913e-24
+          "n_arm_better": 43,
+          "p": 6.420812086684152e-27
         },
         "sign_flip": {
-          "mean_diff": 0.0044030157054464015,
+          "mean_diff": 0.004477724775361518,
           "n_perm": 100000,
           "exact": false,
           "p": 9.99990000099999e-06
@@ -875,15 +903,15 @@
       },
       "crossed_in_coverage": {
         "paired_unit": "test trajectory, shared by every arm",
-        "mean_diff_vs_K1": 0.013037914606503958,
-        "n_trajectories_arm_better": 19,
+        "mean_diff_vs_K1": 0.016859043274586635,
+        "n_trajectories_arm_better": 13,
         "sign_test": {
           "n": 121,
-          "n_arm_better": 19,
-          "p": 6.364983531202538e-15
+          "n_arm_better": 13,
+          "p": 8.369427446252163e-20
         },
         "sign_flip": {
-          "mean_diff": 0.013037914606503958,
+          "mean_diff": 0.016859043274586635,
           "n_perm": 100000,
           "exact": false,
           "p": 9.99990000099999e-06
@@ -894,15 +922,15 @@
     "K5_sm": {
       "in_distribution": {
         "paired_unit": "test trajectory, shared by every arm",
-        "mean_diff_vs_K1": 0.004325931515544653,
-        "n_trajectories_arm_better": 64,
+        "mean_diff_vs_K1": 0.004400640585459769,
+        "n_trajectories_arm_better": 68,
         "sign_test": {
           "n": 250,
-          "n_arm_better": 64,
-          "p": 5.553970814499977e-15
+          "n_arm_better": 68,
+          "p": 3.4417471562126363e-13
         },
         "sign_flip": {
-          "mean_diff": 0.004325931515544653,
+          "mean_diff": 0.004400640585459769,
           "n_perm": 100000,
           "exact": false,
           "p": 9.99990000099999e-06
@@ -911,15 +939,15 @@
       },
       "crossed_in_coverage": {
         "paired_unit": "test trajectory, shared by every arm",
-        "mean_diff_vs_K1": 0.024101748684108176,
-        "n_trajectories_arm_better": 20,
+        "mean_diff_vs_K1": 0.027922877352190855,
+        "n_trajectories_arm_better": 22,
         "sign_test": {
           "n": 121,
-          "n_arm_better": 20,
-          "p": 3.2918992186751774e-14
+          "n_arm_better": 22,
+          "p": 7.41140842086487e-13
         },
         "sign_flip": {
-          "mean_diff": 0.024101748684108176,
+          "mean_diff": 0.027922877352190855,
           "n_perm": 100000,
           "exact": false,
           "p": 9.99990000099999e-06
@@ -930,7 +958,7 @@
     "K10_nv": {
       "in_distribution": {
         "paired_unit": "test trajectory, shared by every arm",
-        "mean_diff_vs_K1": 0.028829644221346824,
+        "mean_diff_vs_K1": 0.028904353291261942,
         "n_trajectories_arm_better": 3,
         "sign_test": {
           "n": 250,
@@ -938,7 +966,7 @@
           "p": 2.878954254955859e-69
         },
         "sign_flip": {
-          "mean_diff": 0.028829644221346824,
+          "mean_diff": 0.028904353291261942,
           "n_perm": 100000,
           "exact": false,
           "p": 9.99990000099999e-06
@@ -947,15 +975,15 @@
       },
       "crossed_in_coverage": {
         "paired_unit": "test trajectory, shared by every arm",
-        "mean_diff_vs_K1": 0.04082473557276944,
-        "n_trajectories_arm_better": 3,
+        "mean_diff_vs_K1": 0.044645864240852116,
+        "n_trajectories_arm_better": 1,
         "sign_test": {
           "n": 121,
-          "n_arm_better": 3,
-          "p": 2.222056719664464e-31
+          "n_arm_better": 1,
+          "p": 9.178259891220421e-35
         },
         "sign_flip": {
-          "mean_diff": 0.04082473557276944,
+          "mean_diff": 0.044645864240852116,
           "n_perm": 100000,
           "exact": false,
           "p": 9.99990000099999e-06
@@ -966,15 +994,15 @@
     "K10_sm": {
       "in_distribution": {
         "paired_unit": "test trajectory, shared by every arm",
-        "mean_diff_vs_K1": 0.0071197844482958315,
-        "n_trajectories_arm_better": 45,
+        "mean_diff_vs_K1": 0.007194493518210948,
+        "n_trajectories_arm_better": 39,
         "sign_test": {
           "n": 250,
-          "n_arm_better": 45,
-          "p": 1.403255617235612e-25
+          "n_arm_better": 39,
+          "p": 9.600697627549094e-30
         },
         "sign_flip": {
-          "mean_diff": 0.0071197844482958315,
+          "mean_diff": 0.007194493518210948,
           "n_perm": 100000,
           "exact": false,
           "p": 9.99990000099999e-06
@@ -983,15 +1011,15 @@
       },
       "crossed_in_coverage": {
         "paired_unit": "test trajectory, shared by every arm",
-        "mean_diff_vs_K1": 0.04624955384214678,
-        "n_trajectories_arm_better": 17,
+        "mean_diff_vs_K1": 0.05007068251022946,
+        "n_trajectories_arm_better": 14,
         "sign_test": {
           "n": 121,
-          "n_arm_better": 17,
-          "p": 1.978617798661459e-16
+          "n_arm_better": 14,
+          "p": 6.531981443073304e-19
         },
         "sign_flip": {
-          "mean_diff": 0.04624955384214678,
+          "mean_diff": 0.05007068251022946,
           "n_perm": 100000,
           "exact": false,
           "p": 9.99990000099999e-06
@@ -1000,8 +1028,10 @@
       }
     }
   },
-  "n_arms_at_verdict_strength": 1,
+  "n_arms_at_verdict_strength": 3,
   "arms_at_verdict_strength": [
-    "K10_nv"
+    "K10_nv",
+    "K1_nv",
+    "K5_nv"
   ]
 }

@@ -176,6 +176,69 @@ def test_the_screen_never_reports_a_mean_over_an_empty_accepted_set():
                 assert 0.0 <= row["reject_rate"] <= 1.0
 
 
+def test_an_arm_still_training_is_not_scored_as_a_seed():
+    """`kcurve_report` evaluates `best.pt` directly rather than reading a
+    committed eval, so an arm that is mid-training has a checkpoint on disk and
+    will be scored at whatever epoch it has reached -- entering an undertrained
+    model into the seed group as if it had finished.
+
+    That is not hypothetical. Before this guard, `runs/kcurve.json` scored
+    `K2_nv_s5` (killed by a process-group kill at epoch 26 of 80) at 0.06705 and
+    `K2_nv_s8` (four minutes into an 80-epoch run) at 0.11902, against six
+    completed K2_nv seeds all between 0.02043 and 0.02291. Those two partial
+    checkpoints moved the arm's mean from 0.02169 to 0.03958 and its seed range
+    from 0.00248 to 0.09859, and they were about to be written up as a
+    training-instability finding.
+
+    A partial checkpoint always scores worse, and which arms are caught
+    mid-training depends on queue order, so the bias does not cancel across arms.
+    """
+    import json as _json
+    import tempfile
+
+    from kcurve_report import is_complete
+
+    root = Path(tempfile.mkdtemp())
+    run = root / "K2_nv_s1"
+    run.mkdir()
+    (run / "args.json").write_text(_json.dumps({"epochs": 80, "stride": 2}))
+    (run / "best.pt").write_text("weights")
+    # a log that stops early: still training, or killed
+    (run / "log.jsonl").write_text(
+        "".join(_json.dumps({"epoch": e, "train_loss": 0.1}) + "\n" for e in range(26)))
+    assert not is_complete(run), "a 26/80 arm must not be scored"
+
+    # completing the log is still not enough without an eval no older than the
+    # checkpoint -- but done.json is proof, which is what a clean run writes
+    (run / "log.jsonl").write_text(
+        "".join(_json.dumps({"epoch": e, "train_loss": 0.1}) + "\n" for e in range(80)))
+    assert is_complete(run), "a full 0..79 log is a complete run"
+
+
+def test_the_anchor_is_not_excluded_for_predating_the_done_marker():
+    """The first attempt at the guard required `done.json` and silently cut the
+    K=1 anchor from 8 seeds to 2: `runs/seed1..8` all logged 80/80 epochs and all
+    carry a `test_eval.json`, but only two have a `done.json`, because
+    `runlock.mark_done` was added after the other six ran.
+
+    A guard that drops the anchor changes the seed group just as surely as one
+    that admits a partial checkpoint.
+    """
+    import json as _json
+    import tempfile
+
+    from kcurve_report import is_complete
+
+    run = Path(tempfile.mkdtemp()) / "seed3"
+    run.mkdir(parents=True)
+    (run / "args.json").write_text(_json.dumps({"epochs": 80, "stride": 1}))
+    (run / "best.pt").write_text("weights")
+    (run / "log.jsonl").write_text(
+        "".join(_json.dumps({"epoch": e, "train_loss": 0.1}) + "\n" for e in range(80)))
+    assert not (run / "done.json").exists()
+    assert is_complete(run), "a complete run without done.json must still count"
+
+
 if __name__ == "__main__":
     n = 0
     for k, v in sorted(globals().items()):

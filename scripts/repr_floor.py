@@ -365,6 +365,62 @@ def rebuild_polyline(cross: list[np.ndarray], top_pos: np.ndarray, shape,
     return (np.where(void, d, -d)).astype(np.float32), broken
 
 
+def rebuild_kdtree(cross: list[np.ndarray], top_pos: np.ndarray, shape,
+                   delta: float, sample_um: float | None = None):
+    """H10: the same reconstruction, with a k-d tree instead of an exhaustive scan.
+
+    `rebuild_polyline` compares every one of H*W grid points against every
+    segment. That is O(points x segments) and measured 34,567 us -- the honest
+    cost of that algorithm, but not of the route, and a peer instance estimated
+    1-3 ms for the job. This replaces the scan with a nearest-neighbour query:
+    sample the segments at `sample_um` spacing, build a tree, query every grid
+    point once.
+
+    **The approximation is bounded.** Taking the distance to the nearest sampled
+    point rather than to the segment itself can only ever *overestimate*, and by
+    at most `sample_um / 2`. At the default `delta / 4` that is 0.025 um against
+    a 1.5 um band, so it cannot manufacture accuracy -- and `runs/repr_floor_*`
+    reports the exhaustive and tree versions side by side on the same
+    trajectories so the approximation is measured rather than argued.
+
+    The sign comes from per-column phase parity, which is exact and unchanged.
+
+    Returns (field, n_broken_joins).
+    """
+    from scipy.spatial import cKDTree
+
+    H, W = shape
+    if sample_um is None:
+        sample_um = delta / 4.0
+    segs, broken = interface_segments(cross, delta)
+
+    ys = np.arange(H, dtype=np.float64) * delta
+    void = np.zeros((H, W), dtype=bool)
+    for x, zs in enumerate(cross):
+        n_above = np.searchsorted(zs, ys, side="right")
+        even = (n_above % 2) == 0
+        void[:, x] = even if top_pos[x] else ~even
+
+    if segs.shape[0] == 0:
+        return np.where(void, 1e3, -1e3).astype(np.float32), broken
+
+    # Densely sample each segment. Segment lengths vary by an order of magnitude
+    # (a sidewall column spans many cells vertically, a flat one spans 0.2 um),
+    # so the sample count is per-segment rather than fixed -- a fixed count
+    # would under-sample exactly the steep segments where the error matters.
+    a, b = segs[:, 0, :], segs[:, 1, :]
+    lens = np.linalg.norm(b - a, axis=1)
+    n_s = np.maximum(np.ceil(lens / sample_um).astype(int), 1)
+    ts = [np.linspace(0.0, 1.0, k + 1)[:, None] for k in n_s]
+    pts = np.concatenate([a[i] + ts[i] * (b[i] - a[i]) for i in range(len(segs))])
+
+    tree = cKDTree(pts)
+    gy, gx = np.meshgrid(ys, np.arange(W, dtype=np.float64) * delta, indexing="ij")
+    d, _ = tree.query(np.column_stack([gx.ravel(), gy.ravel()]), k=1)
+    d = d.reshape(H, W)
+    return (np.where(void, d, -d)).astype(np.float32), broken
+
+
 def band_rel_l2(pred: np.ndarray, target: np.ndarray, band_um: float) -> float:
     """The KPI's headline reading, on the band of the GROUND TRUTH field."""
     m = np.abs(target) < band_um
@@ -389,6 +445,16 @@ print(json.dumps({{"wall": w, "cpu": c}}))
 '''
 
 COST_CASES = {
+    "rebuild_kdtree": dict(
+        setup="from scripts.repr_floor import rebuild_kdtree\n"
+              "cross = [np.array([4.0 + 0.01 * i]) for i in range(128)]\n"
+              "tp = np.ones(128, bool)",
+        call="rebuild_kdtree(cross, tp, (128, 128), 0.2)",
+        note="H10: the same reconstruction as rebuild_polyline, with a k-d tree "
+             "over densely sampled segments instead of an exhaustive "
+             "point-by-segment scan. This is the fast implementation the peer "
+             "instance's 1-3 ms estimate described, measured rather than "
+             "estimated."),
     "rebuild_polyline_band": dict(
         setup="from scripts.repr_floor import rebuild_polyline\n"
               "cross = [np.array([4.0 + 0.01 * i]) for i in range(128)]\n"

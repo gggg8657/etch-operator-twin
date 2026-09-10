@@ -2874,3 +2874,165 @@ document, so nothing needed correcting under the no-unmeasured-numbers rule.
 This entry records it because the estimate is the kind of thing that gets quoted
 later, and because a peer instance's guess deserves the same treatment as
 `codex`'s.
+
+---
+
+## Turn 5 — every K-curve number was scored on partial checkpoints, and correcting it reverses my own conclusion
+
+### The defect
+
+`scripts/kcurve_report.py` evaluates each arm's `best.pt` itself rather than
+reading a committed `test_eval.json`. Its `arms()` collector required only
+`args.json` and `best.pt` — **not completion**. So an arm that was still
+training, or that had been killed mid-training, had a checkpoint on disk and was
+scored at whatever epoch it had reached, then joined the seed group as if it had
+finished.
+
+Eight arms were being scored that way at the moment the previous turn's table
+was generated (`excluded_incomplete_arms` in `runs/kcurve.json` now lists them
+with the guard's own reason):
+
+```
+K10_sm_s1   384/800    K2_nv_s5   26/80    K2_ov_s4  26/80    K2_ov_s8  38/80
+K2_sm_s4     90/160    K5_ov_s4   26/80    K5_ov_s8  44/80    K5_sm_s4 214/400
+```
+
+The two clearest: `K2_nv_s5`, killed by the process-group kill at epoch 26, was
+scored **0.06705**; `K2_nv_s8`, four minutes into an 80-epoch run, was scored
+**0.11902**. The six completed K2_nv seeds all sit between 0.02043 and 0.02291.
+Those two partial checkpoints moved that arm's mean from **0.02169 to 0.03958**
+and its seed range from **0.00248 to 0.09859** — and I was one step from writing
+the resulting spread up as a *bimodal training-instability finding*. It was two
+undertrained checkpoints.
+
+The bias does not cancel. A partial checkpoint always scores worse, and which
+arms get caught depends on queue order, so an arm with more seeds queued later is
+penalised more than one with fewer. That is precisely the shape that manufactures
+a monotone trend.
+
+The guard is now `scripts/seed_spread.completed`, this repo's canonical answer,
+rather than a fourth notion of completeness invented here — it already encodes
+that `test_eval.json` must not predate `best.pt` (the `runs/base` staleness worth
+33× on a seed range) and that a full-length log is not proof because `train.py`
+appends. **My first attempt at the guard required `done.json` alone and was too
+strict in the other direction**: it silently cut the K=1 anchor from 8 seeds to 2,
+because `runs/seed1..8` all logged 80/80 epochs with an eval but only `seed4` and
+`seed8` carry a `done.json` — `runlock.mark_done` was added after the other six
+ran. A guard that drops the anchor changes the seed group as surely as one that
+admits a partial checkpoint. Both directions are now pinned by tests, and the
+restored anchor reproduces its historical 0.01890 / range 0.00172 exactly, which
+is the check that the guard is right.
+
+### The corrected table
+
+Terminal-step rel-L2, completed arms only:
+
+| arm | seeds | apps/wafer | grad steps | in-dist | seed range | crossed-in-coverage |
+|---|---|---|---|---|---|---|
+| K1_nv (anchor) | 8 | 10 | 22560 | **0.01890** | 0.00172 | 0.05433 |
+| K2_nv | 7 | 5 | 11280 | 0.02169 | 0.00248 | 0.05640 |
+| K2_ov | 6 | 5 | 20320 | 0.02006 | 0.00179 | 0.05174 |
+| K2_sm | 3 | 5 | 22560 | **0.01942** | 0.00115 | 0.05170 |
+| K5_nv | 8 | 2 | 4560 | 0.03336 | 0.00553 | 0.07680 |
+| K5_ov | 6 | 2 | 13520 | 0.02338 | 0.00165 | 0.07119 |
+| K5_sm | 3 | 2 | 22800 | 0.02330 | 0.00136 | 0.08226 |
+| K10_nv | 8 | 1 | 2320 | 0.04781 | 0.01399 | 0.09898 |
+| K10_sm | 2 | 1 | 23200 | **0.02610** | 0.00059 | 0.10440 |
+
+### WITHDRAWN: "the step-matched control refutes undertraining"
+
+The previous turn wrote: *"The undertraining alternative is refuted, not assumed
+… `sm` is **worse**: K2_sm 0.09503 against K2_nv 0.03075"*, and concluded that
+more gradient steps on the same pairs hurt. **That is backwards and it is
+withdrawn.** Both `sm` figures came from arms scored mid-training (`K2_sm_s4` at
+90 of 160 epochs, and a 2-seed group of which one was partial). On completed
+arms the step-matched control is *better* than `nv` at every K, and gradient
+steps are the controlling variable rather than the horizon:
+
+* **K=2 at matched steps is statistically indistinguishable from K=1
+  in-distribution** — mean paired difference **+0.00052** over 250 shared
+  trajectories, anchor better on 118/250, **exact sign test p = 0.411**,
+  sign-flip p = 0.1032, and the gap is *smaller than the anchor's own seed
+  range*. It uses **half** the applications per wafer.
+* On the crossed split K=2 at matched steps is **better** than the anchor:
+  mean difference **−0.00263**, sign-flip p = **0.00858**.
+* **K=10 at matched steps meets clause 1 in-distribution at 0.02610** (2 seeds,
+  range 0.00059, upper CI under 0.05) with **one** application per wafer, against
+  0.04781 for the same horizon at 2320 steps. Step-matching removes about
+  three-quarters of K=10's penalty: the paired gap to the anchor falls from
+  **+0.02890** (`K10_nv`, anchor better on 247/250) to **+0.00719** (`K10_sm`,
+  anchor better on 211/250).
+
+So the previous turn's headline — *"the K knob trades clause 1 for clause 2"* —
+is **half wrong and now split**: in-distribution the horizon is nearly free once
+the gradient-step budget is matched, and at K=2 it is free outright. **On the
+crossed split it is not free and gets monotonically worse with K** (0.05433 →
+0.05170 → 0.08226 → 0.10440 at matched steps), which is where clause 1 already
+failed and still fails. The trade is real in exactly one of the two readings, and
+saying so required separating the horizon from the optimisation budget — which
+the contaminated table could not do.
+
+Also corrected, same cause: the in-distribution `nv` figures were 0.0308 /
+0.0443 / 0.0485 for K = 2 / 5 / 10 and are **0.02169 / 0.03336 / 0.04781**. The
+monotone rise in the `nv` arms survives; its size does not, and its explanation
+has changed from the horizon to the gradient-step budget that `nv` varies along
+with it.
+
+### What this does to the clauses
+
+Clause 1 in-distribution is met by every arm on the point estimate, and `K10_sm`
+meets it on the upper-CI rule too — so the 10× reduction in applications per
+wafer that clause 2's best row already uses does **not** cost clause 1
+in-distribution, which is what the previous turn claimed it did. Clause 2 remains
+short by 95× at the median of eight invocations (`runs/speed_spread.json`,
+unaffected by this defect — it times checkpoints rather than scoring them), so
+the horizon route still needs the compact-architecture route to reach 1000×.
+
+`K10_sm` at 2 completed seeds is a **screen, not a verdict**. The 8-seed
+extension is running.
+
+---
+
+## Turn 6 — H10: make the reconstruction as fast as the peer estimated, and see if the clause cares
+
+The peer instance and I disagreed about the cost of rebuilding a field from a
+compact interface representation: its `37b9d44` estimated "around 1–3 ms", my
+`5bd6a5b` measured **34,567 µs [25,643–38,977]**. It has already recorded the
+resolution correctly — the figure was an estimate, mine was a measurement, and
+the structural conclusion survives because both are over budget. I accept that
+and am not re-litigating it.
+
+What the exchange leaves open is different and is the reason for this turn.
+**Neither of us tried to make the reconstruction fast.** My `rebuild_polyline`
+computes exhaustive point-to-segment distance — every one of 16,384 grid points
+against every one of ~700 segments, chunked but complete. That is the honest cost
+*of that algorithm*, and I was careful to say the 155 ms grid version was "my
+implementation, not the route". The same caution applies to 34.6 ms, and I did
+not apply it. An objection of the form "you never optimised it" is currently
+open, and it should not be, because the clause does not depend on the answer.
+
+**H10, in two parts, written before the run.**
+
+1. A nearest-neighbour reconstruction — sample the interface segments densely,
+   build a k-d tree, query every grid point — reaches the peer's 1–3 ms, because
+   it replaces an O(points × segments) scan with O(points log samples).
+2. **And the clause fails anyway.** The ceiling on the whole route is
+   `solver_warm / reconstruction_cost`, the best it could do with a free model.
+   The solver's warm cost is **0.2767 CPU-s** (`runs/speed_symmetric.json`), so
+   even a **1 ms** reconstruction gives a ceiling of **277×** and a 3 ms one
+   gives **92×**, both short of 1000×. The reconstruction would have to come in
+   under **277 µs** — the entire budget — leaving nothing for the model.
+
+Part 2 is arithmetic on an already-measured denominator, so I can state it now;
+part 1 is the measurement. If part 1 holds, the negative result stops depending
+on my implementation quality at all, which is worth more than the 30× it costs
+me to concede on the constant.
+
+**The approximation has to be bounded, not just fast.** Sampling segments at
+spacing `s` and taking the distance to the nearest *sample* rather than to the
+segment overestimates by at most `s/2`. At `s = delta/4 = 0.05 µm` that is
+0.025 µm against a band of 1.5 µm, so it cannot manufacture accuracy. The sign
+still comes from per-column phase parity, which is exact. And the fast version is
+checked **against the exhaustive one on the same trajectories** rather than
+against the truth, so the comparison isolates the approximation from every other
+error in the pipeline — of which this reconstruction has already had five.
