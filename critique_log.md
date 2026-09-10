@@ -5102,3 +5102,88 @@ So the corrected form of H18's rationale: **the cheapest architecture available
 is the one that touches the full field fewest times, the reduction is 11.25×, and
 the realised cost reduction is 9.3× — but per-operation cost is not constant
 across operation types and the count is a design heuristic, not a cost model.**
+
+### The op count, revised twice in one turn — the first revision was wrong and the original assertion was roughly right
+
+This is the third value I have published for one quantity in a single turn, so
+the sequence matters more than the number:
+
+1. **Asserted "four versus twenty"**, obtained by dividing 645 µs by a guessed
+   ~30 µs per operation. Not measured.
+2. **"Corrected" it to "four versus 45"** using `TorchDispatchMode` bucketed by
+   the *element count* of each call's largest output. **That correction was
+   wrong**, and wrong in two independent ways: it counted the transpose of a
+   (4096, 64) conditioning-head weight as a full-field operation, and it counted
+   **views** — a `slice` of the (128, 65) half-spectrum is field-shaped and free,
+   and the FNO issues sixteen of them. It also counted the harness's own
+   `torch.randn` input construction, because I built the inputs inside the
+   dispatch context.
+3. **Measured properly**, distinguishing calls that materialise O(H·W) memory
+   from views, with inputs built outside the context (`runs/op_count.json`):
+
+| model | params | total ATen | **field-materialising** | field views | other |
+|---|---|---|---|---|---|
+| `fno_w64m20L4` (deployed) | 26,248,025 | 262 | **41** | 34 | 187 |
+| `fno_w8m4L2` | 10,897 | 144 | **25** | 18 | 101 |
+| `multiscale_s4_wf8` | 9,914 | 165 | 10 | 1 | 154 |
+| `compactcnn_w8L2` | 1,793 | 26 | 9 | 2 | 15 |
+| `pointwise_wf8_n1` | 1,217 | 32 | 8 | 1 | 23 |
+| `specprop_m4_ma4` | 9,344 | 68 | **4** | 10 | 54 |
+| `specprop_m8_ma32` | 283,904 | 68 | **4** | 10 | 54 |
+
+The breakdown is legible, which is how you can tell the instrument is now
+measuring the intended thing. `specprop_m4_ma4`'s four are exactly
+`_fft_r2c`, `zeros_like`, `_fft_c2r`, `add`. `fno_w8m4L2`'s 25 are 6
+convolutions, 4 GELUs, 2 forward and 2 inverse transforms, 2 group norms, 5
+adds, a `stack`, a `cat` and 2 `zeros`.
+
+**So the original assertion was approximately right (4 vs 25, not 4 vs 20) and my
+confident correction of it was the error.** The reduction is **6.25×**, not the
+11.25× I published an hour ago and not the ~5× the first version implied.
+
+**Two things the corrected count settles that the wrong one had confused:**
+
+* **`modes_a` is free, and now it is measured rather than argued.** Both
+  `specprop_m4_ma4` and `specprop_m8_ma32` dispatch **exactly 4**
+  field-materialising operations despite a 30× difference in parameters. The
+  additive term's bandwidth costs nothing at inference, which was the design
+  claim. `tests/test_specprop.py` pins it.
+* **The "inversion" I recorded as an anomaly does not exist.** I wrote that
+  `specprop_m8_ma32` "dispatches more full-field operations than `m4_ma4` and is
+  cheaper", flagged it as violating a strict op-count law, and offered two
+  candidate explanations. Both counts are 4. The inversion was an artefact of
+  bucketing by element count, i.e. of my instrument, and the paragraph
+  speculating about op types versus load was explaining a measurement error.
+  **Withdrawn.**
+
+#### What the mechanism test says now
+
+| model | field ops | µs/wafer | µs per field op | op ratio | cost ratio | agreement |
+|---|---|---|---|---|---|---|
+| `specprop_m4_ma4` | 4 | 277 | 69.3 | 6.25× | 9.31× | 1.49 |
+| `specprop_m8_ma32` | 4 | 226 | 56.4 | 6.25× | 11.43× | 1.83 |
+| `pointwise_wf8_n1` | 8 | 944 | 118.0 | 3.12× | 2.73× | 0.87 |
+| `fno_w8m4L2` | 25 | 2,580 | 103.2 | — | — | — |
+
+**Cost falls faster than the operation count, and there is a plain reason.**
+Per-field-op cost is **56–118 µs, a 2.1× spread**, and it is systematically
+higher for the models with more channels: the FNO's operations act on
+**8-channel** fields while `SpectralPropagator`'s transforms act on **one**. So
+the architecture wins on two counts at once — 6.25× fewer field operations *and*
+8× fewer channels in the transforms — and 6.25 × (something) = 9.3 is the
+arithmetic of that.
+
+**The honest form of H18's rationale, third and final version:** clause 2's cost
+is dominated by how many times a model materialises a field and how wide that
+field is, not by arithmetic. `SpectralPropagator` touches the field 4 times at 1
+channel where `fno_w8m4L2` touches it 25 times at 8, and it measures 9.3×
+cheaper, which is what puts it under the 1000× budget. **Operation count alone
+is a design heuristic with a 2.1× spread, not a cost model**, and every earlier
+sentence in this repo that called clause 2 "operation-count-bound" without that
+qualification is overstated.
+
+The procedural lesson, which is the expensive part: **I corrected a guessed
+number with an unvalidated instrument and published the result within the same
+turn.** The guess was closer than the correction. What settled it was writing
+`tests/test_specprop.py` — the `modes_a`-is-free test failed, and that failure
+was the only reason the weight-transpose bug was found at all.

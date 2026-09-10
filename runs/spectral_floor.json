@@ -1,0 +1,126 @@
+{
+  "question": "what is the lowest band rel-L2 any SpectralPropagator can reach, given that its residual is band-limited to modes_a",
+  "why": "a concurrent instance falsified H15's Nyquist argument (commit ac880e0) by showing a mode bound on an OUTPUT says nothing about information at the INPUT. SpectralPropagator, built and trained on that same reasoning, emits a band-limited residual, so the same objection gives it a computable ceiling.",
+  "protocol": {
+    "split": "test",
+    "stride": 10,
+    "n_trajectories": 250,
+    "reading": "terminal step at stride 10, one application per wafer -- the deployment the cost rows priced",
+    "metric": "band_rel_l2 with the repo's band and scale from norm.json",
+    "estimator": "ORACLE. r_true is projected onto the retained modes, which is what a perfect H and A would achieve. No network, no checkpoint, no training is involved, so this is a bound and not a result about a model.",
+    "target": 0.05,
+    "band_um": 1.5,
+    "sdf_scale_um": 5.0
+  },
+  "do_nothing_baseline": {
+    "mean": 3.898930311203003,
+    "median": 3.8852226734161377,
+    "what": "phi_next = phi_t, the persistence predictor. Any floor must be far below this to mean anything."
+  },
+  "floors": {
+    "2": {
+      "modes": 2,
+      "oracle_projection": {
+        "mean": 1.2042361497879028,
+        "median": 1.1953494548797607,
+        "p90": 1.5208024978637695,
+        "max": 1.7094298601150513,
+        "frac_under_target": 0.0,
+        "meets_target_on_mean": false
+      },
+      "oracle_multiplicative_only": {
+        "mean": 1.2042361497879028,
+        "median": 1.1953494548797607,
+        "meets_target_on_mean": false
+      }
+    },
+    "4": {
+      "modes": 4,
+      "oracle_projection": {
+        "mean": 0.8790619373321533,
+        "median": 0.8648636341094971,
+        "p90": 1.1133089065551758,
+        "max": 1.2363017797470093,
+        "frac_under_target": 0.0,
+        "meets_target_on_mean": false
+      },
+      "oracle_multiplicative_only": {
+        "mean": 0.8790619373321533,
+        "median": 0.8648636341094971,
+        "meets_target_on_mean": false
+      }
+    },
+    "8": {
+      "modes": 8,
+      "oracle_projection": {
+        "mean": 0.6278839707374573,
+        "median": 0.6173139810562134,
+        "p90": 0.7953177094459534,
+        "max": 0.8856484293937683,
+        "frac_under_target": 0.0,
+        "meets_target_on_mean": false
+      },
+      "oracle_multiplicative_only": {
+        "mean": 0.6278839707374573,
+        "median": 0.6173139810562134,
+        "meets_target_on_mean": false
+      }
+    },
+    "16": {
+      "modes": 16,
+      "oracle_projection": {
+        "mean": 0.4407043159008026,
+        "median": 0.4329206645488739,
+        "p90": 0.5605887770652771,
+        "max": 0.6198222637176514,
+        "frac_under_target": 0.0,
+        "meets_target_on_mean": false
+      },
+      "oracle_multiplicative_only": {
+        "mean": 0.4407043159008026,
+        "median": 0.4329206645488739,
+        "meets_target_on_mean": false
+      }
+    },
+    "32": {
+      "modes": 32,
+      "oracle_projection": {
+        "mean": 0.28515586256980896,
+        "median": 0.2796061336994171,
+        "p90": 0.36272814869880676,
+        "max": 0.40075206756591797,
+        "frac_under_target": 0.0,
+        "meets_target_on_mean": false
+      },
+      "oracle_multiplicative_only": {
+        "mean": 0.28515586256980896,
+        "median": 0.2796061336994171,
+        "meets_target_on_mean": false
+      }
+    },
+    "64": {
+      "modes": 64,
+      "oracle_projection": {
+        "mean": 2.8159221983514726e-05,
+        "median": 2.656933975231368e-05,
+        "p90": 3.954696876462549e-05,
+        "max": 6.628628761973232e-05,
+        "frac_under_target": 1.0,
+        "meets_target_on_mean": true
+      },
+      "oracle_multiplicative_only": {
+        "mean": 2.8159221983514726e-05,
+        "median": 2.656933975231368e-05,
+        "meets_target_on_mean": true
+      }
+    }
+  },
+  "modes_that_cannot_meet_target": [
+    "2",
+    "4",
+    "8",
+    "16",
+    "32"
+  ],
+  "verdict": "modes_a in ['2', '4', '8', '16', '32'] cannot meet 0.05 even with a perfect H and A"
+}

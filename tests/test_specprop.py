@@ -26,17 +26,17 @@ from scripts.op_count import count  # noqa: E402
 
 def test_dispatches_four_full_field_ops():
     r = count(lambda: SpectralPropagator(cond_dim=7, modes=4, modes_a=4))
-    assert r["full_ops"] == 4, r
+    assert r["full_materialising"] == 4, r
     fno = count(lambda: EtchOperator(cond_dim=7, width=8, modes=4, n_layers=2))
-    assert fno["full_ops"] == 45, fno
-    assert fno["full_ops"] / r["full_ops"] > 10
+    assert fno["full_materialising"] == 25, fno
+    assert fno["full_materialising"] / r["full_materialising"] == 6.25
 
 
 def test_modes_a_is_free_in_op_count():
     """The design freedom: a wider additive band must not cost operations."""
     small = count(lambda: SpectralPropagator(cond_dim=7, modes=4, modes_a=4))
     wide = count(lambda: SpectralPropagator(cond_dim=7, modes=4, modes_a=32))
-    assert wide["full_ops"] == small["full_ops"], (small, wide)
+    assert wide["full_materialising"] == small["full_materialising"], (small, wide)
 
 
 def test_linear_in_phi_at_fixed_recipe():

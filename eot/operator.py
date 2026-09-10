@@ -456,11 +456,15 @@ class SpectralPropagator(nn.Module):
     this architecture. A concurrent instance caught it (commit 49bcc9a).
 
     The justification that survives is the operation count, which is measured:
-    45 full-field operations for `fno_w8m4L2` against this architecture's 4,
-    an 11.25x reduction -- COUNTED, not asserted, by scripts/op_count.py; the
-    '~20 ops at ~30 us' figure this docstring first carried was arithmetic on
-    a guess and was wrong. Measured cost reduction is 9.3x, so the count
-    predicts cost to within ~50% and is a design heuristic, not a cost model.
+    **25** field-materialising operations for `fno_w8m4L2` against this
+    architecture's **4** -- a 6.25x reduction, COUNTED by scripts/op_count.py.
+    That number was published wrongly twice first: '~20' was arithmetic on a
+    guess, and '45' came from an instrument that counted views and a weight
+    transpose as field operations. The guess was closer than the correction.
+    Measured cost reduction is 9.3x -- FASTER than the op reduction, because
+    the FNO's operations act on 8-channel fields and these transforms act on
+    one. Per-field-op cost spans 56-118 us, so the count is a design heuristic
+    and NOT a cost model.
     If anything the
     accuracy prediction should move PESSIMISTICALLY on the corrected reading --
     a model merely linear in phi has 2.67x to make up, not 3%.
@@ -495,10 +499,20 @@ class SpectralPropagator(nn.Module):
         # rfft2 of a real (H, W) field has shape (H, W//2 + 1), so the second
         # axis is already half-spectrum and must not be truncated symmetrically.
         assert modes <= n_grid // 2 and modes_a <= n_grid // 2, (modes, modes_a)
+        # `modes=0` removes the MULTIPLICATIVE term entirely, leaving
+        # `phi + irfft2(A(recipe))`. That is the phi-blind null this class needs:
+        # `A` depends only on the recipe, and in this dataset the initial
+        # geometry is determined by `trench_width` and `mask_height`, which ARE
+        # conditioning inputs -- so a full-spectrum `A` can in principle encode
+        # the whole terminal residual for a recipe and become a lookup table
+        # rather than an operator. If `modes=0` matches `modes>0`, the only
+        # phi-dependent part of the model contributes nothing and that is what
+        # has happened. Pre-registered rather than checked afterwards.
+        self.has_mult = modes > 0
         self.h_head = nn.Sequential(
             nn.Linear(cond_dim, hidden), nn.GELU(),
             nn.Linear(hidden, 2 * (2 * modes) * modes),
-        )
+        ) if self.has_mult else None
         self.a_head = nn.Sequential(
             nn.Linear(cond_dim, hidden), nn.GELU(),
             nn.Linear(hidden, 2 * (2 * modes_a) * modes_a),
@@ -509,6 +523,8 @@ class SpectralPropagator(nn.Module):
         # a small perturbation, which is the right starting point for a residual
         # update and keeps the first rollouts stable.
         for head in (self.h_head, self.a_head):
+            if head is None:
+                continue
             nn.init.zeros_(head[-1].bias)
             nn.init.normal_(head[-1].weight, std=1e-3)
 
@@ -533,12 +549,15 @@ class SpectralPropagator(nn.Module):
         f = torch.fft.rfft2(phi.squeeze(1).float())          # (B, H, W//2+1)
         out = torch.zeros_like(f)
         m, ma = self.modes, self.modes_a
-        hc = self._coeffs(cond.float(), m, self.h_head)
         ac = self._coeffs(cond.float(), ma, self.a_head)
         # Multiplicative term on the retained low modes only: everything outside
-        # is annihilated, exactly as SpectralConv2d does.
-        out[:, :m, :m] = f[:, :m, :m] * hc[:, :m]
-        out[:, -m:, :m] = f[:, -m:, :m] * hc[:, m:]
+        # is annihilated, exactly as SpectralConv2d does. With modes=0 there is
+        # no multiplicative term and `out` stays zero here, so the residual
+        # becomes a function of the recipe alone -- the phi-blind null.
+        if self.has_mult:
+            hc = self._coeffs(cond.float(), m, self.h_head)
+            out[:, :m, :m] = f[:, :m, :m] * hc[:, :m]
+            out[:, -m:, :m] = f[:, -m:, :m] * hc[:, m:]
         # Additive term, on a wider band, for free.
         out[:, :ma, :ma] = out[:, :ma, :ma] + ac[:, :ma]
         out[:, -ma:, :ma] = out[:, -ma:, :ma] + ac[:, ma:]

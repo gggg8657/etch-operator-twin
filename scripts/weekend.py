@@ -448,15 +448,18 @@ def main():
                f"so a lower bound."),
               "",
               ("It got there by attacking the one axis the three failed attacks never "
-               "touched. Clause 2's cost is per-operation, not arithmetic: "
-               "`runs/op_count.json` COUNTS 45 full-field operations for "
-               "`fno_w8m4L2` and **245** for the deployed operator, against this "
-               "architecture's **4** -- an 11.25x reduction that realises 9.3x in "
-               "measured cost. Shrinking the tensors (H15) bought 2.26x of a predicted "
+               "touched. `runs/op_count.json` COUNTS the calls that materialise a "
+               "field: **25** for `fno_w8m4L2` and **41** for the deployed "
+               "operator, against this architecture's **4** -- a 6.25x reduction "
+               "that realises **9.3x** in measured cost, faster than the count "
+               "alone because the FNO's operations act on 8-channel fields and "
+               "these transforms act on one. Shrinking the tensors (H15) bought 2.26x of a predicted "
                "16x, fusing them (`torch.compile`) was 2.0-3.3x *slower*, and removing "
-               "spatial mixing (H16) was Pareto-dominated. Per-operation cost is NOT "
-               "constant though -- it spans 37.6-85.8 µs across models, so the count "
-               "is a design heuristic and not a cost model, and one pair inverts."),
+               "spatial mixing (H16) was Pareto-dominated. Per-field-op cost is NOT "
+               "constant though -- it spans 56-118 µs across models -- so the count "
+               "is a design heuristic and not a cost model. This figure was "
+               "published wrongly twice before it was counted properly; the "
+               "saga is in critique_log.md."),
               "",
               ("**No accuracy is claimed for it. It is training now**, and the "
                "prediction written before the sweep started is 0.05-0.12 "

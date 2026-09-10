@@ -54,46 +54,74 @@ from eot.operator import (CompactCNN, EtchOperator,  # noqa: E402
                           MultiScaleOperator, SpectralPropagator)
 
 
+# ATen calls that return a VIEW or otherwise move no data. Counting these as
+# operations is what produced two wrong versions of this file's headline number
+# in one turn: a `slice` of a (1, 128, 65) spectrum has a field-shaped output and
+# costs nothing, and `SpectralPropagator` issues eight of them.
+VIEW_OPS = {
+    "slice", "select", "view", "reshape", "expand", "squeeze", "unsqueeze",
+    "permute", "transpose", "t", "detach", "alias", "as_strided", "narrow",
+    "unbind", "split", "chunk", "contiguous",
+}
+
+
 class Counted(TorchDispatchMode):
-    """Records every ATen call and the element count of its largest output."""
+    """Records every ATen call, its field-shape class, and whether it moves data.
+
+    Two things this instrument got wrong before, both caught by
+    `tests/test_specprop.py` and by tracing the calls by hand:
+
+    1. **Bucketing by element count counted weight matrices as fields.**
+       `SpectralPropagator(modes_a=32)` has a (4096, 64) head weight, 262,144
+       elements, so the transpose of that weight was a "full-field op". That
+       inflated its count and manufactured an apparent op-count-versus-cost
+       inversion against `modes_a=4`. The bucket is now decided by SHAPE.
+    2. **Views were counted as operations.** Under a shape-based bucket, a
+       `slice` of the (128, 65) half-spectrum is field-shaped and free;
+       `SpectralPropagator` issues eight and `EtchOperator` sixteen. Counting
+       them put `fno_w8m4L2` at 45 "full ops" when the number of calls that
+       actually materialise a field is 25.
+
+    `full_materialising` is the only count any document may quote, and it is
+    the one the cost argument concerns: calls that write O(H*W) memory.
+    """
 
     def __init__(self, n_grid=128):
         self.calls = []
         self.n_grid = n_grid
 
-    def _class_of(self, t):
-        """field / coarse / tiny, by SHAPE. A weight matrix is not a field."""
+    def _is_field(self, t):
+        """Field-shaped: the last two dims are the grid, or the grid's rfft2
+        half-spectrum (n, n//2 + 1). A 2-D weight matrix never qualifies."""
         n = self.n_grid
-        if t.dim() >= 2:
-            h, w = t.shape[-2], t.shape[-1]
-            if h == n and w in (n, n // 2 + 1):
-                return "full"
-            # A spatial pair smaller than the grid: a downsampled body.
-            if 1 < h < n and 1 < w <= n // 2 + 1 and h == w or \
-               (1 < h < n and 1 < w < n and t.dim() >= 3):
-                return "coarse"
-        return "tiny"
+        return (t.dim() >= 3 and t.shape[-2] == n
+                and t.shape[-1] in (n, n // 2 + 1))
 
     def __torch_dispatch__(self, func, types, args=(), kwargs=None):
         out = func(*args, **(kwargs or {}))
-        rank = {"tiny": 0, "coarse": 1, "full": 2}
-        klass = "tiny"
-        for t in (out if isinstance(out, (tuple, list)) else [out]):
-            if isinstance(t, torch.Tensor):
-                c = self._class_of(t)
-                if rank[c] > rank[klass]:
-                    klass = c
-        self.calls.append((str(func), klass))
+        short = str(func).split(".")[-2] if "." in str(func) else str(func)
+        is_field = any(self._is_field(t)
+                       for t in (out if isinstance(out, (tuple, list)) else [out])
+                       if isinstance(t, torch.Tensor))
+        self.calls.append({"op": short, "field": is_field,
+                           "view": short in VIEW_OPS})
         return out
 
 
-def bucket(calls, _unused=None):
+def bucket(calls):
     b = Counter()
-    per_op = {"full": Counter(), "coarse": Counter(), "tiny": Counter()}
-    for name, k in calls:
+    names = {"full_materialising": Counter(), "full_view": Counter(),
+             "other": Counter()}
+    for c in calls:
+        if c["field"] and not c["view"]:
+            k = "full_materialising"
+        elif c["field"]:
+            k = "full_view"
+        else:
+            k = "other"
         b[k] += 1
-        per_op[k][name.split(".")[-2] if "." in name else name] += 1
-    return b, per_op
+        names[k][c["op"]] += 1
+    return b, names
 
 
 MODELS = {
@@ -117,20 +145,22 @@ MODELS = {
 def count(build, n_grid=128):
     m = build()
     m.eval()
+    # Inputs are built OUTSIDE the dispatch context. Building them inside made
+    # the harness's own `randn` a counted field operation in every row.
     phi = torch.randn(1, 1, n_grid, n_grid)
     cond = torch.randn(1, 7)
     with torch.no_grad():
         with Counted(n_grid) as c:
             m(phi, cond)
-    b, per_op = bucket(c.calls)
+    b, names = bucket(c.calls)
     return {
         "params": sum(p.numel() for p in m.parameters()),
         "total_aten_calls": len(c.calls),
-        "full_ops": b["full"],
-        "coarse_ops": b["coarse"],
-        "tiny_ops": b["tiny"],
-        "full_op_names": dict(per_op["full"]),
-        "coarse_op_names": dict(per_op["coarse"]),
+        "full_materialising": b["full_materialising"],
+        "full_view_only": b["full_view"],
+        "other_calls": b["other"],
+        "full_materialising_names": dict(names["full_materialising"]),
+        "full_view_names": dict(names["full_view"]),
     }
 
 
@@ -174,9 +204,9 @@ def main():
                           "file exists because the count was being asserted.",
         },
         "models": rows,
-        "specprop_vs_fno_full_ops": (
-            rows["specprop_m4_ma4"]["full_ops"] / rows["fno_w8m4L2"]["full_ops"]
-            if rows["fno_w8m4L2"]["full_ops"] else None),
+        "specprop_vs_fno_field_materialising": (
+            rows["specprop_m4_ma4"]["full_materialising"] / rows["fno_w8m4L2"]["full_materialising"]
+            if rows["fno_w8m4L2"]["full_materialising"] else None),
     }
 
     # THE MECHANISM TEST. H18 claims the cost is bound by the operation count.
@@ -195,10 +225,10 @@ def main():
             m = (cost.get("models") or {}).get(ck)
             if m and ok in rows:
                 joined[ok] = {
-                    "full_ops": rows[ok]["full_ops"],
+                    "full_materialising": rows[ok]["full_materialising"],
                     "us_per_wafer": m["warm"]["per_wafer_cpu_s"] * 1e6,
-                    "us_per_full_op": (m["warm"]["per_wafer_cpu_s"] * 1e6
-                                       / max(rows[ok]["full_ops"], 1)),
+                    "us_per_field_op": (m["warm"]["per_wafer_cpu_s"] * 1e6
+                                        / max(rows[ok]["full_materialising"], 1)),
                 }
         ref = joined.get("fno_w8m4L2")
         res["mechanism_test"] = {
@@ -210,12 +240,12 @@ def main():
                 "loadavg_1min_at_start"),
             "per_model": joined,
             "vs_fno_w8m4L2": {
-                k: {"op_ratio": ref["full_ops"] / v["full_ops"],
+                k: {"op_ratio": ref["full_materialising"] / v["full_materialising"],
                     "cost_ratio": ref["us_per_wafer"] / v["us_per_wafer"],
                     "agreement": (ref["us_per_wafer"] / v["us_per_wafer"])
-                    / (ref["full_ops"] / v["full_ops"])}
+                    / (ref["full_materialising"] / v["full_materialising"])}
                 for k, v in joined.items()
-                if k != "fno_w8m4L2" and v["full_ops"]
+                if k != "fno_w8m4L2" and v["full_materialising"]
             } if ref else None,
             "caveat": "an agreement near 1 supports the mechanism; it does not "
                       "prove per-op cost is constant across op TYPES, and an "
@@ -223,10 +253,12 @@ def main():
                       "us_per_full_op column shows the spread.",
         }
     Path(a.out).write_text(json.dumps(res, indent=2))
-    print(f"{'model':26s} {'params':>10s} {'total':>6s} {'full':>5s} {'coarse':>7s} {'tiny':>5s}")
+    print(f"{'model':26s} {'params':>10s} {'total':>6s} {'FIELD-MAT':>9s} "
+          f"{'field-view':>10s} {'other':>6s}")
     for k, v in rows.items():
         print(f"{k:26s} {v['params']:10d} {v['total_aten_calls']:6d} "
-              f"{v['full_ops']:5d} {v['coarse_ops']:7d} {v['tiny_ops']:5d}")
+              f"{v['full_materialising']:9d} {v['full_view_only']:10d} "
+              f"{v['other_calls']:6d}")
     print(f"\nwrote {a.out}")
 
 

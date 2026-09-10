@@ -1,0 +1,323 @@
+{
+  "question": "which candidate surrogate architectures fit the clause-2 budget, measured before any of them is trained",
+  "protocol": {
+    "estimator": "CPU-seconds per wafer on one verified thread, fresh subprocess per config",
+    "rounds": 16,
+    "warm_rollouts_untimed": 3,
+    "budget_warm_s": 0.0005064440354999997,
+    "budget_cold_s": 0.0007389038889999999,
+    "solver_warm_cpu_s": 0.5064440354999997,
+    "solver_cold_cpu_s": 0.7389038889999999,
+    "speedup_target": 1000.0,
+    "budget_provenance": {
+      "paired": true,
+      "measured_in_this_invocation": true,
+      "solver_wafers": 8,
+      "split": "test",
+      "same_wafers_as_accuracy": "the recipes and dt values of the split the operator's accuracy is scored on",
+      "denominators_cpu_s": {
+        "terminal_one_apply": 0.5064440354999997,
+        "all_frames_ten_applies_excl_raster": 1.0175436049999966,
+        "fixed_duration": 0.5640139709999998
+      },
+      "all_frames_raster_excluded_cpu_s": 2.844242834500001,
+      "stored_warm_median_cpu_s": 0.2767124970000001,
+      "drift_vs_stored": 2.0382670718337654,
+      "loadavg_1min_at_start": 459.54,
+      "matched_denominator_for_one_application": "terminal_one_apply",
+      "why": "a stride-10 operator emits the terminal state in one application, so the terminal one-apply column is the like-for-like denominator for it. All three are reported per row so the choice is visible rather than adopted."
+    },
+    "no_accuracy_claimed": "cost only. Accuracy for these rows is in runs/shrink.json and runs/multiscale.json."
+  },
+  "models": {
+    "fno_w8m4L2_K10": {
+      "note": "the accuracy-admissible FNO from runs/shrink.json (0.04717 in-distribution terminal at 3 seeds). Reference row: this is the cost the multiscale architecture has to beat by 6.4x.",
+      "params": 10897,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 461.79,
+        "after": 453.8
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0035985559999999195,
+        "per_wafer_cpu_s": 0.0035985559999999195,
+        "min_cpu_s": 0.002861801999999969,
+        "max_cpu_s": 0.003708425999999987,
+        "spread_factor": 1.295835980266988,
+        "over_budget_factor": 7.105535355840757,
+        "under_budget": false,
+        "speedup_vs_solver": 140.7353492623183,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 140.7353492623183,
+          "all_frames_ten_applies_excl_raster": 282.7644213401207,
+          "fixed_duration": 156.73341501424807
+        },
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          136.5657655026692,
+          176.96683261106298
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.008777863000000052,
+        "per_wafer_cpu_s": 0.008777863000000052,
+        "min_cpu_s": 0.00835281099999996,
+        "max_cpu_s": 0.009202915000000145,
+        "spread_factor": 1.101774600191503,
+        "over_budget_factor": 11.879573420407391,
+        "under_budget": false,
+        "speedup_vs_solver": 84.17810678977281,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          80.2902003332627,
+          88.46170337147619
+        ],
+        "n": 2
+      }
+    },
+    "specprop_m4_ma4_K10": {
+      "note": "conditioned linear Fourier propagator, modes=4, modes_a=4. Four full-resolution operations (rfft2, masked multiply-add, irfft2, add) against the FNO's ~20, and the transforms act on one channel not eight. Accuracy UNMEASURED at the time this row was priced.",
+      "params": 9344,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 453.8,
+        "after": 455.98
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.00017548249999999044,
+        "per_wafer_cpu_s": 0.00017548249999999044,
+        "min_cpu_s": 0.00015371100000005633,
+        "max_cpu_s": 0.0003053850000001024,
+        "spread_factor": 1.986747857993185,
+        "over_budget_factor": 0.34649929251657763,
+        "under_budget": true,
+        "speedup_vs_solver": 2886.0087786532977,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 2886.0087786532977,
+          "all_frames_ten_applies_excl_raster": 5798.547461997932,
+          "fixed_duration": 3214.0753123532577
+        },
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          1658.3788840310754,
+          3294.7806955898677
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.002076165999999935,
+        "per_wafer_cpu_s": 0.002076165999999935,
+        "min_cpu_s": 0.0019569129999998935,
+        "max_cpu_s": 0.0021954189999999763,
+        "spread_factor": 1.1218786936364038,
+        "over_budget_factor": 2.8097916804981593,
+        "under_budget": false,
+        "speedup_vs_solver": 355.898270658523,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          336.5662267658283,
+          377.58647880618105
+        ],
+        "n": 2
+      }
+    },
+    "specprop_m4_ma63_K10": {
+      "note": "modes=4, modes_a=63. Oracle floor at this modes_a is in runs/spectral_floor_fine.json; ma>=63 is the only band that admits clause 1 at all.",
+      "params": 1037124,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 455.98,
+        "after": 481.2
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0005094689999999291,
+        "per_wafer_cpu_s": 0.0005094689999999291,
+        "min_cpu_s": 0.0004484029999998196,
+        "max_cpu_s": 0.0005353859999999155,
+        "spread_factor": 1.1939839831582995,
+        "over_budget_factor": 1.0059729492064071,
+        "under_budget": false,
+        "speedup_vs_solver": 994.0625150893777,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 994.0625150893777,
+          "all_frames_ten_applies_excl_raster": 1997.2630425013851,
+          "fixed_duration": 1107.0623943754738
+        },
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          945.9418727797881,
+          1129.4394450978327
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.0021022364999999654,
+        "per_wafer_cpu_s": 0.0021022364999999654,
+        "min_cpu_s": 0.002012954999999872,
+        "max_cpu_s": 0.002191518000000059,
+        "spread_factor": 1.088706901048557,
+        "over_budget_factor": 2.845074347686869,
+        "under_budget": false,
+        "speedup_vs_solver": 351.48466359518164,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          337.1653296938378,
+          367.07422123199325
+        ],
+        "n": 2
+      }
+    },
+    "specprop_m4_ma64_K10": {
+      "note": "modes=4, modes_a=64. Oracle floor at this modes_a is in runs/spectral_floor_fine.json; ma>=63 is the only band that admits clause 1 at all.",
+      "params": 1070144,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 481.2,
+        "after": 493.04
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0004264229999999536,
+        "per_wafer_cpu_s": 0.0004264229999999536,
+        "min_cpu_s": 0.00041569699999999266,
+        "max_cpu_s": 0.0004768820000000673,
+        "spread_factor": 1.1471865324986126,
+        "over_budget_factor": 0.8419943174549517,
+        "under_budget": true,
+        "speedup_vs_solver": 1187.656471391212,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 1187.656471391212,
+          "all_frames_ten_applies_excl_raster": 2386.2305855924924,
+          "fixed_duration": 1322.663109166394
+        },
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          1061.9902523054513,
+          1218.3009150896173
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.002162415499999959,
+        "per_wafer_cpu_s": 0.002162415499999959,
+        "min_cpu_s": 0.0021596289999998852,
+        "max_cpu_s": 0.0021652020000000327,
+        "spread_factor": 1.0025805358235826,
+        "over_budget_factor": 2.9265179574659936,
+        "under_budget": false,
+        "speedup_vs_solver": 341.70301174774875,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          341.2632581163276,
+          342.1439001791693
+        ],
+        "n": 2
+      }
+    },
+    "specprop_m8_ma64_K10": {
+      "note": "modes=8, modes_a=64. Oracle floor at this modes_a is in runs/spectral_floor_fine.json; ma>=63 is the only band that admits clause 1 at all.",
+      "params": 1082624,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 493.04,
+        "after": 489.91
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0005129165000000713,
+        "per_wafer_cpu_s": 0.0005129165000000713,
+        "min_cpu_s": 0.000500176999999935,
+        "max_cpu_s": 0.0005507679999998683,
+        "spread_factor": 1.1011461942471161,
+        "over_budget_factor": 1.012780216660428,
+        "under_budget": false,
+        "speedup_vs_solver": 987.3810561756726,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 987.3810561756726,
+          "all_frames_ten_applies_excl_raster": 1983.838704740158,
+          "fixed_duration": 1099.6214218102195
+        },
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          919.5233483065844,
+          1012.5296355091608
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.0024156779999999767,
+        "per_wafer_cpu_s": 0.0024156779999999767,
+        "min_cpu_s": 0.002322764999999949,
+        "max_cpu_s": 0.0025085910000000045,
+        "spread_factor": 1.0800020665026637,
+        "over_budget_factor": 3.269272277439559,
+        "under_budget": false,
+        "speedup_vs_solver": 305.87846931586375,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          294.54936615813364,
+          318.1139241378341
+        ],
+        "n": 2
+      }
+    },
+    "specprop_m16_ma64_K10": {
+      "note": "modes=16, modes_a=64. Oracle floor at this modes_a is in runs/spectral_floor_fine.json; ma>=63 is the only band that admits clause 1 at all.",
+      "params": 1132544,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 489.91,
+        "after": 488.24
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0005373759999999228,
+        "per_wafer_cpu_s": 0.0005373759999999228,
+        "min_cpu_s": 0.00036708699999987715,
+        "max_cpu_s": 0.0005590310000000986,
+        "spread_factor": 1.5228842209075388,
+        "over_budget_factor": 1.061076767286606,
+        "under_budget": false,
+        "speedup_vs_solver": 942.4388798533475,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 942.4388798533475,
+          "all_frames_ten_applies_excl_raster": 1893.5412169507808,
+          "fixed_duration": 1049.5704516020085
+        },
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          905.931934901482,
+          1379.6294488777025
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.002109857000000104,
+        "per_wafer_cpu_s": 0.002109857000000104,
+        "min_cpu_s": 0.0020106690000001315,
+        "max_cpu_s": 0.002209045000000076,
+        "spread_factor": 1.098661689218828,
+        "over_budget_factor": 2.8553875969654072,
+        "under_budget": false,
+        "speedup_vs_solver": 350.21515154816825,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          334.49019327355234,
+          367.4915607690533
+        ],
+        "n": 2
+      }
+    }
+  },
+  "components": {}
+}

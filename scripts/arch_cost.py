@@ -330,6 +330,29 @@ SPECS.update({
 })
 
 
+# H20: runs/spectral_floor_fine.json makes every modes_a below 63 provably
+# unable to meet clause 1 -- the oracle projection floor is 0.879 at ma=4, 0.441
+# at ma=16, 0.285 at ma=32, and crosses 0.05 only between ma=62 and ma=63. The
+# residual of an SDF over a 10-step etch is BROADBAND, because the surface moves
+# several micron and the change is spatially localised at the interface. So the
+# three configs launched for H18 are all doomed, and the fix is the thing the
+# class was designed around: the ADDITIVE term's mode count is free in
+# operations, because irfft2 costs the same whatever fraction of the spectrum is
+# non-zero. These rows check that it is also affordable in TIME -- the a_head
+# MLP emits 2*(2*ma)*ma numbers, so its parameter count grows as ma^2 even
+# though it runs on a (1, 7) tensor and never touches the grid.
+SPECS.update({
+    f"specprop_m{m}_ma{ma}_K10": dict(
+        build="from eot.operator import SpectralPropagator\n"
+              f"M = SpectralPropagator(cond_dim=7, modes={m}, modes_a={ma})",
+        call="M(phi, cond)", n_apply=1,
+        note=f"modes={m}, modes_a={ma}. Oracle floor at this modes_a is in "
+             "runs/spectral_floor_fine.json; ma>=63 is the only band that "
+             "admits clause 1 at all.")
+    for m, ma in [(4, 63), (4, 64), (8, 64), (16, 64)]
+})
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--rounds", type=int, default=16)

@@ -12,81 +12,71 @@
     "fno_w64m20L4_DEPLOYED": {
       "params": 26248025,
       "total_aten_calls": 262,
-      "full_ops": 77,
-      "coarse_ops": 96,
-      "tiny_ops": 89,
-      "full_op_names": {
-        "expand": 4,
+      "full_materialising": 41,
+      "full_view_only": 34,
+      "other_calls": 187,
+      "full_materialising_names": {
         "stack": 1,
         "cat": 1,
         "convolution": 8,
         "gelu": 6,
         "_fft_r2c": 4,
         "zeros": 4,
-        "slice": 32,
         "_fft_c2r": 4,
         "add": 9,
         "native_group_norm": 4
       },
-      "coarse_op_names": {
-        "view_as_complex": 8,
-        "slice": 48,
-        "permute": 16,
-        "view": 16,
-        "copy_": 8
+      "full_view_names": {
+        "expand": 2,
+        "slice": 32
       }
     },
     "fno_w8m4L2": {
       "params": 10897,
       "total_aten_calls": 144,
-      "full_ops": 45,
-      "coarse_ops": 48,
-      "tiny_ops": 51,
-      "full_op_names": {
-        "expand": 4,
+      "full_materialising": 25,
+      "full_view_only": 18,
+      "other_calls": 101,
+      "full_materialising_names": {
         "stack": 1,
         "cat": 1,
         "convolution": 6,
         "gelu": 4,
         "_fft_r2c": 2,
         "zeros": 2,
-        "slice": 16,
         "_fft_c2r": 2,
         "add": 5,
         "native_group_norm": 2
       },
-      "coarse_op_names": {
-        "view_as_complex": 4,
-        "slice": 24,
-        "permute": 8,
-        "view": 8,
-        "copy_": 4
+      "full_view_names": {
+        "expand": 2,
+        "slice": 16
       }
     },
     "compactcnn_w8L2": {
       "params": 1793,
       "total_aten_calls": 26,
-      "full_ops": 13,
-      "coarse_ops": 0,
-      "tiny_ops": 13,
-      "full_op_names": {
-        "expand": 4,
+      "full_materialising": 9,
+      "full_view_only": 2,
+      "other_calls": 15,
+      "full_materialising_names": {
         "stack": 1,
         "cat": 1,
         "convolution": 4,
         "gelu": 2,
         "add": 1
       },
-      "coarse_op_names": {}
+      "full_view_names": {
+        "expand": 2
+      }
     },
     "multiscale_s4_wf8": {
       "params": 9914,
       "total_aten_calls": 165,
-      "full_ops": 13,
-      "coarse_ops": 89,
-      "tiny_ops": 63,
-      "full_op_names": {
-        "expand": 3,
+      "full_materialising": 10,
+      "full_view_only": 1,
+      "other_calls": 154,
+      "full_materialising_names": {
         "stack": 1,
         "cat": 1,
         "convolution": 2,
@@ -95,32 +85,17 @@
         "gelu": 1,
         "upsample_bilinear2d": 1
       },
-      "coarse_op_names": {
-        "avg_pool2d": 1,
-        "expand": 1,
-        "cat": 1,
-        "convolution": 6,
-        "gelu": 4,
-        "_fft_r2c": 2,
-        "view_as_complex": 4,
-        "zeros": 2,
-        "slice": 40,
-        "permute": 8,
-        "view": 8,
-        "copy_": 4,
-        "_fft_c2r": 2,
-        "add": 4,
-        "native_group_norm": 2
+      "full_view_names": {
+        "expand": 1
       }
     },
     "pointwise_wf8_n1": {
       "params": 1217,
       "total_aten_calls": 32,
-      "full_ops": 11,
-      "coarse_ops": 0,
-      "tiny_ops": 21,
-      "full_op_names": {
-        "expand": 3,
+      "full_materialising": 8,
+      "full_view_only": 1,
+      "other_calls": 23,
+      "full_materialising_names": {
         "stack": 1,
         "cat": 1,
         "convolution": 2,
@@ -128,102 +103,89 @@
         "add": 2,
         "relu": 1
       },
-      "coarse_op_names": {}
+      "full_view_names": {
+        "expand": 1
+      }
     },
     "specprop_m4_ma4": {
       "params": 9344,
       "total_aten_calls": 68,
-      "full_ops": 14,
-      "coarse_ops": 46,
-      "tiny_ops": 8,
-      "full_op_names": {
-        "squeeze": 1,
+      "full_materialising": 4,
+      "full_view_only": 10,
+      "other_calls": 54,
+      "full_materialising_names": {
         "_fft_r2c": 1,
         "zeros_like": 1,
-        "slice": 8,
         "_fft_c2r": 1,
-        "unsqueeze": 1,
         "add": 1
       },
-      "coarse_op_names": {
-        "t": 2,
-        "view": 2,
-        "slice": 28,
-        "select": 4,
-        "complex": 2,
-        "mul": 2,
-        "copy_": 4,
-        "add": 2
+      "full_view_names": {
+        "squeeze": 1,
+        "slice": 8,
+        "unsqueeze": 1
       }
     },
     "specprop_m8_ma32": {
       "params": 283904,
       "total_aten_calls": 68,
-      "full_ops": 14,
-      "coarse_ops": 44,
-      "tiny_ops": 10,
-      "full_op_names": {
-        "squeeze": 1,
+      "full_materialising": 4,
+      "full_view_only": 10,
+      "other_calls": 54,
+      "full_materialising_names": {
         "_fft_r2c": 1,
         "zeros_like": 1,
-        "slice": 8,
         "_fft_c2r": 1,
-        "unsqueeze": 1,
         "add": 1
       },
-      "coarse_op_names": {
-        "view": 2,
-        "slice": 28,
-        "select": 4,
-        "complex": 2,
-        "mul": 2,
-        "copy_": 4,
-        "add": 2
+      "full_view_names": {
+        "squeeze": 1,
+        "slice": 8,
+        "unsqueeze": 1
       }
     }
   },
-  "specprop_vs_fno_full_ops": 0.3111111111111111,
+  "specprop_vs_fno_field_materialising": 0.16,
   "mechanism_test": {
     "claim": "cost is bound by the count of full-resolution operations, not by arithmetic. Predicts that between two models the cost ratio tracks the full-op ratio.",
     "same_invocation": "arch_cost_h18.json",
     "loadavg": 281.9,
     "per_model": {
       "specprop_m4_ma4": {
-        "full_ops": 14,
+        "full_materialising": 4,
         "us_per_wafer": 277.05150000012503,
-        "us_per_full_op": 19.78939285715179
+        "us_per_field_op": 69.26287500003126
       },
       "specprop_m8_ma32": {
-        "full_ops": 14,
+        "full_materialising": 4,
         "us_per_wafer": 225.71449999997384,
-        "us_per_full_op": 16.122464285712418
+        "us_per_field_op": 56.42862499999346
       },
       "fno_w8m4L2": {
-        "full_ops": 45,
+        "full_materialising": 25,
         "us_per_wafer": 2580.3669999998615,
-        "us_per_full_op": 57.34148888888581
+        "us_per_field_op": 103.21467999999446
       },
       "pointwise_wf8_n1": {
-        "full_ops": 11,
+        "full_materialising": 8,
         "us_per_wafer": 944.0025000000408,
-        "us_per_full_op": 85.8184090909128
+        "us_per_field_op": 118.0003125000051
       }
     },
     "vs_fno_w8m4L2": {
       "specprop_m4_ma4": {
-        "op_ratio": 3.2142857142857144,
+        "op_ratio": 6.25,
         "cost_ratio": 9.313672728711799,
-        "agreement": 2.8975870711547818
+        "agreement": 1.4901876365938878
       },
       "specprop_m8_ma32": {
-        "op_ratio": 3.2142857142857144,
+        "op_ratio": 6.25,
         "cost_ratio": 11.431994843043581,
-        "agreement": 3.556620617835781
+        "agreement": 1.829119174886973
       },
       "pointwise_wf8_n1": {
-        "op_ratio": 4.090909090909091,
+        "op_ratio": 3.125,
         "cost_ratio": 2.733432379680933,
-        "agreement": 0.6681723594775614
+        "agreement": 0.8746983614978986
       }
     },
     "caveat": "an agreement near 1 supports the mechanism; it does not prove per-op cost is constant across op TYPES, and an rfft2 on one channel is not a 1x1 conv on eight. The us_per_full_op column shows the spread."
