@@ -109,6 +109,13 @@ def main():
     ap.add_argument("--cond", choices=("dt", "depth"), default="dt",
                     help="horizon conditioning channel: log(K*dt), or the "
                          "achieved etch depth from scripts/derive_depth.py")
+    ap.add_argument("--state-modes", type=int, default=0,
+                    help="specprop only: feed a state_modes x state_modes "
+                         "spectral summary of the CURRENT field into the "
+                         "additive head, making it a NONLINEAR function of phi "
+                         "at no full-grid cost (it reuses the rfft2 already "
+                         "computed). 0 keeps the recipe-only head, which is "
+                         "exactly linear in phi.")
     ap.add_argument("--modes-a", type=int, default=16,
                     help="specprop only: modes for the ADDITIVE spectral term. "
                          "May exceed --modes at no inference cost, because the "

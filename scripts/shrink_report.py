@@ -70,8 +70,22 @@ ARCH_FIELDS = {
     "fno": ("width", "modes", "layers", "stride"),
     "multiscale": ("width", "modes", "layers", "stride", "width_full",
                    "scale", "n_local", "act"),
-    "specprop": ("modes", "modes_a", "stride"),
+    "specprop": ("modes", "modes_a", "state_modes", "stride"),
 }
+
+# Fields added to an architecture AFTER runs of it already existed on disk.
+# `ARCH_FIELDS` raises on a missing field on purpose -- defaulting is what let a
+# key blind to `modes_a` pool a 9,344-parameter model and a 71,744-parameter one
+# into a single seed group and average their means. But a field that did not
+# exist when a run was launched is a different case from a field that was
+# dropped: the run has a definite value for it, namely the behaviour before the
+# flag existed. Those values go here, ONE PER LINE WITH THE REASON, and nothing
+# else may be defaulted.
+#
+# `state_modes = 0`: every specprop arm trained before 2026-09-10 22:45 had a
+# recipe-only additive head, which is exactly what `state_modes=0` builds. Same
+# reasoning as `hermitian_closed=False` in `eot.operator.build_from_cfg`.
+LEGACY_DEFAULTS = {"state_modes": 0}
 
 
 def config_key(cfg: dict) -> str:
@@ -85,13 +99,21 @@ def config_key(cfg: dict) -> str:
     arch = cfg.get("arch", "fno")
     if arch not in ARCH_FIELDS:
         raise ValueError(f"unknown arch {arch!r}; add it to ARCH_FIELDS")
-    missing = [f for f in ARCH_FIELDS[arch] if cfg.get(f) is None]
+    missing = [f for f in ARCH_FIELDS[arch]
+               if cfg.get(f) is None and f not in LEGACY_DEFAULTS]
     if missing:
         raise ValueError(f"{arch} run is missing {missing} in args.json")
     if arch == "fno":
         return f"w{cfg['width']}m{cfg['modes']}L{cfg['layers']}_K{cfg['stride']}"
     if arch == "specprop":
-        return f"sp_m{cfg['modes']}ma{cfg['modes_a']}_K{cfg['stride']}"
+        # `_sm{n}` is appended only when n > 0, so the keys of every arm scored
+        # before the field existed are byte-identical to what they were and the
+        # published rows keep their names. A legacy run and a new run explicitly
+        # launched with `--state-modes 0` are the same architecture and SHOULD
+        # share a key; anything with a state head must not share one with them.
+        sm = cfg.get("state_modes") or 0
+        tail = f"sm{sm}_" if sm else ""
+        return f"sp_m{cfg['modes']}ma{cfg['modes_a']}_{tail}K{cfg['stride']}"
     sc = cfg["scale"]
     body = "pw" if sc == 0 else f"ms_s{sc}_w{cfg['width']}m{cfg['modes']}L{cfg['layers']}"
     return f"{body}_wf{cfg['width_full']}n{cfg['n_local']}_{cfg['act']}_K{cfg['stride']}"
@@ -170,7 +192,8 @@ def build_string(cfg, cond_dim):
         return (f"from eot.operator import SpectralPropagator\n"
                 f"M = SpectralPropagator(cond_dim={cond_dim}, "
                 f"modes={cfg['modes']}, modes_a={cfg.get('modes_a', 16)}, "
-                f"hermitian_closed={cfg.get('hermitian_closed', False)!r})")
+                f"hermitian_closed={cfg.get('hermitian_closed', False)!r}, "
+                f"state_modes={cfg.get('state_modes', 0)})")
     raise ValueError(f"cannot price unknown arch {arch!r}; add a branch here "
                      f"AND to eot.operator.build_from_cfg")
 

@@ -167,24 +167,91 @@ def test_specprop_with_modes_does_depend_on_phi():
     assert not torch.allclose(r1, r2), "modes>0 residual ignored phi"
 
 
-def test_specprop_projection_is_the_floor_scripts_measure():
-    """The oracle floor in runs/spectral_floor.json is only a bound if the model
-    really cannot emit content outside modes_a. Verify directly: the residual's
-    spectrum must be zero everywhere outside the retained block."""
-    ma = 8
+def _specprop_spectrum(ma, closed, std=0.5, seed=0):
     m = build_from_cfg({"arch": "specprop", "modes": 4, "modes_a": ma,
-                        "width": 8, "layers": 2}, 7)
-    torch.nn.init.normal_(m.a_head[-1].weight, std=0.5)
-    torch.nn.init.normal_(m.h_head[-1].weight, std=0.5)
+                        "width": 8, "layers": 2,
+                        "hermitian_closed": closed}, 7)
+    torch.nn.init.normal_(m.a_head[-1].weight, std=std)
+    torch.nn.init.normal_(m.h_head[-1].weight, std=std)
     m.eval()
+    torch.manual_seed(seed)
     with torch.no_grad():
         r = m.residual(torch.randn(1, 1, 128, 128), torch.randn(1, 7))
-    f = torch.fft.rfft2(r.squeeze(1).float())
-    keep = torch.zeros_like(f, dtype=torch.bool)
-    keep[:, :ma, :ma] = True
-    keep[:, -ma:, :ma] = True
-    outside = f[~keep].abs().max()
-    assert float(outside) < 1e-4, f"residual has content outside modes_a: {outside}"
+    return m, torch.fft.rfft2(r.squeeze(1).float())
+
+
+def test_specprop_default_reaches_one_cell_outside_the_block():
+    """The defect, pinned as it actually behaves under the default.
+
+    Written asserting the support equals `[:ma] + [-ma:]`, it FAILED with one
+    cell of magnitude ~1.2-1.8 at `(+ma, 0)`. That is real: `[-ma:]` retains
+    frequencies -ma..-1 while `[:ma]` retains 0..ma-1, so the set holds `-ma`
+    and not `+ma`, and a real field forces Hermitian symmetry on the k2=0
+    column -- so content at `(-ma, 0)` obliges content at `(+ma, 0)`, which
+    `irfft2` synthesises.
+
+    Consequence: under the default the reachable subspace is slightly LARGER
+    than a naive mask, so a floor computed from such a mask is not a bound.
+    `scripts/spectral_floor_exact.py` therefore measures the subspace by pushing
+    basis vectors through the model rather than trusting a mask.
+    """
+    ma = 8
+    _m, f = _specprop_spectrum(ma, closed=False)
+    allowed = torch.zeros_like(f, dtype=torch.bool)
+    allowed[:, :ma, :ma] = True
+    allowed[:, -ma:, :ma] = True
+    allowed[:, ma, 0] = True          # the Hermitian partner of (-ma, 0)
+    ib = float(f[allowed].abs().max())
+    assert float(f[~allowed].abs().max()) / ib < 1e-6, \
+        "support is wider than block+partner"
+    # The partner cell really is populated, so the exception is necessary
+    # rather than defensive.
+    assert float(f[:, ma, 0].abs().max()) / ib > 1e-4
+
+
+def test_specprop_hermitian_closed_is_exactly_band_limited():
+    """`hermitian_closed=True` makes the retained set conjugate-closed --
+    {0..ma-1} u {-(ma-1)..-1} -- and symmetrises the self-conjugate columns, so
+    the residual's support IS the claimed block and a mask-derived floor is a
+    genuine bound.
+
+    The bound is RELATIVE, not absolute. The previous version of this assertion
+    used an absolute 1e-4 and failed at 1.13e-4 on a correctly band-limited
+    residual, because out-of-band content here is float32 round-trip noise that
+    scales with the in-band magnitude -- which is set by an arbitrary weight-init
+    scale, not by the architecture. Measured relative leakage is 1.7e-8 to
+    7.7e-8 over modes_a 8..64 and a 10x change in that scale, i.e. float32 eps.
+    """
+    for ma, std in ((8, 0.5), (16, 0.5), (32, 0.5), (8, 5.0)):
+        m, f = _specprop_spectrum(ma, closed=True, std=std)
+        blk = torch.zeros_like(f, dtype=torch.bool)
+        blk[:, :ma, :ma] = True
+        blk[:, -(ma - 1):, :ma] = True
+        rel = float(f[~blk].abs().max()) / float(f[blk].abs().max())
+        assert rel < 1e-6, f"ma={ma} std={std}: relative leakage {rel:.2e}"
+        assert m.retained_rows()["conjugate_closed"]
+        assert m.retained_rows()["extra_reachable_cell_at_col0"] is None
+
+
+def test_specprop_default_is_false_so_old_checkpoints_keep_their_meaning():
+    """Five runs/specprop arms were mid-training when the defect was found.
+    Their `args.json` has no `hermitian_closed` key and their checkpoints load
+    under either setting, because the shapes are identical -- so if the default
+    ever flips, those checkpoints silently start computing a model that was
+    never trained. Pin the default.
+    """
+    m = build_from_cfg({"arch": "specprop", "modes": 4, "modes_a": 8}, 7)
+    assert m.hermitian_closed is False, \
+        "flipping this default re-scores every pre-fix specprop arm as a " \
+        "different model; set hermitian_closed explicitly on new arms instead"
+
+
+def test_specprop_the_two_modes_really_differ():
+    """If the flag did not change the computation, the fix would be cosmetic and
+    the two tests above would both be vacuous."""
+    _a, fa = _specprop_spectrum(8, closed=False)
+    _b, fb = _specprop_spectrum(8, closed=True)
+    assert not torch.allclose(fa, fb), "hermitian_closed changed nothing"
 
 
 if __name__ == "__main__":

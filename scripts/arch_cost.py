@@ -386,6 +386,45 @@ SPECS.update({
 })
 
 
+# H22: `codex`'s answer to the rung-4 question "how would you make this clause
+# pass?", which is a better idea than the fallback I had registered.
+#
+# The additive head currently reads the recipe alone, so the whole model is
+# exactly linear in phi and its dependence on phi runs through the mode-diagonal
+# multiplicative term. Feeding a `state_modes` x `state_modes` spectral summary
+# of the CURRENT field into that head buys two things the multiplicative term
+# cannot provide at any width: a NONLINEAR dependence on phi (the head has a
+# GELU), and DENSE coupling from a low-frequency summary of the input to every
+# mode of the output up to `modes_a` (a diagonal spectral multiply maps mode k
+# to mode k and nothing else).
+#
+# It should be nearly free, and that is the claim these rows test rather than
+# assume. It reuses the rfft2 already computed -- no new transform, no new
+# full-resolution activation -- and the head runs on a
+# (B, 7 + 2*(2s)*s) vector whose cost is independent of the grid. What is NOT
+# obviously free is the extraction: slicing two corner blocks, taking real and
+# imaginary parts and concatenating is a handful of small operations, and this
+# repo's whole clause-2 story is that per-operation overhead (~13-30 us) is what
+# costs, not arithmetic. So it is measured.
+#
+# codex's own estimate was 25-55 us extra, giving 451-481 us/wafer. That is an
+# ESTIMATE FROM A MODEL THAT COULD NOT RUN THE TIMER, it is recorded only so it
+# can be compared against the measurement, and nothing may cite it. Headroom
+# under the workload-matched 1000x budget is 511.0 - 401.8 = 109.2 us.
+SPECS.update({
+    f"specprop_m4_ma64_sm{sm}_K10": dict(
+        build="from eot.operator import SpectralPropagator\n"
+              f"M = SpectralPropagator(cond_dim=7, modes=4, modes_a=64, "
+              f"state_modes={sm})",
+        call="M(phi, cond)", n_apply=1,
+        note=f"state-conditioned additive head, state_modes={sm}. Nonlinear in "
+             "phi through the head's GELU, with dense input-mode to "
+             "output-mode coupling, at no new full-grid operation. Accuracy "
+             "UNMEASURED at the time this row was priced.")
+    for sm in [4, 8, 16]
+})
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--rounds", type=int, default=16)

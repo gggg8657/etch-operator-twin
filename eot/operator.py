@@ -408,8 +408,16 @@ def build_from_cfg(cfg: dict, cond_dim: int):
             scale=cfg["scale"], n_local=cfg.get("n_local", 1),
             act=cfg.get("act", "gelu"))
     if arch == "specprop":
+        # `hermitian_closed` is absent from every args.json written before the
+        # flag existed, and those runs used the non-closed spectrum -- so the
+        # default read here must be False. Defaulting it True would rebuild a
+        # different operator from an old checkpoint, which loads without error
+        # because the shapes are identical.
         return SpectralPropagator(cond_dim=cond_dim, modes=cfg["modes"],
-                                  modes_a=cfg.get("modes_a", 16))
+                                  modes_a=cfg.get("modes_a", 16),
+                                  hermitian_closed=cfg.get("hermitian_closed",
+                                                           False),
+                                  state_modes=cfg.get("state_modes", 0))
     raise ValueError(f"unknown arch {arch!r} in args.json")
 
 
@@ -493,9 +501,19 @@ class SpectralPropagator(nn.Module):
         modes_a: int = 16,
         hidden: int = 64,
         n_grid: int = 128,
+        hermitian_closed: bool = False,
+        state_modes: int = 0,
     ):
         super().__init__()
         self.modes, self.modes_a, self.n_grid = modes, modes_a, n_grid
+        # `hermitian_closed=False` is the behaviour every arm trained before
+        # 2026-09-10 19:45 used, and it is the DEFAULT on purpose: five
+        # `runs/specprop` arms were mid-training when the defect below was
+        # found, their checkpoints load either way (shapes are identical), and
+        # flipping the default would have changed what those checkpoints
+        # compute without changing their `args.json` -- scoring a model that
+        # was never trained. Arms launched from here set it explicitly.
+        self.hermitian_closed = hermitian_closed
         # rfft2 of a real (H, W) field has shape (H, W//2 + 1), so the second
         # axis is already half-spectrum and must not be truncated symmetrically.
         assert modes <= n_grid // 2 and modes_a <= n_grid // 2, (modes, modes_a)
@@ -513,10 +531,28 @@ class SpectralPropagator(nn.Module):
             nn.Linear(cond_dim, hidden), nn.GELU(),
             nn.Linear(hidden, 2 * (2 * modes) * modes),
         ) if self.has_mult else None
+        # `state_modes > 0` makes the ADDITIVE term a function of phi as well as
+        # of the recipe: `A(recipe, P_s phihat)` instead of `A(recipe)`, where
+        # `P_s` is the same two-corner block extractor the multiplicative term
+        # uses, at `state_modes` resolution, flattened to real and imaginary
+        # parts. See `residual` for why this is the cheapest available route to
+        # a NONLINEAR dependence on phi.
+        self.state_modes = state_modes
+        self.state_dim = 2 * (2 * state_modes) * state_modes if state_modes else 0
         self.a_head = nn.Sequential(
-            nn.Linear(cond_dim, hidden), nn.GELU(),
+            nn.Linear(cond_dim + self.state_dim, hidden), nn.GELU(),
             nn.Linear(hidden, 2 * (2 * modes_a) * modes_a),
         )
+        assert state_modes <= n_grid // 2, state_modes
+        # The state features are raw spectral coefficients whose scale is set by
+        # the field's amplitude, not by anything normalised -- an SDF over this
+        # geometry has a DC term orders of magnitude above its high modes. Left
+        # un-normalised they would saturate the GELU and the head would learn
+        # nothing from them, which is a silent no-op rather than a failure. A
+        # LayerNorm over the state block only (never over the recipe block,
+        # which is already normalised and whose scale carries meaning) fixes
+        # that without introducing a train/test statistic to store.
+        self.state_norm = nn.LayerNorm(self.state_dim) if state_modes else None
         # The conditioning MLPs run on a (B, cond_dim) tensor, so their cost is
         # independent of the grid and does not enter the per-pixel budget.
         # Initialise both heads small: at init the operator is the identity plus
@@ -544,25 +580,141 @@ class SpectralPropagator(nn.Module):
         raw = head(cond).float().view(B, 2, 2 * m, m)
         return torch.complex(raw[:, 0], raw[:, 1])
 
+    @staticmethod
+    def _hermitian_self_conjugate_columns(out, H, W):
+        """Force the self-conjugate columns of a half-spectrum to be Hermitian.
+
+        **The defect this fixes, measured before it was fixed.** `rfft2` of a
+        real field stores only half the spectrum, and columns `k2 = 0` and
+        `k2 = W/2` are their own conjugate partners: a real field requires
+        `F[k1, 0] = conj(F[-k1, 0])`. `irfft2` enforces that whatever it is
+        given, so writing an asymmetric column and transforming back does not
+        round-trip -- the transform silently symmetrises.
+
+        The retained set was rows `0..ma-1` (frequencies 0..+(ma-1)) plus rows
+        `-ma..-1` (frequencies -ma..-1), which is **not conjugate-closed**:
+        frequency `-ma` is present and its partner `+ma` is not. So `irfft2`
+        synthesised frequency `+ma` at column 0 out of the `-ma` coefficient,
+        and the residual carried content **outside the block the class claims to
+        band-limit it to**. Measured at `modes_a=8`: exactly one leaking cell,
+        `(k1, k2) = (8, 0)`, magnitude 1.44 against an in-band maximum of 688,
+        i.e. 0.21% -- small, but the claim was exact and the leak made it false,
+        and `runs/spectral_floor.json` uses that claim as an oracle *bound*.
+
+        The fix is to make the retained set conjugate-closed and then symmetrise
+        the self-conjugate columns, so `rfft2(irfft2(out)) == out` exactly and
+        the support really is the claimed block. DC is forced real as a
+        by-product, which it must be for a real field.
+        """
+        idx = (-torch.arange(H, device=out.device)) % H
+        for c in ({0, W // 2} if W % 2 == 0 else {0}):
+            if c >= out.shape[-1]:
+                continue
+            col = out[:, :, c]
+            out[:, :, c] = 0.5 * (col + col[:, idx].conj())
+        return out
+
+    def _cond_a(self, cond, f):
+        """The additive head's input: the recipe, optionally plus a spectral
+        summary of the CURRENT FIELD.
+
+        **Why this exists, and why it is the cheapest nonlinearity available
+        here.** Without it the model is `phi + irfft2(rfft2(phi) * H + A)` with
+        `A` a function of the recipe alone -- so it is exactly LINEAR in phi,
+        and its whole dependence on phi runs through the lowest `modes` corners
+        of the input spectrum. Measured consequences: at `modes=4, modes_a=64`
+        it reads 0.08886 terminal band rel-L2 while sitting 2900x above its own
+        oracle projection floor of 0.00003, converged (the last 400 of 800
+        epochs moved validation 5.1%). Representation is not the obstruction and
+        optimisation is not the obstruction.
+
+        Feeding `P_s phihat` into `A` changes that for essentially no grid cost:
+
+        * it reuses the `rfft2` that has already been computed -- no new
+          transform, no new full-resolution activation;
+        * the head runs on a `(B, cond_dim + 2*(2s)*s)` vector, so its cost is
+          independent of the grid, exactly as the recipe-only head's was;
+        * it is NONLINEAR in phi, because the head has a GELU between its
+          layers, where `rfft2(phi) * H` can only ever be linear;
+        * and it couples a low-frequency summary of the INPUT to every mode of
+          the OUTPUT, up to `modes_a`, which the multiplicative term cannot do
+          at any width -- a diagonal spectral multiply maps mode k to mode k.
+
+        The last point is the one that matters and it is worth being precise
+        about: widening `modes` buys mode-diagonal linear coupling and costs
+        einsum work quadratic in the retained block (measured: `m=64` at 693.4
+        us/wafer is over budget, `m=4` at 401.8 us is not). This buys dense
+        nonlinear coupling and costs one small matmul.
+
+        **Credit, and the honest provenance.** This is `codex`'s proposal, given
+        in response to the rung-4 question "how would you make this clause
+        pass?" rather than the "what is wrong with this" this log had been
+        asking. My own pre-registered fallback was a pointwise nonlinearity
+        applied before the transform, which is strictly worse: it is still
+        squeezed through the mode-diagonal `H` bottleneck afterwards. Its
+        timing estimate (25-55 us) is an estimate and is NOT used anywhere --
+        `runs/arch_cost_h22.json` measures the real thing.
+        """
+        if not self.state_modes:
+            return cond
+        s = self.state_modes
+        blk = torch.cat([f[:, :s, :s], f[:, -s:, :s]], dim=1)   # (B, 2s, s)
+        z = torch.cat([blk.real.flatten(1), blk.imag.flatten(1)], dim=1)
+        return torch.cat([cond, self.state_norm(z).to(cond.dtype)], dim=1)
+
     def residual(self, phi, cond):
         B, _, H, W = phi.shape
         f = torch.fft.rfft2(phi.squeeze(1).float())          # (B, H, W//2+1)
         out = torch.zeros_like(f)
         m, ma = self.modes, self.modes_a
-        ac = self._coeffs(cond.float(), ma, self.a_head)
+        ac = self._coeffs(self._cond_a(cond.float(), f), ma, self.a_head)
         # Multiplicative term on the retained low modes only: everything outside
         # is annihilated, exactly as SpectralConv2d does. With modes=0 there is
         # no multiplicative term and `out` stays zero here, so the residual
         # becomes a function of the recipe alone -- the phi-blind null.
+        #
+        # NEGATIVE BLOCKS ARE ONE ROW SHORT ON PURPOSE. `[-(k-1):]` covers
+        # frequencies -(k-1)..-1, so the retained set {0..k-1} u {-(k-1)..-1} is
+        # closed under conjugation and the spectrum can be realised exactly by a
+        # real field. Using `[-k:]` would include frequency -k whose partner +k
+        # is absent, and `irfft2` would manufacture +k -- see
+        # `_hermitian_self_conjugate_columns`. The last row of each coefficient
+        # head is therefore unused; it is left in place rather than resized so
+        # that checkpoints written before this fix still load, and
+        # `retained_rows` records what is actually read.
+        neg = (lambda k: slice(-(k - 1), None)) if self.hermitian_closed \
+            else (lambda k: slice(-k, None))
+        off = 1 if self.hermitian_closed else 0
         if self.has_mult:
             hc = self._coeffs(cond.float(), m, self.h_head)
             out[:, :m, :m] = f[:, :m, :m] * hc[:, :m]
-            out[:, -m:, :m] = f[:, -m:, :m] * hc[:, m:]
+            if m - off > 0:
+                out[:, neg(m), :m] = f[:, neg(m), :m] * hc[:, m + off:]
         # Additive term, on a wider band, for free.
         out[:, :ma, :ma] = out[:, :ma, :ma] + ac[:, :ma]
-        out[:, -ma:, :ma] = out[:, -ma:, :ma] + ac[:, ma:]
+        if ma - off > 0:
+            out[:, neg(ma), :ma] = out[:, neg(ma), :ma] + ac[:, ma + off:]
+        if self.hermitian_closed:
+            out = self._hermitian_self_conjugate_columns(out, H, W)
         r = torch.fft.irfft2(out, s=(H, W))
         return r.unsqueeze(1).to(phi.dtype)
+
+    def retained_rows(self):
+        """The frequencies actually read, so a floor computation can use the
+        same set rather than assume one.
+
+        With `hermitian_closed=False` the set is NOT conjugate-closed and the
+        reachable subspace is one cell larger than this at column k2=0 -- see
+        `_hermitian_self_conjugate_columns`. That is why
+        `scripts/spectral_floor_exact.py` measures the subspace by pushing basis
+        vectors through the model instead of trusting a mask.
+        """
+        ma = self.modes_a
+        neg = range(-(ma - 1), 0) if self.hermitian_closed else range(-ma, 0)
+        return {"positive": list(range(ma)), "negative": list(neg),
+                "conjugate_closed": bool(self.hermitian_closed),
+                "extra_reachable_cell_at_col0": None if self.hermitian_closed
+                else [ma, 0]}
 
     def forward(self, phi, cond):
         return phi + self.residual(phi, cond)

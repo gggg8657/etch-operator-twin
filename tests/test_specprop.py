@@ -132,6 +132,125 @@ def test_output_is_finite_over_a_long_rollout():
     assert torch.isfinite(out).all()
 
 
+def test_state_conditioning_makes_the_residual_depend_on_phi_when_nothing_else_does():
+    """The sharp property, and its exact complement.
+
+    `modes=0` removes the multiplicative term, so the residual is
+    `irfft2(A(recipe))` and is EXACTLY independent of phi -- the pre-registered
+    null H20 used, which measured 0.32064 against the candidate's 0.08886 and
+    established that this dataset can tell an operator from a recipe lookup.
+
+    `state_modes > 0` feeds a spectral summary of the current field into that
+    same head. So at `modes=0, state_modes>0` the multiplicative term is still
+    gone and the residual must STILL depend on phi -- through a GELU, i.e.
+    nonlinearly, which is what the multiplicative term can never be.
+
+    Testing both directions in one function on purpose: an assertion that a
+    difference is non-zero passes for a model that is subtly broken in some
+    other way, and an assertion that it is zero passes for a model that ignores
+    its input entirely. Together they pin that exactly one pathway is open.
+    """
+    torch.manual_seed(0)
+    phi1 = torch.randn(2, 1, 128, 128)
+    phi2 = torch.randn(2, 1, 128, 128)
+    cond = torch.randn(2, 7)
+
+    blind = SpectralPropagator(cond_dim=7, modes=0, modes_a=64, state_modes=0)
+    blind.eval()
+    with torch.no_grad():
+        d = (blind.residual(phi1, cond) - blind.residual(phi2, cond)).abs().max()
+    assert float(d) == 0.0, f"modes=0 state_modes=0 leaked phi: {float(d)}"
+
+    stated = SpectralPropagator(cond_dim=7, modes=0, modes_a=64, state_modes=8)
+    stated.eval()
+    with torch.no_grad():
+        d = (stated.residual(phi1, cond) - stated.residual(phi2, cond)).abs().max()
+    assert float(d) > 0.0, (
+        "state_modes=8 produced a phi-independent residual, so the state "
+        "features are not reaching the additive head at all"
+    )
+
+
+def test_state_conditioning_is_bit_identical_to_the_old_class_when_off():
+    """`state_modes=0` must not change a single parameter or output.
+
+    Five specprop arms are already trained and scored. If adding this option
+    perturbed the default path -- an extra LayerNorm, a changed input width, a
+    different init draw order -- their checkpoints would still LOAD (shapes are
+    the thing that must match) and would compute something else. That is the
+    same hazard `hermitian_closed` was given a False default for.
+    """
+    torch.manual_seed(0)
+    a = SpectralPropagator(cond_dim=7, modes=4, modes_a=64)
+    torch.manual_seed(0)
+    b = SpectralPropagator(cond_dim=7, modes=4, modes_a=64, state_modes=0)
+    assert a.param_count() == b.param_count() == 1070144, (
+        f"{a.param_count()} != 1070144: the default path changed size, and "
+        f"every runs/specprop/m4_ma64_s* checkpoint was trained at 1070144"
+    )
+    assert b.state_norm is None
+    phi, cond = torch.randn(1, 1, 128, 128), torch.randn(1, 7)
+    with torch.no_grad():
+        assert torch.equal(a(phi, cond), b(phi, cond))
+
+
+def test_state_features_are_normalised_before_the_head_sees_them():
+    """Un-normalised spectral coefficients would silently no-op.
+
+    An SDF over this geometry has a DC coefficient orders of magnitude above its
+    high modes, so the raw block spans many decades. Fed straight into a Linear
+    followed by a GELU, the head saturates and learns nothing from the state --
+    which looks exactly like 'state conditioning does not help' rather than like
+    a bug. This pins that the features reaching the head are O(1).
+    """
+    torch.manual_seed(0)
+    m = SpectralPropagator(cond_dim=7, modes=4, modes_a=64, state_modes=8)
+    m.eval()
+    # A field with a huge DC term, which is what an SDF actually looks like.
+    phi = torch.randn(4, 1, 128, 128) + 500.0
+    f = torch.fft.rfft2(phi.squeeze(1).float())
+    with torch.no_grad():
+        ca = m._cond_a(torch.randn(4, 7), f)
+    state = ca[:, 7:]
+    assert state.shape[1] == m.state_dim == 2 * (2 * 8) * 8
+    assert float(state.abs().max()) < 50.0, (
+        f"state features reach {float(state.abs().max()):.1f}; the head will "
+        f"saturate and the state pathway will be a silent no-op"
+    )
+
+
+def test_state_conditioning_BREAKS_linearity_in_phi():
+    """The complement of `test_linear_in_phi_at_fixed_recipe`, and the whole
+    point of the option.
+
+    That test pins superposition as "the architecture's defining property AND
+    its stated limitation". H22's entire claim is that `state_modes > 0` removes
+    the limitation without removing the four-operation cost structure, so the
+    same superposition identity must now FAIL. Asserting only that the outputs
+    differ would be satisfied by any perturbation; asserting that superposition
+    breaks is the property with a known answer.
+    """
+    torch.manual_seed(0)
+    m = SpectralPropagator(cond_dim=7, modes=4, modes_a=8, state_modes=8)
+    with torch.no_grad():
+        for h in (m.h_head, m.a_head):
+            h[-1].weight.mul_(300.0)
+    m.eval()
+    cond = torch.randn(1, 7)
+    x, y = torch.randn(1, 1, 128, 128), torch.randn(1, 1, 128, 128)
+    z = torch.zeros(1, 1, 128, 128)
+    a, b = 0.37, -1.9
+    with torch.no_grad():
+        f0 = m(z, cond)
+        lhs = m(a * x + b * y, cond) - f0
+        rhs = a * (m(x, cond) - f0) + b * (m(y, cond) - f0)
+    gap = float((lhs - rhs).abs().max())
+    assert gap > 1e-3, (
+        f"superposition still holds to {gap:.2e}: the state pathway is not "
+        f"contributing any nonlinearity, so H22's mechanism is absent"
+    )
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:
