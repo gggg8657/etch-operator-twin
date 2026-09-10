@@ -38,3 +38,7 @@ jobs:
       # the round-trip cases whose answers are known in advance.
       - name: surface-representation reconstruction round-trips
         run: PYTHONPATH=. python tests/test_repr.py
+      # The seed-level permutation test, whose first version reported a p-value
+      # below its own stated resolution floor.
+      - name: seed-level permutation test and its p-floor
+        run: PYTHONPATH=.:scripts python tests/test_seed_level.py

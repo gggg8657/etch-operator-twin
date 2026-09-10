@@ -1,0 +1,584 @@
+{
+  "question": "with the SEED as the replication unit, can this dataset distinguish each K-curve arm from the K=1 anchor?",
+  "why": "kcurve_report.py pairs on the test trajectory with seeds averaged into the point estimate, so its p-values do not carry seed uncertainty and are conservative for arms with fewer seeds than the anchor -- conservative in the direction that manufactures 'indistinguishable'",
+  "protocol": {
+    "unit": "one seed of one arm; the observation is that seed's terminal-step band rel-L2 averaged over test trajectories",
+    "source": "runs/kcurve.json: arms[*][split].terminal_step.per_seed",
+    "test": "exact two-sample permutation over every split of the pooled seeds, statistic = difference of means, two-sided",
+    "anchor": "K1_nv",
+    "note": "an underpowered null here is 'cannot tell', not 'the same'. The smallest attainable p is reported beside every result so a null can be read against what the test could have detected at all."
+  },
+  "arms": {
+    "K2_nv": {
+      "n_seeds": 7,
+      "applications_per_wafer": 5,
+      "approx_gradient_steps": [
+        11280
+      ],
+      "in_distribution": {
+        "statistic": "difference of per-seed arm means",
+        "observed": 0.0027842387584969402,
+        "n_a": 7,
+        "n_b": 8,
+        "n_splits": 6435,
+        "exact": true,
+        "p": 0.0001554001554001554,
+        "smallest_attainable_two_sided_p": 0.0001554001554001554,
+        "arm_per_seed": [
+          0.02291451627574861,
+          0.021617331437766552,
+          0.020430423935875297,
+          0.02174171029962599,
+          0.0224441675581038,
+          0.021443120136857032,
+          0.021218438236042858
+        ],
+        "anchor_per_seed": [
+          0.019352013520896435,
+          0.018051594631746413,
+          0.0183573831692338,
+          0.019254365239292383,
+          0.019768870061263443,
+          0.018949094800278544,
+          0.018788799880072475,
+          0.018700777634978294
+        ],
+        "arm_mean": 0.021687101125717163,
+        "anchor_mean": 0.018902862367220222,
+        "can_reject_at_0.05": true,
+        "reading": "distinguishable"
+      },
+      "crossed_in_coverage": {
+        "statistic": "difference of per-seed arm means",
+        "observed": 0.0020682769672919904,
+        "n_a": 7,
+        "n_b": 8,
+        "n_splits": 6435,
+        "exact": true,
+        "p": 0.7274281274281275,
+        "smallest_attainable_two_sided_p": 0.0001554001554001554,
+        "arm_per_seed": [
+          0.06052722105340771,
+          0.049872704997104556,
+          0.04450599406653446,
+          0.059599969135828254,
+          0.05103503744125613,
+          0.05501612659913203,
+          0.07425545262219
+        ],
+        "anchor_per_seed": [
+          0.07029722317714583,
+          0.04165912236371809,
+          0.03549717906631591,
+          0.05579200604053076,
+          0.04790182951222027,
+          0.05240086620011605,
+          0.07060257989666925,
+          0.06051727047975152
+        ],
+        "arm_mean": 0.05640178655935045,
+        "anchor_mean": 0.05433350959205846,
+        "can_reject_at_0.05": true,
+        "reading": "no difference detected, and the test HAD the resolution to detect one"
+      }
+    },
+    "K2_ov": {
+      "n_seeds": 6,
+      "applications_per_wafer": 5,
+      "approx_gradient_steps": [
+        20320
+      ],
+      "in_distribution": {
+        "statistic": "difference of per-seed arm means",
+        "observed": 0.001155066416909302,
+        "n_a": 6,
+        "n_b": 8,
+        "n_splits": 3003,
+        "exact": true,
+        "p": 0.004995004995004995,
+        "smallest_attainable_two_sided_p": 0.000333000333000333,
+        "arm_per_seed": [
+          0.020829288076609373,
+          0.019617873588576914,
+          0.019042686438187958,
+          0.020000591561198235,
+          0.020619112506508826,
+          0.020238020533695816
+        ],
+        "anchor_per_seed": [
+          0.019352013520896435,
+          0.018051594631746413,
+          0.0183573831692338,
+          0.019254365239292383,
+          0.019768870061263443,
+          0.018949094800278544,
+          0.018788799880072475,
+          0.018700777634978294
+        ],
+        "arm_mean": 0.020057928784129524,
+        "anchor_mean": 0.018902862367220222,
+        "can_reject_at_0.05": true,
+        "reading": "distinguishable"
+      },
+      "crossed_in_coverage": {
+        "statistic": "difference of per-seed arm means",
+        "observed": -0.0025906526599369303,
+        "n_a": 6,
+        "n_b": 8,
+        "n_splits": 3003,
+        "exact": true,
+        "p": 0.6653346653346653,
+        "smallest_attainable_two_sided_p": 0.000333000333000333,
+        "arm_per_seed": [
+          0.04722231035390176,
+          0.04549175512415072,
+          0.04164428745727401,
+          0.05754320188002153,
+          0.06227801617789121,
+          0.056277570599489964
+        ],
+        "anchor_per_seed": [
+          0.07029722317714583,
+          0.04165912236371809,
+          0.03549717906631591,
+          0.05579200604053076,
+          0.04790182951222027,
+          0.05240086620011605,
+          0.07060257989666925,
+          0.06051727047975152
+        ],
+        "arm_mean": 0.05174285693212153,
+        "anchor_mean": 0.05433350959205846,
+        "can_reject_at_0.05": true,
+        "reading": "no difference detected, and the test HAD the resolution to detect one"
+      }
+    },
+    "K2_sm": {
+      "n_seeds": 3,
+      "applications_per_wafer": 5,
+      "approx_gradient_steps": [
+        22560
+      ],
+      "in_distribution": {
+        "statistic": "difference of per-seed arm means",
+        "observed": 0.0005198070608700284,
+        "n_a": 3,
+        "n_b": 8,
+        "n_splits": 165,
+        "exact": true,
+        "p": 0.18787878787878787,
+        "smallest_attainable_two_sided_p": 0.006060606060606061,
+        "arm_per_seed": [
+          0.0200237952824682,
+          0.019371356593444942,
+          0.01887285640835762
+        ],
+        "anchor_per_seed": [
+          0.019352013520896435,
+          0.018051594631746413,
+          0.0183573831692338,
+          0.019254365239292383,
+          0.019768870061263443,
+          0.018949094800278544,
+          0.018788799880072475,
+          0.018700777634978294
+        ],
+        "arm_mean": 0.01942266942809025,
+        "anchor_mean": 0.018902862367220222,
+        "can_reject_at_0.05": true,
+        "reading": "no difference detected, and the test HAD the resolution to detect one"
+      },
+      "crossed_in_coverage": {
+        "statistic": "difference of per-seed arm means",
+        "observed": -0.0026295898854540103,
+        "n_a": 3,
+        "n_b": 8,
+        "n_splits": 165,
+        "exact": true,
+        "p": 0.7454545454545455,
+        "smallest_attainable_two_sided_p": 0.006060606060606061,
+        "arm_per_seed": [
+          0.0528953201599296,
+          0.053541127469175116,
+          0.04867531149070864
+        ],
+        "anchor_per_seed": [
+          0.07029722317714583,
+          0.04165912236371809,
+          0.03549717906631591,
+          0.05579200604053076,
+          0.04790182951222027,
+          0.05240086620011605,
+          0.07060257989666925,
+          0.06051727047975152
+        ],
+        "arm_mean": 0.05170391970660445,
+        "anchor_mean": 0.05433350959205846,
+        "can_reject_at_0.05": true,
+        "reading": "no difference detected, and the test HAD the resolution to detect one"
+      }
+    },
+    "K5_nv": {
+      "n_seeds": 8,
+      "applications_per_wafer": 2,
+      "approx_gradient_steps": [
+        4560
+      ],
+      "in_distribution": {
+        "statistic": "difference of per-seed arm means",
+        "observed": 0.014457133881282062,
+        "n_a": 8,
+        "n_b": 8,
+        "n_splits": 12870,
+        "exact": true,
+        "p": 0.0001554001554001554,
+        "smallest_attainable_two_sided_p": 0.0001554001554001554,
+        "arm_per_seed": [
+          0.03460184147208929,
+          0.03286000175401568,
+          0.034882586650550364,
+          0.0330887555219233,
+          0.03533821836486459,
+          0.03508089851588011,
+          0.029807031691074373,
+          0.031220636017620564
+        ],
+        "anchor_per_seed": [
+          0.019352013520896435,
+          0.018051594631746413,
+          0.0183573831692338,
+          0.019254365239292383,
+          0.019768870061263443,
+          0.018949094800278544,
+          0.018788799880072475,
+          0.018700777634978294
+        ],
+        "arm_mean": 0.033359996248502284,
+        "anchor_mean": 0.018902862367220222,
+        "can_reject_at_0.05": true,
+        "reading": "distinguishable"
+      },
+      "crossed_in_coverage": {
+        "statistic": "difference of per-seed arm means",
+        "observed": 0.022467453239104623,
+        "n_a": 8,
+        "n_b": 8,
+        "n_splits": 12870,
+        "exact": true,
+        "p": 0.0009324009324009324,
+        "smallest_attainable_two_sided_p": 0.0001554001554001554,
+        "arm_per_seed": [
+          0.08481605731966821,
+          0.07280995004063795,
+          0.06583954982675058,
+          0.0766819099518509,
+          0.08142581204922239,
+          0.0888587531964641,
+          0.07159453510376047,
+          0.0723811351609501
+        ],
+        "anchor_per_seed": [
+          0.07029722317714583,
+          0.04165912236371809,
+          0.03549717906631591,
+          0.05579200604053076,
+          0.04790182951222027,
+          0.05240086620011605,
+          0.07060257989666925,
+          0.06051727047975152
+        ],
+        "arm_mean": 0.07680096283116308,
+        "anchor_mean": 0.05433350959205846,
+        "can_reject_at_0.05": true,
+        "reading": "distinguishable"
+      }
+    },
+    "K5_ov": {
+      "n_seeds": 6,
+      "applications_per_wafer": 2,
+      "approx_gradient_steps": [
+        13520
+      ],
+      "in_distribution": {
+        "statistic": "difference of per-seed arm means",
+        "observed": 0.00447772477536152,
+        "n_a": 6,
+        "n_b": 8,
+        "n_splits": 3003,
+        "exact": true,
+        "p": 0.000333000333000333,
+        "smallest_attainable_two_sided_p": 0.000333000333000333,
+        "arm_per_seed": [
+          0.024281295321881773,
+          0.023741033557802438,
+          0.02328426841646433,
+          0.02262648122385144,
+          0.023588723957538606,
+          0.02276172037795186
+        ],
+        "anchor_per_seed": [
+          0.019352013520896435,
+          0.018051594631746413,
+          0.0183573831692338,
+          0.019254365239292383,
+          0.019768870061263443,
+          0.018949094800278544,
+          0.018788799880072475,
+          0.018700777634978294
+        ],
+        "arm_mean": 0.023380587142581743,
+        "anchor_mean": 0.018902862367220222,
+        "can_reject_at_0.05": true,
+        "reading": "distinguishable"
+      },
+      "crossed_in_coverage": {
+        "statistic": "difference of per-seed arm means",
+        "observed": 0.016859043274586635,
+        "n_a": 6,
+        "n_b": 8,
+        "n_splits": 3003,
+        "exact": true,
+        "p": 0.020646020646020648,
+        "smallest_attainable_two_sided_p": 0.000333000333000333,
+        "arm_per_seed": [
+          0.08641130258598603,
+          0.05756727461356762,
+          0.07551366049981068,
+          0.07060585348782214,
+          0.0650585101270848,
+          0.0719987158855993
+        ],
+        "anchor_per_seed": [
+          0.07029722317714583,
+          0.04165912236371809,
+          0.03549717906631591,
+          0.05579200604053076,
+          0.04790182951222027,
+          0.05240086620011605,
+          0.07060257989666925,
+          0.06051727047975152
+        ],
+        "arm_mean": 0.0711925528666451,
+        "anchor_mean": 0.05433350959205846,
+        "can_reject_at_0.05": true,
+        "reading": "distinguishable"
+      }
+    },
+    "K5_sm": {
+      "n_seeds": 3,
+      "applications_per_wafer": 2,
+      "approx_gradient_steps": [
+        22800
+      ],
+      "in_distribution": {
+        "statistic": "difference of per-seed arm means",
+        "observed": 0.004400640585459768,
+        "n_a": 3,
+        "n_b": 8,
+        "n_splits": 165,
+        "exact": true,
+        "p": 0.006060606060606061,
+        "smallest_attainable_two_sided_p": 0.006060606060606061,
+        "arm_per_seed": [
+          0.02397993405535817,
+          0.022623743826523424,
+          0.02330683097615838
+        ],
+        "anchor_per_seed": [
+          0.019352013520896435,
+          0.018051594631746413,
+          0.0183573831692338,
+          0.019254365239292383,
+          0.019768870061263443,
+          0.018949094800278544,
+          0.018788799880072475,
+          0.018700777634978294
+        ],
+        "arm_mean": 0.02330350295267999,
+        "anchor_mean": 0.018902862367220222,
+        "can_reject_at_0.05": true,
+        "reading": "distinguishable"
+      },
+      "crossed_in_coverage": {
+        "statistic": "difference of per-seed arm means",
+        "observed": 0.02792287735219086,
+        "n_a": 3,
+        "n_b": 8,
+        "n_splits": 165,
+        "exact": true,
+        "p": 0.006060606060606061,
+        "smallest_attainable_two_sided_p": 0.006060606060606061,
+        "arm_per_seed": [
+          0.08702699315911236,
+          0.07575710236348888,
+          0.08398506531014668
+        ],
+        "anchor_per_seed": [
+          0.07029722317714583,
+          0.04165912236371809,
+          0.03549717906631591,
+          0.05579200604053076,
+          0.04790182951222027,
+          0.05240086620011605,
+          0.07060257989666925,
+          0.06051727047975152
+        ],
+        "arm_mean": 0.08225638694424932,
+        "anchor_mean": 0.05433350959205846,
+        "can_reject_at_0.05": true,
+        "reading": "distinguishable"
+      }
+    },
+    "K10_nv": {
+      "n_seeds": 8,
+      "applications_per_wafer": 1,
+      "approx_gradient_steps": [
+        2320
+      ],
+      "in_distribution": {
+        "statistic": "difference of per-seed arm means",
+        "observed": 0.028904353291261935,
+        "n_a": 8,
+        "n_b": 8,
+        "n_splits": 12870,
+        "exact": true,
+        "p": 0.0001554001554001554,
+        "smallest_attainable_two_sided_p": 0.0001554001554001554,
+        "arm_per_seed": [
+          0.048681534700095654,
+          0.045163200676441195,
+          0.05585700209438801,
+          0.04587664724141359,
+          0.046772974338382484,
+          0.05221635030210018,
+          0.046022245101630686,
+          0.041867770813405515
+        ],
+        "anchor_per_seed": [
+          0.019352013520896435,
+          0.018051594631746413,
+          0.0183573831692338,
+          0.019254365239292383,
+          0.019768870061263443,
+          0.018949094800278544,
+          0.018788799880072475,
+          0.018700777634978294
+        ],
+        "arm_mean": 0.04780721565848216,
+        "anchor_mean": 0.018902862367220222,
+        "can_reject_at_0.05": true,
+        "reading": "distinguishable"
+      },
+      "crossed_in_coverage": {
+        "statistic": "difference of per-seed arm means",
+        "observed": 0.04464586424085212,
+        "n_a": 8,
+        "n_b": 8,
+        "n_splits": 12870,
+        "exact": true,
+        "p": 0.0001554001554001554,
+        "smallest_attainable_two_sided_p": 0.0001554001554001554,
+        "arm_per_seed": [
+          0.11363330840571853,
+          0.09623221803672058,
+          0.09513461837652794,
+          0.0989673961077101,
+          0.09887216703519841,
+          0.09867188471469505,
+          0.1012752649705272,
+          0.0890481330161868
+        ],
+        "anchor_per_seed": [
+          0.07029722317714583,
+          0.04165912236371809,
+          0.03549717906631591,
+          0.05579200604053076,
+          0.04790182951222027,
+          0.05240086620011605,
+          0.07060257989666925,
+          0.06051727047975152
+        ],
+        "arm_mean": 0.09897937383291058,
+        "anchor_mean": 0.05433350959205846,
+        "can_reject_at_0.05": true,
+        "reading": "distinguishable"
+      }
+    },
+    "K10_sm": {
+      "n_seeds": 2,
+      "applications_per_wafer": 1,
+      "approx_gradient_steps": [
+        23200
+      ],
+      "in_distribution": {
+        "statistic": "difference of per-seed arm means",
+        "observed": 0.007194493518210946,
+        "n_a": 2,
+        "n_b": 8,
+        "n_splits": 45,
+        "exact": true,
+        "p": 0.022222222222222223,
+        "smallest_attainable_two_sided_p": 0.022222222222222223,
+        "arm_per_seed": [
+          0.026392732478678228,
+          0.025801979292184113
+        ],
+        "anchor_per_seed": [
+          0.019352013520896435,
+          0.018051594631746413,
+          0.0183573831692338,
+          0.019254365239292383,
+          0.019768870061263443,
+          0.018949094800278544,
+          0.018788799880072475,
+          0.018700777634978294
+        ],
+        "arm_mean": 0.02609735588543117,
+        "anchor_mean": 0.018902862367220222,
+        "can_reject_at_0.05": true,
+        "reading": "distinguishable"
+      },
+      "crossed_in_coverage": {
+        "statistic": "difference of per-seed arm means",
+        "observed": 0.05007068251022946,
+        "n_a": 2,
+        "n_b": 8,
+        "n_splits": 45,
+        "exact": true,
+        "p": 0.022222222222222223,
+        "smallest_attainable_two_sided_p": 0.022222222222222223,
+        "arm_per_seed": [
+          0.10201807283942611,
+          0.10679031136514973
+        ],
+        "anchor_per_seed": [
+          0.07029722317714583,
+          0.04165912236371809,
+          0.03549717906631591,
+          0.05579200604053076,
+          0.04790182951222027,
+          0.05240086620011605,
+          0.07060257989666925,
+          0.06051727047975152
+        ],
+        "arm_mean": 0.10440419210228792,
+        "anchor_mean": 0.05433350959205846,
+        "can_reject_at_0.05": true,
+        "reading": "distinguishable"
+      }
+    }
+  },
+  "audit_of_the_K2_sm_claim": {
+    "claim_made": "K=2 at matched gradient steps is statistically indistinguishable from K=1 in-distribution",
+    "trajectory_paired_p_reported": 0.411,
+    "trajectory_paired_source": "runs/kcurve.json tests_vs_K1.K2_sm.in_distribution.sign_test.p",
+    "seed_level_p": 0.18787878787878787,
+    "seed_level_n": [
+      3,
+      8
+    ],
+    "smallest_attainable_p": 0.006060606060606061,
+    "verdict": "no difference detected, and the test HAD the resolution to detect one",
+    "how_the_claim_should_read": "the trajectory-paired test finds no difference across trajectories at seed-averaged predictions, and the seed-level test at these seed counts is reported beside it with its own resolution stated. The word 'indistinguishable' was doing work the trajectory test cannot do, and is withdrawn in favour of whichever of the two readings applies."
+  }
+}

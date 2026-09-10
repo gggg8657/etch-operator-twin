@@ -247,6 +247,64 @@ def test_the_anchor_is_not_excluded_for_predating_the_done_marker():
     assert is_complete(run), "a complete run without done.json must still count"
 
 
+def test_results_md_actually_renders_the_horizon_curve():
+    """`--kcurve` was a documented flag whose help text promised that arms below
+    the 8-seed rule "are listed as screens" -- while `kcurve` was read into a
+    variable in report.py and never rendered, so RESULTS.md carried no horizon
+    result at all.
+
+    Dead code with a promise attached is the defect shape this repo has already
+    hit twice in report.py: a hard-coded ("dev","test") that omitted a split
+    while the headline still claimed both, and hard-coded prose asserting "every
+    seed meets the clause". This test makes the document answer to the JSON.
+    """
+    import json as _json
+
+    root = Path(__file__).resolve().parents[1]
+    kc_p, res_p = root / "runs" / "kcurve.json", root / "RESULTS.md"
+    if not kc_p.exists() or not res_p.exists():
+        return  # nothing to check against; the report emits [not measured]
+    kc = _json.loads(kc_p.read_text())
+    res = res_p.read_text()
+
+    assert "Clause 1d" in res, "RESULTS.md has no horizon section"
+    for arm in kc["arms"]:
+        assert f"`{arm}`" in res, f"arm {arm} is in the JSON and not in RESULTS.md"
+
+    # every excluded incomplete arm has to be visible, not silently dropped
+    ex = kc.get("excluded_incomplete_arms") or []
+    assert f"**{len(ex)} arm(s) on disk were excluded as incomplete.**" in res
+    for e in ex:
+        assert f"`{Path(e['run']).name}`" in res, e["run"]
+
+
+def test_no_underpowered_arm_is_labelled_a_verdict_in_results_md():
+    """The seed rule is only worth having if the document applies it. An arm with
+    fewer than 8 seeds must appear as a screen with its seed count, and the
+    strength label must come from the JSON's own list rather than from prose."""
+    import json as _json
+    import re
+
+    root = Path(__file__).resolve().parents[1]
+    kc_p, res_p = root / "runs" / "kcurve.json", root / "RESULTS.md"
+    if not kc_p.exists() or not res_p.exists():
+        return
+    kc = _json.loads(kc_p.read_text())
+    res = res_p.read_text()
+
+    strong = set(kc.get("arms_at_verdict_strength") or [])
+    for arm, v in kc["arms"].items():
+        n = v["n_seeds"]
+        row = next((ln for ln in res.splitlines()
+                    if ln.startswith(f"| `{arm}` |")), None)
+        assert row is not None, f"no table row for {arm}"
+        if n < 8:
+            assert arm not in strong, f"{arm} has {n} seeds and is called verdict-strength"
+            assert f"screen ({n})" in row, f"{arm} at {n} seeds is not labelled a screen: {row}"
+        else:
+            assert "verdict" in row, f"{arm} has {n} seeds but is not labelled: {row}"
+
+
 if __name__ == "__main__":
     n = 0
     for k, v in sorted(globals().items()):

@@ -1064,6 +1064,96 @@ def main():
             L += ["### What this analysis does not establish", ""] + \
                  [f"- {x}" for x in cvd["limitations"]] + [""]
 
+    # ---- the accuracy-versus-horizon curve
+    #
+    # This section did not exist until 2026-09-10 even though `--kcurve` was a
+    # documented flag whose help text promised that "arms below the 8-seed rule
+    # are listed as screens": `kcurve` was read into a variable and never
+    # rendered, so RESULTS.md carried no horizon result at all while the CLI
+    # advertised one. Dead code with a promise attached is the same defect shape
+    # this repo has already been bitten by twice in report.py -- a hard-coded
+    # ("dev","test") that omitted a split, and hard-coded prose asserting "every
+    # seed meets the clause".
+    L += ["## Clause 1d — accuracy versus prediction horizon, and what actually "
+          "controls it", ""]
+    if kcurve:
+        arms_k = kcurve["arms"]
+        verdict_arms = set(kcurve.get("arms_at_verdict_strength") or [])
+        L += ["One application of the operator can be trained to advance **K** dataset "
+              "timesteps instead of one, so a wafer takes `T/K` applications and both the "
+              "cost and the number of compoundings fall by K. Only the **terminal-step** "
+              "reading is comparable across K — every arm ends at the same physical time, "
+              "while the mean-over-emitted-states reading averages `T/K` states — so the "
+              "mean is computed, recorded in the JSON, and never used here.", "",
+              "Three variants separate the horizon from the things that change with it. "
+              "`nv` takes the `T/K` non-overlapping starts, which also divides the "
+              "gradient-step count by K. `ov` restores the pair count with overlapping "
+              "starts. `sm` holds the gradient-step count at the anchor's ~22.5k by "
+              "training for `80K` epochs on the `nv` pairs. Without `sm` the curve "
+              "measures the optimisation budget and the horizon together.", ""]
+        rows = []
+        for k, v in arms_k.items():
+            i = v["in_distribution"]["terminal_step"]
+            c = v["crossed_in_coverage"]["terminal_step"]
+            strength = "verdict" if k in verdict_arms else f"screen ({v['n_seeds']})"
+            rows.append([
+                f"`{k}`", str(v["n_seeds"]), str(v["applications_per_wafer"]),
+                f"{v['approx_gradient_steps'][0]:,}",
+                f"**{i['point']:.5f}**", f"{i['seed_range']:.5f}",
+                "MET" if i["met_upper_ci"] else ("point only" if i["met_point"] else "NOT MET"),
+                f"**{c['point']:.5f}**", f"{c['seed_range']:.5f}",
+                "MET" if c["met_upper_ci"] else "NOT MET",
+                strength,
+            ])
+        L += [table(rows, ["arm", "seeds", "app/wafer", "grad steps",
+                           "in-dist terminal", "seed range", "clause 1",
+                           "crossed terminal", "seed range", "clause 1",
+                           "strength"]), "",
+              "`clause 1` columns apply the strictest of the three rules the "
+              "coverage analysis uses — the bootstrap upper CI, not the point "
+              "estimate. `point only` means the arm clears 0.05 on its point "
+              "estimate and fails on the upper CI, which is a weaker statement "
+              "and is labelled rather than rounded away.", ""]
+
+        tv = kcurve.get("tests_vs_K1") or {}
+        trows = []
+        for k, t in tv.items():
+            for split, lbl in (("in_distribution", "in-dist"),
+                               ("crossed_in_coverage", "crossed")):
+                x = t.get(split)
+                if not x:
+                    continue
+                trows.append([f"`{k}`", lbl, f"{x['mean_diff_vs_K1']:+.5f}",
+                              f"{x['n_trajectories_arm_better']}/{x['sign_test']['n']}",
+                              f"{x['sign_test']['p']:.4g}", f"{x['sign_flip']['p']:.4g}",
+                              "yes" if x["smaller_than_anchor_seed_range"] else "no"])
+        if trows:
+            L += ["Paired against the K=1 anchor per test trajectory — every arm sees "
+                  "the same ones — as an exact sign test plus a sign-flip permutation "
+                  "test. A positive mean difference means the arm is **worse** than the "
+                  "anchor.", "",
+                  table(trows, ["arm", "split", "mean diff vs K=1", "arm better",
+                                "sign test p", "sign-flip p",
+                                "diff < anchor seed range"]), ""]
+
+        ex = kcurve.get("excluded_incomplete_arms") or []
+        L += [f"**{len(ex)} arm(s) on disk were excluded as incomplete.** This script "
+              "scores each arm's `best.pt` directly rather than reading a committed "
+              "eval, so before the completeness guard an arm still training — or killed "
+              "mid-training — was scored at whatever epoch it had reached and joined its "
+              "seed group as if finished. A partial checkpoint always scores worse, and "
+              "which arms are caught depends on queue order, so the bias does not cancel "
+              "across arms: it is the shape that manufactures a monotone trend.", ""]
+        if ex:
+            L += [table([[f"`{Path(e['run']).name}`",
+                          f"{e['epoch_lines']}/{e['epochs_requested']}",
+                          e["why_excluded"]] for e in ex],
+                        ["arm", "epochs logged", "the guard's reason"]), ""]
+        L += [f"Completeness rule: {kcurve['protocol']['completeness_rule']}.", ""]
+    else:
+        L += [f"{NM} — `runs/kcurve.json` is absent. Run "
+              "`scripts/kcurve_report.py`.", ""]
+
     # ---- what the surrogate buys, in simulator calls
     L += ["## Clause 3c — what the surrogate is worth, in simulator calls", ""]
     if invb:

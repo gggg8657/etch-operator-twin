@@ -3294,3 +3294,77 @@ the arm is scored at its deployment horizon and not at the `--stride` default it
 never used. And it is *not* a K-curve arm: it lives in `runs/mixed/` so
 `kcurve_report`'s glob cannot pick it up and misgroup it by `cfg["stride"]`,
 which would silently pollute the very table this turn just cleaned.
+
+---
+
+## Turn 7 — auditing my own "indistinguishable", with the seed as the unit
+
+Last turn I wrote that *"K=2 at matched steps is statistically indistinguishable
+from K=1 in-distribution"* and cited `sign_test p = 0.411`. That p-value cannot
+support that sentence, and the gap is structural rather than a rounding
+complaint.
+
+`kcurve_report.py` averages each arm's per-trajectory error **over that arm's
+seeds**, subtracts the anchor's seed-averaged per-trajectory error, and runs the
+exact sign test over the 250 shared trajectories. So its replication unit is the
+trajectory, at fixed seed-averaged predictions, and **seed variability is
+averaged into the point estimate rather than propagated into the test**. Whether
+a differently seeded run of the same configuration would land elsewhere is
+simply not in that p. Worse, the seed counts are unequal — 8 for the anchor, 3
+for `K2_sm` — so the arm's term carries more residual seed noise than the
+anchor's, which inflates the variance of the paired difference and makes the
+test **harder to reject**. Conservative in precisely the direction that
+manufactures "indistinguishable".
+
+`scripts/seed_level_test.py` re-asks the question with the seed as the unit: each
+arm contributes its per-seed arm means (already in `runs/kcurve.json`), compared
+by an exact two-sample permutation test over every split of the pooled seeds.
+
+| arm | seeds | in-dist p | crossed p | in-dist reading |
+|---|---|---|---|---|
+| K2_nv | 7 v 8 | **0.0002** | 0.7274 | distinguishable (worse) |
+| K2_ov | 6 v 8 | **0.0050** | 0.6653 | distinguishable (worse) |
+| **K2_sm** | 3 v 8 | **0.1879** | 0.7455 | **no difference, and the test had the resolution** |
+| K5_nv | 8 v 8 | 0.0002 | 0.0009 | distinguishable |
+| K5_ov | 6 v 8 | 0.0003 | 0.0206 | distinguishable |
+| K5_sm | 3 v 8 | 0.0061 | 0.0061 | distinguishable, p **at the floor** |
+| K10_nv | 8 v 8 | 0.0002 | 0.0002 | distinguishable |
+| K10_sm | 2 v 8 | 0.0222 | 0.0222 | distinguishable, p **at the floor** |
+
+**The audit strengthens the K=2 claim rather than killing it, and sharpens what
+it is a claim about.** `K2_sm` is the only arm not distinguishable from the
+anchor on *either* split, and this is not an underpowered null: the smallest
+two-sided p attainable at 3 v 8 seeds is 0.0061, so the test had ample resolution
+and returned 0.1879. Meanwhile `K2_nv` (p = 0.0002) and `K2_ov` (p = 0.0050)
+*are* distinguishable in-distribution. So it is **step matching specifically**,
+not the horizon and not the pair count, that makes K=2 free — which is the
+sharper version of the claim and the one the trajectory test could not isolate.
+
+**Two things stated rather than glossed.** For `K5_sm` and `K10_sm` the p-value
+**equals its own floor**, which means the seeds separate perfectly and is the
+strongest statement possible at 3 and 2 seeds — and weak in absolute terms, since
+*any* perfect separation returns that p regardless of effect size. And the
+crossed split shows no detectable difference at K=2 under all three variants
+(p = 0.665–0.745) but clear differences at K=5 and K=10, so the crossed penalty
+appears **between K=2 and K=5**. That tracks the distinct-start count (5, then 2,
+then 1), which is an independent consistency check on H12 rather than evidence
+for it.
+
+The wording is corrected everywhere it appeared: the trajectory-paired test says
+no difference *across trajectories at seed-averaged predictions*, and the
+seed-level test says no difference *across seeds* with its resolution stated.
+Neither on its own licenses the bare word "indistinguishable", and both together
+are what the claim now rests on.
+
+### A bug in the new tool, found by its own internal contradiction
+
+The first version reported `K10_sm` at p = 0.0222 while claiming the smallest
+attainable two-sided p was 0.0444 — a p-value **below its own stated minimum**.
+The floor was hard-coded as `2/total`, which holds only when the groups are the
+same size: then a split's complement is also enumerated and ties at the extreme.
+With 2 seeds against 8, the complement of a 2-subset is an 8-subset and is not in
+the enumeration, so the floor is `1/total`. Corrected to `1/total` unless
+`n_a == n_b`, and pinned by `tests/test_seed_level.py`, whose first test asserts
+the invariant the bug violated: perfect separation must land *exactly* on the
+reported floor. The p-values themselves were never wrong — only the resolution
+claimed beside them, which is what a reader needs to interpret a null.
