@@ -39,6 +39,7 @@ def main():
     dsn_fr = rd("runs/design_Tfree.json")
     degen = rd("runs/design_degeneracy.json")
     rcurve = rd("runs/random_curve.json")
+    rtest = rd("runs/random_curve_test.json")
     dt_honest = {m: rd(f"runs/design_Tfree_dtinit_{m}.json") for m in ("random", "mid")}
     invb = rd("runs/inverse_baseline.json")
     ver = rd("runs/verify_solver.json", {})
@@ -289,8 +290,38 @@ def main():
                   "statement of the contribution is the differentiable surrogate as a search "
                   "oracle, at whatever budget the user can afford.", ""]
         else:
-            L += ["No budget tested reaches gradient descent's error, so the gradients buy "
-                  "something a matched or larger random budget does not.", ""]
+            L += ["No budget's *mean* reaches gradient descent's. A few per cent over 20 "
+                  "targets is not a result on its own, so the comparison is settled by a "
+                  "paired test rather than by the means.", ""]
+    if rtest:
+        bt, tv = rtest["budgets"], rtest["verdict"]
+        L += ["Each budget is evaluated on the same 20 targets with the same model, so the "
+              "target is the unit of analysis. We report an exact sign-flip permutation test "
+              "over all 2^20 sign assignments of the per-target differences, and an exact "
+              "binomial sign test.", "",
+              "| candidates | budget vs GD | mean paired diff (random - GD) | GD wins | "
+              "p (sign-flip) | p (sign test) |", "|---|---|---|---|---|---|"]
+        L += [f"| {b} | {bt[b]['budget_ratio_vs_gd']:.1f}x | {bt[b]['mean_paired_diff']:+.4f} "
+              f"| {bt[b]['gd_wins']}/{bt[b]['n_targets']} | {bt[b]['p_signflip_exact']:.4f} "
+              f"| {bt[b]['p_sign_test_exact']:.4f} |" for b in sorted(bt, key=int)]
+        nb = tv["smallest_budget_indistinguishable"]
+        if nb is not None:
+            L += ["", f"Gradient descent is significantly better at every budget up to "
+                  f"{max(tv['budgets_where_gd_wins_significantly'], key=int)} candidates and "
+                  f"is not separable from random search at {nb} "
+                  f"({bt[nb]['budget_ratio_vs_gd']:.1f}x its forward-equivalent budget; "
+                  f"{bt[nb]['gd_wins']}/{bt[nb]['n_targets']} targets, p = "
+                  f"{bt[nb]['p_signflip_exact']:.3f}). **The contribution is therefore a "
+                  f"compute ratio — about {bt[nb]['budget_ratio_vs_gd']:.0f}x less search for "
+                  f"the same profile error — and not a better optimum.** We note the likely "
+                  f"reason and its limit: the recipe space here is four-dimensional with a "
+                  f"smooth forward map, where 16k samples are dense. The prediction that "
+                  f"follows is that the gradient advantage grows with recipe dimension; we "
+                  f"have not tested it, and it is the experiment that would decide how far "
+                  f"this result generalises.", ""]
+        else:
+            L += ["", "Gradient descent separates from random search at every budget tested.",
+                  ""]
     else:
         L += [NM, ""]
 
@@ -404,6 +435,34 @@ def main():
           "- **Clause 1's crossed-split miss** would be addressed by training on a mixture of "
           "adaptive and independent timesteps. That changes the protocol, so before/after "
           "numbers would not be comparable and both would have to be reported.", ""]
+
+    L += ["## 7. Future work, as left at the declaration", "",
+          "The project was declared UNREACHABLE with clause 2 short by ~680x. These are the "
+          "questions that were open at that point, written down rather than pursued, because "
+          "a further reading of an already-decided clause is not progress.", "",
+          "1. **Does the gradient advantage grow with recipe dimension?** Section 4.3.1 finds "
+          "gradient descent and random search indistinguishable at 9x budget on a 4-D recipe "
+          "box. The obvious explanation is that the box is small and smooth. The experiment: "
+          "the same comparison on a recipe parameterisation of 8, 16 and 32 dimensions "
+          "(spatially varying flux, or a time-varying recipe schedule), at matched "
+          "forward-equivalents, with the same paired exact test. If the gap does not widen, "
+          "the differentiable surrogate is a ranker and should be sold as one.",
+          "2. **Does clause 3 survive an independently specified target?** Every target here "
+          "is a profile ViennaPS produced from a recipe inside the training box, so a "
+          "solution provably exists. A target drawn from a device specification instead — a "
+          "required depth, sidewall angle and bow — would test inversion rather than "
+          "round-tripping. It needs a target generator that is not the simulator, which is "
+          "why it was not attempted.",
+          "3. **Is the (rate x time) degeneracy breakable with more observables?** Section "
+          "4.3.3 shows a matched profile does not identify the recipe. Adding an endpoint "
+          "trace or an intermediate profile as a second observable is the standard fix and is "
+          "cheap to generate; whether it identifies the recipe is a measurement nobody here "
+          "has taken.",
+          "4. **A deliberately undersized operator for clause 2.** Accuracy sits below the "
+          "solver's own grid error, so there is headroom to trade. This is the only route to "
+          "the speedup clause that does not change the hardware comparison, and even a 3x "
+          "cheaper operator at equal accuracy leaves the like-for-like figure far short — "
+          "which is why the clause was declared unreachable rather than left open.", ""]
 
     Path(a.out).write_text("\n".join(L) + "\n")
     print(f"wrote {a.out}")

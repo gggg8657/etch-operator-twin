@@ -111,6 +111,7 @@ def main():
     design_alt = read(a.design_alt) if a.design_alt else None
     degen = read("runs/design_degeneracy.json")
     rcurve = read("runs/random_curve.json")
+    rtest = read("runs/random_curve_test.json")
     # Clause 3 replicated across seeds. Globbed rather than named, so a seed
     # that finishes after this file was last edited still counts.
     design_seeds = sorted(Path("runs").glob("design_Tfree_seed*.json"))
@@ -159,6 +160,35 @@ def main():
          "normalised area error, measured in ViennaPS" if sh else "—"],
     ]
     L += [table(rows, ["clause", "measured", "verdict", "protocol"]), ""]
+
+    # ---- project verdict, derived from the three rows above, never typed.
+    # A project is PASS only if every clause is MET; anything else is
+    # UNREACHABLE with the measurement that shows it. "MET (mean only)" is not
+    # MET: clause 1 requires the mean and the terminal-step reading.
+    verdicts = {r[0]: r[2] for r in rows}
+    all_met = all(v == "MET" for v in verdicts.values())
+    unmet = [k for k, v in verdicts.items() if v != "MET"]
+    L += [f"**PROJECT VERDICT: {'PASS' if all_met else 'UNREACHABLE'}** — "
+          + ("every clause met." if all_met else
+             f"{len(rows) - len(unmet)} of {len(rows)} clauses met; "
+             f"{', '.join(unmet)} " + ("is" if len(unmet) == 1 else "are") + " not."), ""]
+    if sp and sp["value"] < 1000:
+        L += [f"The binding clause is the speedup. The honest like-for-like figure is "
+              f"**{g(sp['value'])}×** against a **1000×** target — short by a factor of "
+              f"**{1000 / sp['value']:.0f}**, not by a margin that a better implementation "
+              f"closes. Timing the solver as 10 concurrent processes instead of 1 would have "
+              f"read 1006× and passed the clause on an artefact of the denominator; that "
+              f"reading is in the grid below and is not the KPI number.", ""]
+    if rl and rl.get("value_terminal_step") is not None:
+        L += ["Clause 1 is met **in distribution and nowhere else**: the crossed-dt probe "
+              "misses under every coverage rule, and the only trajectory selector that needs "
+              "no oracle scores worse still. The scope of the accuracy claim is the training "
+              "distribution, stated here rather than in a footnote.", ""]
+    if sh:
+        L += ["Clause 3 is met on the shape error the KPI names, and the inverse problem is "
+              "nevertheless degenerate over (rate × time): a matched profile does not identify "
+              "the recipe that produced it. This is profile targeting; recipe identification is "
+              "not measured and is not claimed.", ""]
 
     # ---- ground truth
     L += ["## Ground truth verification", ""]
@@ -463,10 +493,46 @@ def main():
                       "claim that its *gradients* are what produce the answer is not supported "
                       "by this comparison.", ""]
             else:
-                L += ["**H3 survives.** No budget tested reaches gradient descent's error, "
-                      f"including {max(int(b) for b in c)} candidates at "
-                      f"{max(int(b) for b in c) / comp['gd_forward_equivalents']:.1f}× GD's "
-                      "forward-equivalent compute.", ""]
+                L += ["**H3 survives on the means, and that is not enough to state it as a "
+                      "win.** No budget's mean reaches gradient descent's, but at the top of "
+                      "the curve the gap is a few per cent over 20 targets, which is the size "
+                      "of effect this repo has learned not to trust without a paired test.", ""]
+            if rtest:
+                bt = rtest["budgets"]
+                tv = rtest["verdict"]
+                L += ["Every budget is run on the same 20 targets with the same model, so the "
+                      "target is the unit of analysis. Paired **exact** tests — a sign-flip "
+                      "permutation over all 2^20 sign assignments, and an exact binomial sign "
+                      "test — on the per-target differences (`runs/random_curve_test.json`):",
+                      ""]
+                L += [table([[b, f"{bt[b]['budget_ratio_vs_gd']:.1f}×",
+                              f(bt[b]["mean_paired_diff"]),
+                              f"{bt[b]['gd_wins']}/{bt[b]['n_targets']}",
+                              f"{bt[b]['p_signflip_exact']:.4f}",
+                              f"{bt[b]['p_sign_test_exact']:.4f}",
+                              "GD wins" if b in tv["budgets_where_gd_wins_significantly"]
+                              else "**not separated**"]
+                             for b in sorted(bt, key=int)],
+                            ["candidates", "budget vs GD", "mean paired diff (random − GD)",
+                             "GD wins", "p (sign-flip)", "p (sign test)", "verdict at α=0.05"]),
+                      ""]
+                if tv["smallest_budget_indistinguishable"] is not None:
+                    nb = tv["smallest_budget_indistinguishable"]
+                    L += [f"**The honest statement is a compute ratio, not a quality win.** "
+                          f"Gradient descent through the operator beats random search at every "
+                          f"budget up to {max((b for b in tv['budgets_where_gd_wins_significantly']), key=int)} "
+                          f"candidates ({bt[max((b for b in tv['budgets_where_gd_wins_significantly']), key=int)]['budget_ratio_vs_gd']:.1f}× "
+                          f"its own forward-equivalent cost, p ≤ "
+                          f"{max(bt[b]['p_signflip_exact'] for b in tv['budgets_where_gd_wins_significantly']):.4f}). "
+                          f"At {nb} candidates "
+                          f"({bt[nb]['budget_ratio_vs_gd']:.1f}× GD's budget) the paired test "
+                          f"does not separate them: GD wins {bt[nb]['gd_wins']} of "
+                          f"{bt[nb]['n_targets']} targets, p = "
+                          f"{bt[nb]['p_signflip_exact']:.3f}. So what differentiability buys "
+                          f"here is about **{bt[nb]['budget_ratio_vs_gd']:.0f}× less search "
+                          f"compute for the same profile error**, and the earlier framing — "
+                          f"that the gradients find a better optimum than sampling can — is "
+                          f"not supported at this budget.", ""]
             if v.get("random_at_matched_budget") is not None:
                 L += [f"At the compute-matched budget of {comp['budget_matched_to_gd']} "
                       f"candidates, random search reads "
@@ -676,7 +742,7 @@ def main():
                  [f"- {x}" for x in cvd["limitations"]] + [""]
 
     # ---- what the surrogate buys, in simulator calls
-    L += ["## Clause 3b — what the surrogate is worth, in simulator calls", ""]
+    L += ["## Clause 3c — what the surrogate is worth, in simulator calls", ""]
     if invb:
         L += ["Gradient design spends **0** simulator calls searching and 1 verifying. The "
               "question that has an answer is therefore not whether 5% is good, but how many "

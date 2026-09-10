@@ -1508,3 +1508,80 @@ bitten yet is still a hole, and this repo has already lost a number to one.
 
 Nothing in the six was wrong. That is a worse result for me than the last review,
 where I could dismiss one of four.
+
+---
+
+## 2026-09-10, turn 8 — H3 lands, and E4 is declared
+
+### H3: the random-search baseline, resolved against a paired exact test
+
+**The number.** Gradient descent through the operator: **0.00607** mean
+normalised area error, measured in ViennaPS, 20 targets (`runs/design_Tfree.json`).
+Random search over the same operator, same 20 targets, nested prefixes so the
+curve is free of independent-draw noise, and keeping the target's *true* etch
+time throughout — which makes the baseline strictly stronger than the searched-T
+method it is compared against (`runs/random_curve.json`):
+
+| candidates | budget vs GD | random | GD wins | p (exact sign-flip, 2^20) |
+|---|---|---|---|---|
+| 64 | 0.0× | 0.0467 | 20/20 | 0.0000 |
+| 256 | 0.1× | 0.0233 | 19/20 | 0.0000 |
+| 1024 | 0.6× | 0.0130 | 18/20 | 0.0001 |
+| 1800 | 1.0× | 0.0119 | 18/20 | 0.0002 |
+| 4096 | 2.3× | 0.0099 | 18/20 | 0.0014 |
+| 16384 | 9.1× | 0.0064 | 13/20 | **0.4842** |
+
+**The hypothesis I wrote before the run was that random search would not reach
+GD at any budget up to 16,384. On the means it did not — 0.0064 against 0.0061 —
+and reporting that as "H3 survives" would have been exactly the mistake this
+repo keeps making.** A 5% gap on 20 paired targets is inside the range where
+this workspace has already been wrong twice. The paired test settles it: at
+16,384 candidates GD wins 13 of 20 targets, p = 0.484 on an exact sign-flip over
+all 2^20 assignments, p = 0.263 on an exact sign test. Not separated.
+
+**So the claim changes shape.** What differentiability buys on this problem is
+**~9× less search compute for the same profile error**, not a better optimum.
+GD beats random search decisively at every budget up to 2.3× its own cost
+(p ≤ 0.0014) and loses its significance somewhere between 2.3× and 9.1×. The
+framing "the gradients find minima sampling cannot" is not supported by any
+measurement here and is withdrawn from the report; `scripts/random_curve_test.py`
+now generates the paragraph that replaced it.
+
+**What would distinguish this from the obvious alternative.** The obvious
+alternative is that the recipe box is only 4-dimensional and small, so random
+search is competitive for reasons that have nothing to do with the operator
+being good or bad. That is very likely part of it, and it is a limit on the
+generality of the clause-3 result rather than a defect in it: on a 4-D box with
+a smooth forward map, 16k samples is dense. It predicts that the gradient
+advantage grows with recipe dimension, which this repo has not tested and which
+is now written into `paper_draft.md` as the experiment that would decide it. It
+does *not* rescue the withdrawn framing, because the measurement stands
+whatever the reason for it.
+
+### Declaration
+
+E4 is **UNREACHABLE**, 2 of 3 clauses met, declared under the 10-turn rule:
+
+- **Clause 1, rel-L2 ≤ 0.05 — MET in distribution and nowhere else.** 0.01256
+  band rel-L2 over 7 converged seeds, range 0.00114 (`runs/seed_spread.json`).
+  Crossed-dt fails under every coverage rule; the deployable, oracle-free
+  selector scores 0.1402. Two of this repo's own claims about this clause were
+  withdrawn getting here, and the narrow version is what survived.
+- **Clause 2, ≥1000× — UNREACHABLE.** 1.47× like-for-like, short by 679×. Not a
+  margin an implementation closes. The denominator that would have passed it
+  (solver timed as 10 concurrent processes: 1006×) is in the grid and rejected
+  in the text.
+- **Clause 3, shape error ≤5% — MET.** 0.0061 and 0.0064 on two independently
+  trained operators, 20/20 targets each, measured in ViennaPS on the recipe the
+  operator proposed, 0 pinned at a box wall, 0 truncated simulations, floor
+  0.0024. Worst-case Hausdorff 0.0733 µm = 0.37 of one grid cell. It is profile
+  targeting: the recovered recipe sits 0.177 of the box from the truth.
+
+**One check is still running and can withdraw clause 3** — H4, the duration
+search initialised independently of the target rather than at the target's own
+dt (`logs/dt_honest.log`, GPU 1, two arms). If either honest initialisation
+exceeds 0.05 the clause comes down and this entry is corrected the same turn.
+That is the one thing that outranks the turn budget: a wrong number in a
+document is always worth a turn. Clause 3 is published with the warm start
+disclosed in the protocol string and recorded in the JSON as
+`dt_init_was_the_target`, so no reader is misled while the check runs.

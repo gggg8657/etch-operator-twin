@@ -1,0 +1,104 @@
+{
+  "what": "paired exact tests, gradient descent vs random search, per target",
+  "source": {
+    "curve": "runs/random_curve.json",
+    "design": "runs/design_Tfree.json"
+  },
+  "metric": "area_error_vs_removed, measured in ViennaPS",
+  "gd_forward_equivalents": 1800,
+  "budgets": {
+    "64": {
+      "n_targets": 20,
+      "gd_mean": 0.00607159855489126,
+      "random_mean": 0.046722840840572544,
+      "mean_paired_diff": 0.04065124228568129,
+      "median_paired_diff": 0.03456703193250237,
+      "gd_wins": 20,
+      "random_wins": 0,
+      "ties": 0,
+      "p_signflip_exact": 1.9073486328125e-06,
+      "p_sign_test_exact": 1.9073486328125e-06,
+      "budget_ratio_vs_gd": 0.035555555555555556
+    },
+    "256": {
+      "n_targets": 20,
+      "gd_mean": 0.00607159855489126,
+      "random_mean": 0.023334295471132017,
+      "mean_paired_diff": 0.017262696916240758,
+      "median_paired_diff": 0.01368397998486013,
+      "gd_wins": 19,
+      "random_wins": 1,
+      "ties": 0,
+      "p_signflip_exact": 7.62939453125e-06,
+      "p_sign_test_exact": 4.00543212890625e-05,
+      "budget_ratio_vs_gd": 0.14222222222222222
+    },
+    "1024": {
+      "n_targets": 20,
+      "gd_mean": 0.00607159855489126,
+      "random_mean": 0.01298712055382959,
+      "mean_paired_diff": 0.006915521998938329,
+      "median_paired_diff": 0.006407764624647412,
+      "gd_wins": 18,
+      "random_wins": 2,
+      "ties": 0,
+      "p_signflip_exact": 5.340576171875e-05,
+      "p_sign_test_exact": 0.0004024505615234375,
+      "budget_ratio_vs_gd": 0.5688888888888889
+    },
+    "1800": {
+      "n_targets": 20,
+      "gd_mean": 0.00607159855489126,
+      "random_mean": 0.011946497185043436,
+      "mean_paired_diff": 0.005874898630152179,
+      "median_paired_diff": 0.005411814199584488,
+      "gd_wins": 18,
+      "random_wins": 2,
+      "ties": 0,
+      "p_signflip_exact": 0.0001926422119140625,
+      "p_sign_test_exact": 0.0004024505615234375,
+      "budget_ratio_vs_gd": 1.0
+    },
+    "4096": {
+      "n_targets": 20,
+      "gd_mean": 0.00607159855489126,
+      "random_mean": 0.009912040642367202,
+      "mean_paired_diff": 0.0038404420874759435,
+      "median_paired_diff": 0.003196569029071743,
+      "gd_wins": 18,
+      "random_wins": 2,
+      "ties": 0,
+      "p_signflip_exact": 0.0014019012451171875,
+      "p_sign_test_exact": 0.0004024505615234375,
+      "budget_ratio_vs_gd": 2.2755555555555556
+    },
+    "16384": {
+      "n_targets": 20,
+      "gd_mean": 0.00607159855489126,
+      "random_mean": 0.006398813113078735,
+      "mean_paired_diff": 0.00032721455818747653,
+      "median_paired_diff": 0.0007146635571562499,
+      "gd_wins": 13,
+      "random_wins": 7,
+      "ties": 0,
+      "p_signflip_exact": 0.4841728210449219,
+      "p_sign_test_exact": 0.26317596435546875,
+      "budget_ratio_vs_gd": 9.102222222222222
+    }
+  },
+  "verdict": {
+    "alpha": 0.05,
+    "budgets_where_gd_wins_significantly": [
+      "64",
+      "256",
+      "1024",
+      "1800",
+      "4096"
+    ],
+    "budgets_indistinguishable_from_gd": [
+      "16384"
+    ],
+    "smallest_budget_indistinguishable": "16384",
+    "reading": "GD is significantly better than random search up to the largest budget where it is listed under budgets_where_gd_wins_significantly; at the budgets listed under budgets_indistinguishable_from_gd the paired test does not separate them, so the honest statement is a compute ratio, not a quality win."
+  }
+}

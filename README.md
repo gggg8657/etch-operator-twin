@@ -7,7 +7,22 @@ Plasma etch surface evolution in 2-D, learned as a neural operator against a
 ViennaPS ground truth, then inverted: descend on the recipe to hit a target
 profile, and check the recipe it finds back in the simulator.
 
-Status: **RUNNING**. `RESULTS.md` is regenerated from run JSONs by
+Status: **UNREACHABLE — declared 2026-09-10.** Two of three clauses met, one
+short by a factor of ~680:
+
+| clause | measured | verdict |
+|---|---|---|
+| 2D 표면진화 rel-L2 ≤0.05 | **0.0126** band rel-L2, 7 seeds, range 0.0011 | **MET, in distribution and nowhere else** — the crossed-dt probe misses under every coverage rule (terminal step 0.0531–0.0665, upper CI to 0.0947) |
+| 시뮬 대비 ≥1000× 가속 | **1.47×** like-for-like (CPU 1 thread, batch 1, vs ViennaPS CPU 1 thread) | **UNREACHABLE** — 199× throughput-vs-throughput, 347× for a batched H100 against a single-threaded C++ solver, which is a hardware comparison and not the KPI number |
+| 역설계 형상오차 ≤5% | **0.0061** normalised area error, 20/20 targets, measured in ViennaPS | **MET** — profile targeting only; the inverse problem is degenerate over (rate × time), so the recovered recipe is not the one that made the target |
+
+The verdict rows in `RESULTS.md` are derived from the run JSONs by
+`scripts/report.py`, not typed. The clause that fails is the one the brief warned
+would be cheated by accident, and the near-miss reading that would have passed it
+(timing the solver as 10 concurrent processes: 1006×) is printed in the grid and
+rejected in the text.
+
+`RESULTS.md` is regenerated from run JSONs by
 `scripts/report.py`; no number in this repo is hand-typed, and none of them come
 from a paper. Published baselines, when cited, live in their own column with a
 source.

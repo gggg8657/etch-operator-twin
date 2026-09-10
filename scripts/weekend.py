@@ -117,6 +117,7 @@ def main():
     dsn_alt = read("runs/design_Tfixed.json")
     degen = read("runs/design_degeneracy.json")
     rcurve = read("runs/random_curve.json")
+    rtest = read("runs/random_curve_test.json")
     ver = read("runs/verify_solver.json", {})
     cf = read("runs/confound.json")
     gen = read("data/gen_report.json", {})
@@ -138,6 +139,17 @@ def main():
          "`critique_log.md` and `paper_draft.md`; `RESULTS.md` is the full table.*",
          "",
          "> **KPI:** 2D 표면진화 rel-L2 ≤0.05 · 시뮬 대비 ≥1000× 가속 · 역설계 형상오차 ≤5%",
+         "",
+         "## Declared UNREACHABLE, 2026-09-10",
+         "",
+         (f"Two of three clauses met. The speedup clause is short by a factor of "
+          f"**{1000 / ks['value']:.0f}** — {ks['value']:.2f}× like-for-like against 1000× — "
+          f"and that is not a gap an implementation closes. Clause 1 holds in distribution "
+          f"and nowhere else; clause 3 holds as profile targeting, not recipe identification. "
+          f"Every clause verdict in `RESULTS.md` is derived from a run JSON by "
+          f"`scripts/report.py`."
+          if ks else
+          "Two of three clauses met; the speedup clause is not."),
          "",
          "## Headline: Friday vs now",
          "",
@@ -339,14 +351,26 @@ def main():
           "Two jobs were launched on 2026-09-10 to attack the two weakest points in it, and "
           "each writes a JSON the report reads without anything being typed:",
           "",
-          "- **H3, the random-search baseline as a curve** — `logs/random_curve.log`, writing "
+          ((f"- **H3 landed.** Random search reaches gradient descent's profile error at "
+            f"{rtest['verdict']['smallest_budget_indistinguishable']} candidates "
+            f"({rtest['budgets'][rtest['verdict']['smallest_budget_indistinguishable']]['budget_ratio_vs_gd']:.1f}× "
+            f"GD's forward-equivalent budget): GD wins "
+            f"{rtest['budgets'][rtest['verdict']['smallest_budget_indistinguishable']]['gd_wins']} of "
+            f"{rtest['budgets'][rtest['verdict']['smallest_budget_indistinguishable']]['n_targets']} targets, "
+            f"exact sign-flip p = "
+            f"{rtest['budgets'][rtest['verdict']['smallest_budget_indistinguishable']]['p_signflip_exact']:.3f}. "
+            f"So differentiability buys **compute, not a better optimum** — the earlier framing "
+            f"is withdrawn. GD still wins decisively at every budget up to 2.3× its own cost. "
+            f"`runs/random_curve.json`, `runs/random_curve_test.json`.")
+           if rtest else
+           "- **H3, the random-search baseline as a curve** — `logs/random_curve.log`, writing "
           "`runs/random_curve.json`. The published random-search row used 256 candidates "
           "against gradient descent's ~1800 forward-equivalents, so the comparison was at "
           "unequal budget and `design.py`'s docstring wrongly called it matched. The curve "
           "sweeps 64 → 16,384 candidates on the same targets and the same model, using nested "
           "prefixes so it is free of independent-draw noise, and it keeps the target's true "
           "etch time throughout — which makes the baseline stronger than the searched-T method "
-          "it is compared against. `tail -f logs/random_curve.log` shows one line per target.",
+          "it is compared against. `tail -f logs/random_curve.log` shows one line per target."),
           "- **Clause 3 on more seeds** — `logs/design_seeds.log`, writing "
           "`runs/design_Tfree_seed{2,4,5,6}.json`. One seed is a screen, not a verdict. The "
           "clause-3-across-seeds table in `RESULTS.md` fills itself from a glob as each lands, "

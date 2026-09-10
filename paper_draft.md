@@ -103,7 +103,33 @@ The operator's advantage is not that it does less arithmetic — on one CPU core
 
 #### 4.3.1 The baseline, as a curve rather than a point
 
-`[not measured]`
+Gradient descent used 3 restarts × 200 iterations, i.e. 600 rollouts forward and as many backward — about 1800 forward-equivalents. The random-search row above used 256 candidates. Those budgets are not comparable, so the baseline is reported as a curve. Nested prefixes of one candidate stream per target, so the ranking is free of independent-draw noise; random search keeps the target's true etch time throughout, which makes it stronger than the method it is compared against.
+
+| candidates | area error (mean) | median | max |
+|---|---|---|---|
+| 64 | 0.0467 | 0.0402 | 0.1139 |
+| 256 | 0.0233 | 0.0172 | 0.0732 |
+| 1024 | 0.0130 | 0.0134 | 0.0239 |
+| 1800 | 0.0119 | 0.0122 | 0.0227 |
+| 4096 | 0.0099 | 0.0087 | 0.0227 |
+| 16384 | 0.0064 | 0.0065 | 0.0098 |
+
+Gradient descent on the same targets: **0.0061**.
+
+No budget's *mean* reaches gradient descent's. A few per cent over 20 targets is not a result on its own, so the comparison is settled by a paired test rather than by the means.
+
+Each budget is evaluated on the same 20 targets with the same model, so the target is the unit of analysis. We report an exact sign-flip permutation test over all 2^20 sign assignments of the per-target differences, and an exact binomial sign test.
+
+| candidates | budget vs GD | mean paired diff (random - GD) | GD wins | p (sign-flip) | p (sign test) |
+|---|---|---|---|---|---|
+| 64 | 0.0x | +0.0407 | 20/20 | 0.0000 | 0.0000 |
+| 256 | 0.1x | +0.0173 | 19/20 | 0.0000 | 0.0000 |
+| 1024 | 0.6x | +0.0069 | 18/20 | 0.0001 | 0.0004 |
+| 1800 | 1.0x | +0.0059 | 18/20 | 0.0002 | 0.0004 |
+| 4096 | 2.3x | +0.0038 | 18/20 | 0.0014 | 0.0004 |
+| 16384 | 9.1x | +0.0003 | 13/20 | 0.4842 | 0.2632 |
+
+Gradient descent is significantly better at every budget up to 4096 candidates and is not separable from random search at 16384 (9.1x its forward-equivalent budget; 13/20 targets, p = 0.484). **The contribution is therefore a compute ratio — about 9x less search for the same profile error — and not a better optimum.** We note the likely reason and its limit: the recipe space here is four-dimensional with a smooth forward map, where 16k samples are dense. The prediction that follows is that the gradient advantage grows with recipe dimension; we have not tested it, and it is the experiment that would decide how far this result generalises.
 
 #### 4.3.2 Whether the searched-duration arm was warm-started
 
@@ -141,4 +167,13 @@ The forward map is degenerate over (rate × time): distinct processes reach the 
 
 - **Clause 2** needs a cheaper operator, not a better one: roughly 3× cheaper at equal accuracy would bring the batched figure to 1000×. Since accuracy is already below the solver's grid error there is headroom to spend, and a deliberately undersized operator is the cheapest outstanding experiment.
 - **Clause 1's crossed-split miss** would be addressed by training on a mixture of adaptive and independent timesteps. That changes the protocol, so before/after numbers would not be comparable and both would have to be reported.
+
+## 7. Future work, as left at the declaration
+
+The project was declared UNREACHABLE with clause 2 short by ~680x. These are the questions that were open at that point, written down rather than pursued, because a further reading of an already-decided clause is not progress.
+
+1. **Does the gradient advantage grow with recipe dimension?** Section 4.3.1 finds gradient descent and random search indistinguishable at 9x budget on a 4-D recipe box. The obvious explanation is that the box is small and smooth. The experiment: the same comparison on a recipe parameterisation of 8, 16 and 32 dimensions (spatially varying flux, or a time-varying recipe schedule), at matched forward-equivalents, with the same paired exact test. If the gap does not widen, the differentiable surrogate is a ranker and should be sold as one.
+2. **Does clause 3 survive an independently specified target?** Every target here is a profile ViennaPS produced from a recipe inside the training box, so a solution provably exists. A target drawn from a device specification instead — a required depth, sidewall angle and bow — would test inversion rather than round-tripping. It needs a target generator that is not the simulator, which is why it was not attempted.
+3. **Is the (rate x time) degeneracy breakable with more observables?** Section 4.3.3 shows a matched profile does not identify the recipe. Adding an endpoint trace or an intermediate profile as a second observable is the standard fix and is cheap to generate; whether it identifies the recipe is a measurement nobody here has taken.
+4. **A deliberately undersized operator for clause 2.** Accuracy sits below the solver's own grid error, so there is headroom to trade. This is the only route to the speedup clause that does not change the hardware comparison, and even a 3x cheaper operator at equal accuracy leaves the like-for-like figure far short — which is why the clause was declared unreachable rather than left open.
 
