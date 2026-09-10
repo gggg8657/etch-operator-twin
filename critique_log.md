@@ -2254,3 +2254,34 @@ K=10's accuracy penalty (terminal 0.04847 in distribution against K=1's 0.01890)
 *before* any shrinking. An arm that fails might be failing at the horizon rather
 than at the width, and the K=1 shrink arms are the control that separates those.
 Both are in the sweep.
+
+### Infrastructure finding: four tests had never executed once
+
+`scripts/weekend.py`'s "still running" section had been hand-written prose for
+three turns and was stale every turn — it described clause-3 jobs that had long
+landed and claimed a test count of 41, a figure wrong since the count passed 41.
+Deriving it instead of typing it produced a disagreement: the derived count said
+**72 defined** where the runners printed **68 run**.
+
+The cause is a class of bug rather than an instance. Each test file executes
+itself by iterating `globals()` from inside `if __name__ == "__main__"`, so a
+test defined *below* that block is never reached — the runner finishes before the
+interpreter defines it. Four files had grown that way as tests were appended over
+the weekend: `test_inverse_protocol.py` hid 3 tests, `test_solver.py` 1, and
+`test_runlock.py` and `test_metrics.py` would have hidden this turn's own
+additions had I not moved their runners while adding to them.
+
+**All four previously-unexecuted tests pass**, so nothing was broken. But three
+of them guard `design.py`'s inverse-design protocol — including the fix for the
+asymmetric baseline, where the random-search arm used to be handed the target's
+own etch duration for free while the gradient arm searched it. Clause 3 is a MET
+clause resting on that protocol, and the test that pins it had never run. That is
+the kind of gap that is only visible from a count nobody was checking, which is
+the argument for deriving counts rather than typing them, and it is the third
+time this weekend that generating a document from state has caught something
+prose was hiding (the others: `report.py` printing "26 claims" while claiming 40
+in `claim-auditor`, and `runs/base` re-admitted to a seed group with a stale
+eval here).
+
+`test_metrics.py::test_no_test_is_defined_after_its_files_main_block` now fails
+if any file regrows the defect. 73 tests, all passing.
