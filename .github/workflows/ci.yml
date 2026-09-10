@@ -25,3 +25,5 @@ jobs:
         run: PYTHONPATH=. python tests/test_runlock.py
       - name: coverage verdict, both readings and the bootstrap
         run: PYTHONPATH=. python tests/test_coverage_verdict.py
+      - name: inverse-design protocol (which arm is warm-started, and where dt can go)
+        run: PYTHONPATH=. python tests/test_inverse_protocol.py

@@ -1405,3 +1405,106 @@ must be too before it goes on the board as met. Replication on seeds 2, 5 and 6 
 launched alongside H3. The margin is 8×, so a spread would have to be enormous to
 flip the verdict — but "would have to be enormous" is an argument, and the board
 takes measurements.
+
+## Turn 8, continued — `codex` on clause 3: six objections, and the first one is a leak
+
+Run with stdin closed (the earlier invocation hung reading stdin and returned an
+empty file, which is why the first adversary attempt produced nothing). Ranked by
+the critic itself. Verdicts are mine, and two of the six change code.
+
+**1. "The supposedly unknown duration leaks through initialization." REAL, and it
+is the most damaging thing found today.** `eot/inverse.py:167` computed the
+starting point of the duration search as
+
+```python
+u0 = (np.log(dt) - np.log(lo)) / (np.log(hi) - np.log(lo))
+```
+
+where `dt` is *the target's own timestep*, which `gen_data` obtained from a
+simulator probe of the true recipe's etch rate. Restarts randomise the four
+recipe knobs (`design.py`, `init=`) and never touched `z_dt`. So every restart of
+the arm labelled **"total etch time searched (T unknown, honest)"** began at the
+ground-truth duration. The label is not supported by the code, and I wrote both.
+
+It is a *warm start*, not a pin — the optimiser leaves it, and by a lot: the
+recovered dt is 23% from the true value on average and 55% at worst. So the leak
+does not trivially explain the result. But "it moves away afterwards" is an
+argument, and the rules here say the baseline gets re-measured rather than
+argued. `--dt-init {target,mid,random}` now exists; `target` remains the default
+so the published numbers stay reproducible, and the JSON records
+`dt_init_was_the_target` so no reader has to reconstruct the invocation.
+
+> **H4, written before the run.** The T-searched result does not depend on being
+> warm-started at the true duration. Re-running with the duration initialised
+> independently of the target — log-uniform in the trained dt range, a fresh draw
+> per restart, and separately at the geometric centre of that range — keeps the
+> mean area error under the 0.05 clause.
+>
+> Falsified if either honest initialisation exceeds 0.05. I expect degradation:
+> the surrogate loss over (recipe, dt) is what the optimiser sees, and a 4+1
+> dimensional non-convex landscape entered from a random point should find worse
+> minima than one entered at the true depth. My guess is it lands between 0.006
+> and 0.02 — worse, still passing. If it lands above 0.05 then clause 3 as
+> published was carried by the warm start and must be withdrawn.
+>
+> Distinguishes against: "the operator's gradients are strong enough that the
+> starting point does not matter", which is what a null result here would mean,
+> and which the 3-restart random-init behaviour of the recipe knobs already
+> weakly suggests.
+
+**2. "`_occupancy` is not the symmetric-difference area it claims." Real as a
+statement about the metric, but already bracketed by measurements I had.** The
+critic is right that `clip(0.5 - sdf/h, 0, 1)` is exact only for contours
+parallel to a cell edge, and right that equal cell fractions can hide sub-cell
+disagreement. What decides whether it matters is the size of the effect, and
+`shape_error` already computes the hard-threshold reading (count cells by the
+sign of the SDF, no smoothing) beside the soft one:
+
+| reading | T-searched | T-pinned |
+|---|---|---|
+| smoothed occupancy (published) | 0.0061 | 0.0098 |
+| hard sign threshold | 0.0070 | 0.0089 |
+| true recipe re-simulated (floor) | 0.0024 | 0.0023 |
+
+The two readings differ by 0.0009, and the *published* one is the smaller in the
+T-searched arm — so quantisation contributes about a thousandth, not the ~3% the
+critic feared, and the honest floor of the whole pipeline is 0.0024. The
+operator's error is 2.5× that floor and 8× under the clause. Not accepted as a
+threat to the verdict; accepted as a reason the report must print both readings,
+which it now does.
+
+**3. "Targets are a curated, reachable, simulator-generated family." Real, and it
+was stated in `design.py`'s docstring and nowhere a reader would look.** Every
+target is a profile ViennaPS produced from a recipe inside the training box, with
+the true initial geometry supplied. That is a deliberate choice — it means a
+solution provably exists, so a failure is the method's — and it is also a hard
+scope limit: nothing here measures inversion of an independently specified
+manufacturing target, a different depth regime, or a geometry outside the box.
+Promoted from a docstring to the RESULTS.md scope paragraph.
+
+**4. "Global area error can conceal local failures; Hausdorff never gates `met`."
+Real, and the answer is a number I had not put beside it.** The grid is
+Δ = 0.2 µm. Worst-case Hausdorff distance over 20 targets is **0.0733 µm** for
+the operator's proposal and **0.0348 µm** for the true recipe re-simulated —
+**0.37 and 0.17 of one grid cell**. The largest *local* deviation anywhere in the
+worst target is a third of the discretisation. That is the defensible reply to
+"the global metric could hide a notch", and it is stronger than the area number
+it supports. It goes in the report next to the area figure.
+
+**5. "`met` checks only the mean, and the T-pinned arm has a failing target."
+Real.** 19/20 with one at 0.0587. `met_mean` and `met_every_target` are now
+separate flags, both printed. Under the T-searched protocol the distinction is
+moot (max 0.0098); under T-pinned it decides the verdict, which is exactly why it
+cannot be left implicit.
+
+**6. "`steps_ok=False` is recorded and not enforced." Real, and it never bit.**
+`solver.simulate()` stops at the window and repeats its final frame with
+`steps_ok` False; `simulate_recipe` returns `failed=None` regardless, and `agg`
+counted only `failed`. So `n_failed_simulation: 0` did not mean verification
+completed. Measured across all three arms of both published runs: **0 of 20
+truncated, everywhere**. The published numbers are unaffected. `agg` now reports
+`n_truncated_simulation` and `n_verified_complete`, because a hole that has not
+bitten yet is still a hole, and this repo has already lost a number to one.
+
+Nothing in the six was wrong. That is a worse result for me than the last review,
+where I could dismiss one of four.

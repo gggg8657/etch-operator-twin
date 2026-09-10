@@ -141,6 +141,7 @@ def design(
     device="cuda:0",
     seed: int = 0,
     optimise_dt: bool = False,
+    dt_init: float | None = None,
 ):
     """Descend on the recipe to match `target_phi` after `n_steps` operator steps.
 
@@ -159,6 +160,16 @@ def design(
     that reach the same profile. With it True, dt is searched inside
     the range seen in training alongside the recipe, which is the problem a real
     target poses: a profile arrives with no duration attached.
+
+    `dt_init` is where that search *starts*, and it has to be supplied
+    separately from `dt` or the protocol leaks. Until 2026-09-10 this function
+    initialised the searched duration at `dt` -- the target's own value, itself
+    computed from a simulator probe of the true recipe's etch rate. Restarts
+    randomise the four recipe knobs and never touched that initialisation, so
+    every restart began at the ground-truth duration and the arm labelled
+    "T unknown, honest" was seeded with the answer. Found by `codex` reviewing
+    the clause-3 result. With `dt_init` given, the search starts somewhere the
+    target did not choose, which is the protocol the label claims.
     """
     torch.manual_seed(seed)
     p = RecipeParam(init=init, device=device).to(device)
@@ -166,7 +177,10 @@ def design(
     z_dt = None
     if optimise_dt:
         lo, hi = norm["dt_lo"], norm["dt_hi"]
-        u0 = (np.log(dt) - np.log(lo)) / (np.log(hi) - np.log(lo))
+        # dt_init is None only for the legacy (leaky) protocol, kept so the
+        # published numbers stay reproducible; callers state which they used.
+        dt0 = dt if dt_init is None else dt_init
+        u0 = (np.log(dt0) - np.log(lo)) / (np.log(hi) - np.log(lo))
         z_dt = torch.nn.Parameter(
             torch.logit(torch.tensor(float(np.clip(u0, 1e-3, 1 - 1e-3)), device=device)))
         params.append(z_dt)
@@ -174,7 +188,7 @@ def design(
     scale = norm["sdf_scale_um"]
     band = (target_phi.abs() * scale < band_um).float()
     hist = []
-    best = (float("inf"), None, float(dt))
+    best = (float("inf"), None, float(dt if dt_init is None else dt_init))
     for it in range(iters):
         opt.zero_grad(set_to_none=True)
         if z_dt is not None:
@@ -191,7 +205,7 @@ def design(
         loss = num / den
         loss.backward()
         opt.step()
-        v = float(loss)
+        v = float(loss.detach())
         hist.append(v)
         if v < best[0]:
             best = (v, p.values().detach().cpu().numpy().copy(),
@@ -204,6 +218,11 @@ def design(
         "dt": best[2],
         "dt_was_optimised": bool(optimise_dt),
         "dt_given": float(dt),
+        # Recorded so a reader can tell a leaky run from an honest one without
+        # reading the invocation: equal to dt_given means the search started at
+        # the target's own duration.
+        "dt_init": float(dt if dt_init is None else dt_init),
+        "dt_init_was_the_target": bool(dt_init is None),
         "recipe_keys": p.keys,
         "box_margin": p.margin(),
         "iters": iters,

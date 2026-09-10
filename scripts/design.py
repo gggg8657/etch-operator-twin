@@ -125,6 +125,17 @@ def main():
     ap.add_argument("--device", default="cuda:0")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default=None)
+    ap.add_argument("--dt-init", default="target",
+                    choices=["target", "mid", "random"],
+                    help="where the searched duration starts, when --optimise-dt "
+                         "is on. 'target' is the published-but-leaky default kept "
+                         "for reproducibility: it starts at the target's own dt, "
+                         "which was derived from a probe of the true recipe's "
+                         "rate, so the arm labelled T-unknown began at the "
+                         "answer. 'mid' starts at the geometric centre of the "
+                         "trained dt range; 'random' draws a fresh log-uniform "
+                         "start per restart. Both of the latter are independent "
+                         "of the target and are what the honest label requires.")
     ap.add_argument("--optimise-dt", action="store_true",
                     help="Search total etch time alongside the recipe. Off (the "
                          "default) pins T = n_steps*dt to the target's own value, "
@@ -195,9 +206,15 @@ def main():
                 init = np.where([S.RECIPE_BOX[k][2] == "log" for k in DESIGN_KEYS],
                                 np.exp(np.log(np.maximum(lo, 1e-6)) + u * (np.log(hi) - np.log(np.maximum(lo, 1e-6)))),
                                 lo + u * (hi - lo))
+            dt_init = None
+            if a.optimise_dt and a.dt_init != "target":
+                dlo, dhi = norm["dt_lo"], norm["dt_hi"]
+                dt_init = (float(np.exp(0.5 * (np.log(dlo) + np.log(dhi))))
+                           if a.dt_init == "mid" else
+                           float(np.exp(rng.uniform(np.log(dlo), np.log(dhi)))))
             d = design(model, tgt, phi0, geom, dt, norm, n_steps, init=init,
                        iters=a.iters, device=device, seed=a.seed + r,
-                       optimise_dt=a.optimise_dt)
+                       optimise_dt=a.optimise_dt, dt_init=dt_init)
             if best is None or d["best_surrogate_loss"] < best["best_surrogate_loss"]:
                 best = d
         row["operator_gd_surrogate"] = {
@@ -206,6 +223,9 @@ def main():
             "recipe": dict(zip(DESIGN_KEYS, best["recipe_values"])),
             "restarts": a.restarts, "iters": a.iters,
             "dt_was_optimised": best["dt_was_optimised"],
+            "dt_init_mode": a.dt_init,
+            "dt_init": best.get("dt_init"),
+            "dt_init_was_the_target": best.get("dt_init_was_the_target"),
             "dt_found": best["dt"], "dt_true": best["dt_given"],
             "dt_rel_err": abs(best["dt"] - best["dt_given"]) / max(best["dt_given"], 1e-12),
         }
@@ -285,11 +305,23 @@ def main():
         something unphysical."""
         v = np.array([r[name][field] for r in rows if r[name].get(field) is not None], float)
         n_failed = sum(1 for r in rows if (r[name].get("sim_status") or {}).get("failed"))
+        # A truncated simulation is not a completed one. solver.simulate() stops
+        # at the window and repeats its last frame with steps_ok False; the
+        # wrapper still returns failed=None, so until 2026-09-10 this count was
+        # invisible and "n_failed_simulation: 0" did not mean verification had
+        # completed. It happens to be 0 for every arm of the published runs,
+        # which is why the hole never bit -- but a hole that has not bitten yet
+        # is still a hole. Found by `codex`.
+        n_trunc = sum(1 for r in rows
+                      if (r[name].get("sim_status") or {}).get("steps_ok") is False)
         if v.size == 0:
-            return {"mean": None, "n": 0, "n_failed_simulation": n_failed}
+            return {"mean": None, "n": 0, "n_failed_simulation": n_failed,
+                    "n_truncated_simulation": n_trunc}
         return {"mean": float(v.mean()), "median": float(np.median(v)),
                 "p90": float(np.percentile(v, 90)), "max": float(v.max()),
                 "n": int(v.size), "n_failed_simulation": n_failed,
+                "n_truncated_simulation": n_trunc,
+                "n_verified_complete": int(v.size) - n_trunc,
                 "n_targets": len(rows)}
 
     summary = {
@@ -319,7 +351,17 @@ def main():
         "headline_metric": "normalised area error vs target-removed area, "
                            "measured in ViennaPS on the recipe the operator proposed",
         "value": gd,
+        # Three flags, not one. `met` on the mean alone was the published
+        # reading and it is the literal reading of the clause, but a mean under
+        # 5% can carry a target over it -- the T-pinned arm has exactly that,
+        # 19/20 with one at 0.0587. So the strict reading is recorded beside it
+        # and the report prints both rather than choosing silently.
         "met": bool(gd <= 0.05),
+        "met_mean": bool(gd <= 0.05),
+        "met_every_target": bool(np.max(ae_gd) <= 0.05),
+        "dt_init_mode": a.dt_init,
+        "dt_init_independent_of_target": bool(
+            (not a.optimise_dt) or a.dt_init != "target"),
         "surrogate_reality_gap": gd - summary["area_error_vs_removed"]["surrogate_opinion"]["mean"],
         "beats_random_search": bool(gd < summary["area_error_vs_removed"]["random_search"]["mean"]),
         "simulator_determinism_check": summary["area_error_vs_removed"]["true_resim"]["max"],
