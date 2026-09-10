@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Refuse to commit a training log that is still being written.
+#
+# D4, the two-loops-one-working-tree hazard, is a supervisor problem and cannot
+# be fixed from inside the repo. But one of its measured costs can be: a loop
+# running `git add -A` while another loop's tmux sessions are mid-training stages
+# half-written `log.jsonl` files, so history ends up holding a snapshot of a run
+# that had not finished. Commit 91a19da did that to five `runs/kcurve` arms.
+#
+# `eot/runlock.py` stops two *writers* sharing a run directory. Nothing stopped a
+# committer from photographing one. This does.
+#
+# A run directory is in flight when it has a `log.jsonl` but no `done.json`. Its
+# log is unstaged here, with a note, and the rest of the commit proceeds --
+# refusing the whole commit would block a loop for as long as any job is running,
+# which is every turn.
+#
+# Install with `bash scripts/hooks/install.sh`.
+set -u
+staged=$(git diff --cached --name-only --diff-filter=ACM | grep -E '(^|/)log\.jsonl$' || true)
+[ -z "$staged" ] && exit 0
+
+unstaged=""
+while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    d=$(dirname "$f")
+    if [ ! -f "$d/done.json" ]; then
+        git restore --staged "$f" 2>/dev/null || git reset -q HEAD -- "$f"
+        unstaged="$unstaged  $f\n"
+    fi
+done <<< "$staged"
+
+if [ -n "$unstaged" ]; then
+    printf 'pre-commit: unstaged %d in-flight training log(s) (log.jsonl with no done.json):\n' \
+        "$(printf "$unstaged" | grep -c .)"
+    printf "$unstaged"
+    printf 'They stay on disk and will be committed once their run finishes.\n'
+fi
+exit 0

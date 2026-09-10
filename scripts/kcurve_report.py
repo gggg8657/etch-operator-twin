@@ -47,10 +47,11 @@ from eot.data import TrajDataset, pair_starts  # noqa: E402
 from eot.operator import EtchOperator  # noqa: E402
 from scripts.analyse_confound import per_step_displacement  # noqa: E402
 from scripts.coverage_verdict import boot_ci, per_traj_both_readings  # noqa: E402
+from scripts.seed_spread import completed  # noqa: E402
 
 
 def is_complete(p: Path) -> bool:
-    """Has this arm finished training?
+    """Has this arm finished training? Delegates to the repo's one guard.
 
     **This guard was missing until 2026-09-10 and it contaminated every K-curve
     number this repo produced.** `arms()` required only `args.json` and
@@ -71,11 +72,26 @@ def is_complete(p: Path) -> bool:
     which arms get caught mid-training depends on the queue order, so arms with
     more seeds queued later are penalised more than arms with fewer.
 
-    `done.json` is written by `runlock.mark_done` only after the epoch loop
-    completes, which is exactly the property needed.
+    The check itself is `scripts/seed_spread.completed`, which is this repo's
+    canonical answer and already encodes two lessons this script would otherwise
+    have had to relearn: `test_eval.json` must not predate `best.pt` (the
+    `runs/base` staleness that moved a seed range 33x), and a log reaching the
+    epoch budget is not proof because `train.py` appends, so two writers can
+    interleave to a full-length log with neither model converged.
+
+    Requiring `done.json` alone -- my first attempt -- was **too strict** and
+    silently cut the K=1 anchor from 8 seeds to 2: `runs/seed1..8` all logged
+    80/80 epochs and all carry a `test_eval.json`, but only `seed4` and `seed8`
+    have a `done.json`, because `runlock.mark_done` was added after the other
+    six had run. A guard that drops the anchor is as wrong as one that admits a
+    partial checkpoint, and in the same way -- it changes the seed group without
+    saying so.
     """
-    return (p / "args.json").exists() and (p / "best.pt").exists() \
-        and (p / "done.json").exists()
+    if not ((p / "args.json").exists() and (p / "best.pt").exists()):
+        return False
+    cfg = json.loads((p / "args.json").read_text())
+    ok, _why = completed(p, cfg)
+    return bool(ok)
 
 
 def arms(root: Path) -> dict:
@@ -104,6 +120,12 @@ def arms(root: Path) -> dict:
     return out
 
 
+def _why_incomplete(p: Path, cfg: dict) -> str:
+    """The guard's own reason, so the exclusion is auditable."""
+    _ok, why = completed(p, cfg)
+    return why
+
+
 def incomplete_arms(root: Path) -> list[dict]:
     """Arms present on disk but not finished, so a reader can see what was left
     out rather than having to infer it from a seed count."""
@@ -118,11 +140,7 @@ def incomplete_arms(root: Path) -> list[dict]:
         out.append({"run": str(p), "epoch_lines": n_ep,
                     "epochs_requested": cfg.get("epochs"),
                     "has_checkpoint": (p / "best.pt").exists(),
-                    "why_excluded": "no done.json: still training or killed. "
-                                    "Scoring its partial best.pt would enter an "
-                                    "undertrained model into the seed group, "
-                                    "which is what contaminated every K-curve "
-                                    "number before 2026-09-10."})
+                    "why_excluded": _why_incomplete(p, cfg)})
     return out
 
 
@@ -296,12 +314,14 @@ def main():
                       "one-step dataset by tests/test_stride.py)",
             "seed_rule": ("8 seeds per arm plus an exact paired test before a "
                           "comparison is a verdict; fewer is a screen"),
-            "completeness_rule": ("an arm is scored only if it carries done.json. "
-                                  "This script evaluates best.pt directly, so "
-                                  "without that rule a run still training, or "
-                                  "killed mid-training, is scored at its partial "
-                                  "checkpoint and joins the seed group as if "
-                                  "finished -- see kcurve_report.is_complete"),
+            "completeness_rule": ("scripts/seed_spread.completed -- done.json, or "
+                                  "a log of exactly epochs 0..n-1 each once, and "
+                                  "in both cases test_eval.json no older than "
+                                  "best.pt. This script evaluates best.pt "
+                                  "directly, so without the rule a run still "
+                                  "training, or killed mid-training, is scored at "
+                                  "its partial checkpoint and joins the seed group "
+                                  "as if finished -- see kcurve_report.is_complete"),
         },
         "excluded_incomplete_arms": incomplete_arms(Path(a.runs_root)),
         "arms": per_arm,
