@@ -81,16 +81,6 @@ def test_an_out_of_range_dt_init_is_clipped_not_extrapolated():
     assert d["dt"] <= NORM["dt_hi"]
 
 
-if __name__ == "__main__":
-    n = 0
-    for k, v in sorted(globals().items()):
-        if k.startswith("test_"):
-            v()
-            n += 1
-            print(f"  ok  {k}")
-    print(f"{n} passed")
-
-
 # --- the baseline's protocol, which was asymmetric until 2026-09-10 -----------
 # design.py's random-search arm evaluated and simulated every candidate at the
 # TARGET's own dt, including in the arm where the gradient method is handed no
@@ -99,6 +89,13 @@ if __name__ == "__main__":
 # sets etch depth. These two tests pin the fix: with --optimise-dt the random
 # arm samples dt the same way the gradient arm initialises it, and the flag that
 # restores the old behaviour has to be asked for by name.
+#
+# All three tests below sat AFTER this file's `if __name__ == "__main__"` block
+# until 2026-09-10, so the runner never reached them and neither did CI: they
+# had never executed once. Found by deriving the test count in
+# scripts/weekend.py and noticing it disagreed with what the runners printed
+# (72 defined against 68 run). test_solver.py had the same defect and one
+# unexecuted test, which passes.
 
 def _design_source():
     return (ROOT / "scripts" / "design.py").read_text()
@@ -131,3 +128,13 @@ def test_restart_draws_are_per_target_and_per_restart_so_prefixes_nest():
     assert "r_rng = np.random.default_rng([a.seed, ti, r])" in src
     assert "u = r_rng.uniform(0.15, 0.85, size=len(DESIGN_KEYS))" in src
     assert "r_rng.uniform(np.log(dlo), np.log(dhi))" in src
+
+
+if __name__ == "__main__":
+    n = 0
+    for k, v in sorted(globals().items()):
+        if k.startswith("test_"):
+            v()
+            n += 1
+            print(f"  ok  {k}")
+    print(f"{n} passed")

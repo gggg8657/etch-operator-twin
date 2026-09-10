@@ -97,13 +97,6 @@ def test_runaway_etch_stops_at_the_window_and_is_flagged():
     assert elapsed < 120, f"guard did not bound the cost: {elapsed:.0f}s"
 
 
-if __name__ == "__main__":
-    fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
-    for f in fns:
-        f()
-        print("ok", f.__name__)
-    print(f"{len(fns)} passed")
-
 
 def test_omp_is_pinned_below_the_segfault_cliff():
     """ViennaPS 4.6.2 segfaults above ~96 OpenMP threads on a 192-core host, and
@@ -113,3 +106,13 @@ def test_omp_is_pinned_below_the_segfault_cliff():
     import os
     n = int(os.environ["OMP_NUM_THREADS"])
     assert 0 < n <= 96, f"OMP_NUM_THREADS={n} is at or above the measured cliff"
+
+
+if __name__ == "__main__":
+    n = 0
+    for k, v in sorted(globals().items()):
+        if k.startswith("test_"):
+            v()
+            n += 1
+            print(f"  ok  {k}")
+    print(f"{n} passed")

@@ -116,6 +116,37 @@ def test_symmetric_bench_pairs_cold_with_cold_and_warm_with_warm():
         "both a warm and a cold solver reading must be taken"
 
 
+def test_no_test_is_defined_after_its_files_main_block():
+    """Every test file runs itself with `python tests/test_x.py`, iterating
+    globals() from inside `if __name__ == "__main__"`. A test function defined
+    BELOW that block is never reached -- the runner has already finished by the
+    time the interpreter defines it -- so it silently never executes, in CI
+    either.
+
+    This had happened in four files at once. `test_inverse_protocol.py` hid 3
+    tests that way and `test_solver.py` 1, and the four had never run a single
+    time; all four pass, so nothing was broken, but the guards they check were
+    unguarded. Found by deriving the test count in scripts/weekend.py and
+    noticing it said 72 where the runners printed 68.
+    """
+    from pathlib import Path
+
+    bad = {}
+    for t in sorted((Path(__file__).resolve().parent).glob("test_*.py")):
+        lines = t.read_text().splitlines()
+        main_at = next((i for i, ln in enumerate(lines)
+                        if ln.startswith('if __name__ ==')), None)
+        if main_at is None:
+            continue
+        after = [ln.split("(")[0][4:] for ln in lines[main_at:]
+                 if ln.startswith("def test_")]
+        if after:
+            bad[t.name] = after
+    assert not bad, (
+        "these tests are defined after their file's __main__ block and can "
+        f"never run: {bad}. Move the __main__ block to the end of the file.")
+
+
 if __name__ == "__main__":
     n = 0
     for k, v in sorted(globals().items()):

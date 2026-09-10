@@ -98,6 +98,40 @@ def coverage_summary():
             "out_range_range": max(outr) - min(outr)}
 
 
+
+def live_jobs():
+    """What is actually running right now, from tmux and the run directories.
+
+    This section was hand-written prose for three turns and went stale every
+    turn: it still described clause-3 jobs that had landed and claimed a test
+    count of 41 that had been wrong since the count reached 68. A tired person
+    reading this on Monday needs it to be true, so it is derived.
+    """
+    import subprocess
+    out = {"sessions": [], "queues": {}, "n_tests": 0}
+    try:
+        r = subprocess.run(["tmux", "ls", "-F", "#{session_name}"],
+                           capture_output=True, text=True, timeout=20)
+        out["sessions"] = sorted(x for x in r.stdout.split()
+                                 if x.startswith("e4-"))
+    except Exception as e:
+        out["sessions_error"] = str(e)
+    for q in ("kcurve", "shrink"):
+        d = Path("runs") / q
+        if not d.is_dir():
+            continue
+        arms = [x for x in sorted(d.iterdir())
+                if x.is_dir() and x.name != "_orphaned"]
+        done = [x for x in arms if (x / "done.json").exists()
+                and (x / "test_eval.json").exists()]
+        out["queues"][q] = {"arms": len(arms), "done": len(done),
+                            "incomplete": sorted(x.name for x in arms
+                                                 if x not in done)}
+    for t in sorted(Path("tests").glob("test_*.py")):
+        out["n_tests"] += sum(1 for ln in t.read_text().splitlines()
+                              if ln.startswith("def test_"))
+    return out
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", default="runs/seed1")
@@ -340,66 +374,40 @@ def main():
           "starting two loops, which is why this was a human decision and not a code fix.",
           ""]
 
+    lj = live_jobs()
     L += ["## Still running, and how to check it", "",
+          f"Derived from `tmux ls` and the run directories at the moment this "
+          f"file was generated, because this section was hand-written for three "
+          f"turns and was stale every one of them.", "",
           "```bash",
           "cd ~/Documents/workspace/etch-operator-twin",
-          "python scripts/report.py --run " + str(run) + " \\",
-          "       --design runs/design_Tfree.json \\",
-          "       --design-alt runs/design_Tfixed.json   # regenerate RESULTS.md",
-          "python scripts/weekend.py --run " + str(run) + "  # regenerate this file",
-          "for t in tests/test_*.py; do python $t; done      # 41 tests",
-          "ls runs/                                          # one dir per run",
-          "```", "",
-          "**Clause 3 has landed.** `runs/design_Tfree.json` (etch time searched, the honest "
-          "protocol) and `runs/design_Tfixed.json` (etch time pinned) are both complete on "
-          "`runs/seed1`: 20 targets each, 0 failed simulations, no solution pinned against a "
-          "wall of the recipe box. The numbers are in `RESULTS.md`, regenerated from those "
-          "JSONs.", "",
-          "Two jobs were launched on 2026-09-10 to attack the two weakest points in it, and "
-          "each writes a JSON the report reads without anything being typed:",
-          "",
-          ((f"- **H3 landed.** Random search reaches gradient descent's profile error at "
-            f"{rtest['verdict']['smallest_budget_indistinguishable']} candidates "
-            f"({rtest['budgets'][rtest['verdict']['smallest_budget_indistinguishable']]['budget_ratio_vs_gd']:.1f}× "
-            f"GD's forward-equivalent budget): GD wins "
-            f"{rtest['budgets'][rtest['verdict']['smallest_budget_indistinguishable']]['gd_wins']} of "
-            f"{rtest['budgets'][rtest['verdict']['smallest_budget_indistinguishable']]['n_targets']} targets, "
-            f"exact sign-flip p = "
-            f"{rtest['budgets'][rtest['verdict']['smallest_budget_indistinguishable']]['p_signflip_exact']:.3f}. "
-            f"So differentiability buys **compute, not a better optimum** — the earlier framing "
-            f"is withdrawn. GD still wins decisively at every budget up to 2.3× its own cost. "
-            f"`runs/random_curve.json`, `runs/random_curve_test.json`.")
-           if rtest else
-           "- **H3, the random-search baseline as a curve** — `logs/random_curve.log`, writing "
-          "`runs/random_curve.json`. The published random-search row used 256 candidates "
-          "against gradient descent's ~1800 forward-equivalents, so the comparison was at "
-          "unequal budget and `design.py`'s docstring wrongly called it matched. The curve "
-          "sweeps 64 → 16,384 candidates on the same targets and the same model, using nested "
-          "prefixes so it is free of independent-draw noise, and it keeps the target's true "
-          "etch time throughout — which makes the baseline stronger than the searched-T method "
-          "it is compared against. `tail -f logs/random_curve.log` shows one line per target."),
-          "- **Clause 3 on more seeds** — `logs/design_seeds.log`, writing "
-          "`runs/design_Tfree_seed{2,4,5,6}.json`. One seed is a screen, not a verdict. The "
-          "clause-3-across-seeds table in `RESULTS.md` fills itself from a glob as each lands, "
-          "so a seed that finishes later still counts without an edit.",
-          "- **seed8**, queued behind the GPU-0 job by `scripts/queue_after.sh` rather than "
-          "run alongside it, which would have oversubscribed the lease and corrupted the "
-          "timing numbers the curve records. It takes clause 1's in-distribution arm to the "
-          "standing 8-seed rule. Check with `python scripts/seed_spread.py`.",
-          "",
-          "Note that `design.py` refuses to start if another process holds the run's lock, so "
-          "re-running any of this while a job is alive is safe — it exits 3 with the holder's "
-          "pid rather than racing it.", ""]
-    if gen.get("splits"):
-        tot = sum(s["kept"] for s in gen["splits"])
-        L += [f"Dataset: {tot} adaptive-dt trajectories "
-              f"({', '.join(str(s['kept']) + ' ' + s['split'] for s in gen['splits'])}), "
-              f"{gen['steps']} steps on a {gen['grid_n']}² window."]
-    if genx.get("splits"):
-        s0 = genx["splits"][0]
-        L += [f"Crossed-dt probe: {s0['kept']} kept, {s0['rejected_out_of_window']} rejected for "
-              "leaving the window — so that split is biased against fast recipes at long dt "
-              "and its number is if anything optimistic."]
+          "bash scripts/make_report.sh                       # regenerate RESULTS.md",
+          "python scripts/weekend.py                          # regenerate this file",
+          f"for t in tests/test_*.py; do PYTHONPATH=. python $t; done   # {lj['n_tests']} tests",
+          "tmux ls | grep e4-                                 # this repo's jobs",
+          "```", ""]
+    if lj["sessions"]:
+        L += [f"**{len(lj['sessions'])} tmux session(s) of this repo's own are alive:** "
+              + ", ".join(f"`{x}`" for x in lj["sessions"])
+              + ". Each was started detached, so it survives the loop process "
+                "exiting — four `runs/kcurve` arms were lost earlier to a "
+                "process-group kill when a parent died, which is why nothing "
+                "long runs as a child any more. Attach with "
+                "`tmux attach -t <name>`; the drivers log to `logs/`.", ""]
+    else:
+        L += ["**No job of this repo's is running.** Every queue below is either "
+              "drained or was never started.", ""]
+    for q, st in lj["queues"].items():
+        L += [f"- **`runs/{q}`: {st['done']} of {st['arms']} arms complete.** "
+              + (f"Incomplete: {', '.join('`' + x + '`' for x in st['incomplete'][:8])}"
+                 + (f" and {len(st['incomplete']) - 8} more" if len(st['incomplete']) > 8 else "")
+                 + ". Re-running the driver is safe and idempotent: it skips any arm "
+                   "carrying both `done.json` and `test_eval.json`, and an arm killed "
+                   "mid-training is archived to `runs/_orphaned/` and restarted clean "
+                   "rather than appended to."
+                 if st["incomplete"] else "Drained.")]
+    L += [""]
+
     L += [""]
 
     Path(a.out).write_text("\n".join(L) + "\n")
