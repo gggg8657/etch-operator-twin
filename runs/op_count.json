@@ -158,5 +158,50 @@
       }
     }
   },
-  "specprop_vs_fno_full_ops": 0.08888888888888889
+  "specprop_vs_fno_full_ops": 0.08888888888888889,
+  "mechanism_test": {
+    "claim": "cost is bound by the count of full-resolution operations, not by arithmetic. Predicts that between two models the cost ratio tracks the full-op ratio.",
+    "same_invocation": "arch_cost_h18.json",
+    "loadavg": 281.9,
+    "per_model": {
+      "specprop_m4_ma4": {
+        "full_ops": 4,
+        "us_per_wafer": 277.05150000012503,
+        "us_per_full_op": 69.26287500003126
+      },
+      "specprop_m8_ma32": {
+        "full_ops": 6,
+        "us_per_wafer": 225.71449999997384,
+        "us_per_full_op": 37.61908333332897
+      },
+      "fno_w8m4L2": {
+        "full_ops": 45,
+        "us_per_wafer": 2580.3669999998615,
+        "us_per_full_op": 57.34148888888581
+      },
+      "pointwise_wf8_n1": {
+        "full_ops": 11,
+        "us_per_wafer": 944.0025000000408,
+        "us_per_full_op": 85.8184090909128
+      }
+    },
+    "vs_fno_w8m4L2": {
+      "specprop_m4_ma4": {
+        "op_ratio": 11.25,
+        "cost_ratio": 9.313672728711799,
+        "agreement": 0.8278820203299376
+      },
+      "specprop_m8_ma32": {
+        "op_ratio": 7.5,
+        "cost_ratio": 11.431994843043581,
+        "agreement": 1.5242659790724775
+      },
+      "pointwise_wf8_n1": {
+        "op_ratio": 4.090909090909091,
+        "cost_ratio": 2.733432379680933,
+        "agreement": 0.6681723594775614
+      }
+    },
+    "caveat": "an agreement near 1 supports the mechanism; it does not prove per-op cost is constant across op TYPES, and an rfft2 on one channel is not a 1x1 conv on eight. The us_per_full_op column shows the spread."
+  }
 }

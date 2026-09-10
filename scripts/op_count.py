@@ -115,6 +115,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--n-grid", type=int, default=128)
     ap.add_argument("--out", default="runs/op_count.json")
+    ap.add_argument("--cost", default="runs/arch_cost_h18.json",
+                    help="cost file to join, so the MECHANISM can be tested: "
+                         "if cost is op-count-bound, the cost ratio between two "
+                         "models should track their full-op ratio")
     a = ap.parse_args()
 
     runlock.acquire(a.out, what="op_count")
@@ -142,6 +146,50 @@ def main():
             rows["specprop_m4_ma4"]["full_ops"] / rows["fno_w8m4L2"]["full_ops"]
             if rows["fno_w8m4L2"]["full_ops"] else None),
     }
+
+    # THE MECHANISM TEST. H18 claims the cost is bound by the operation count.
+    # That claim predicts something checkable: between two models measured in
+    # the same invocation, the cost ratio should track the full-op ratio. If it
+    # does not, the count is a coincidence and the argument is decoration.
+    cost_p = Path(a.cost)
+    if cost_p.exists():
+        cost = json.loads(cost_p.read_text())
+        name_map = {"specprop_m4_ma4": "specprop_m4_ma4_K10",
+                    "specprop_m8_ma32": "specprop_m8_ma32_K10",
+                    "fno_w8m4L2": "fno_w8m4L2_K10",
+                    "pointwise_wf8_n1": "pw_wf8_n1_relu_K10"}
+        joined = {}
+        for ok, ck in name_map.items():
+            m = (cost.get("models") or {}).get(ck)
+            if m and ok in rows:
+                joined[ok] = {
+                    "full_ops": rows[ok]["full_ops"],
+                    "us_per_wafer": m["warm"]["per_wafer_cpu_s"] * 1e6,
+                    "us_per_full_op": (m["warm"]["per_wafer_cpu_s"] * 1e6
+                                       / max(rows[ok]["full_ops"], 1)),
+                }
+        ref = joined.get("fno_w8m4L2")
+        res["mechanism_test"] = {
+            "claim": "cost is bound by the count of full-resolution operations, "
+                     "not by arithmetic. Predicts that between two models the "
+                     "cost ratio tracks the full-op ratio.",
+            "same_invocation": cost_p.name,
+            "loadavg": cost["protocol"]["budget_provenance"].get(
+                "loadavg_1min_at_start"),
+            "per_model": joined,
+            "vs_fno_w8m4L2": {
+                k: {"op_ratio": ref["full_ops"] / v["full_ops"],
+                    "cost_ratio": ref["us_per_wafer"] / v["us_per_wafer"],
+                    "agreement": (ref["us_per_wafer"] / v["us_per_wafer"])
+                    / (ref["full_ops"] / v["full_ops"])}
+                for k, v in joined.items()
+                if k != "fno_w8m4L2" and v["full_ops"]
+            } if ref else None,
+            "caveat": "an agreement near 1 supports the mechanism; it does not "
+                      "prove per-op cost is constant across op TYPES, and an "
+                      "rfft2 on one channel is not a 1x1 conv on eight. The "
+                      "us_per_full_op column shows the spread.",
+        }
     Path(a.out).write_text(json.dumps(res, indent=2))
     print(f"{'model':26s} {'params':>10s} {'total':>6s} {'full':>5s} {'coarse':>7s} {'tiny':>5s}")
     for k, v in rows.items():
