@@ -296,7 +296,9 @@ def main():
         "n_targets": len(rows),
         "dt_optimised": bool(a.optimise_dt),
         "protocol": ("total etch time searched (T unknown, honest)" if a.optimise_dt
-                     else "total etch time pinned to the target (T known, optimistic bound)"),
+                     else "total etch time pinned to the target (T known; a "
+                          "constraint, not an easier problem -- measured worse "
+                          "than searching T)"),
         "area_error_vs_removed": {k: agg(k) for k in
                                   ["true_resim", "operator_gd", "surrogate_opinion", "random_search"]},
         "hausdorff_um": {k: agg(k, "hausdorff_um") for k in

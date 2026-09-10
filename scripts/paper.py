@@ -232,7 +232,8 @@ def main():
 
     # ---- clause 3
     L += ["### 4.3 Clause 3 — inverse-design shape error", ""]
-    for tag, dsn in [("total etch time pinned to the target (optimistic bound)", dsn_fx),
+    for tag, dsn in [("total etch time pinned to the target (a constraint, and "
+                      "measured worse than searching it)", dsn_fx),
                      ("total etch time searched (honest)", dsn_fr)]:
         L += [f"**Protocol: {tag}.**", ""]
         if dsn:

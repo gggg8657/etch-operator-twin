@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Clause 3, both protocols. T-pinned is the optimistic bound (the target's own dt
-# is handed over); T-free searches total etch time and is the honest one.
+# Clause 3, both protocols. T-pinned hands over the target's own dt; T-free
+# searches total etch time and is the honest one. T-pinned was expected to be the
+# easier of the two and measures worse (0.0098 vs 0.0061) -- it is a constraint,
+# not a hint.
 set -x
 RUN=${1:-runs/seed1}
 PY=~/miniforge3/envs/pdeno/bin/python

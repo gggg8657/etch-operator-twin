@@ -93,6 +93,9 @@ def main():
     ap.add_argument("--design", default=None,
                     help="explicit path to a design.json, if it was not "
                          "written inside the run directory")
+    ap.add_argument("--design-alt", default=None,
+                    help="the other protocol's design.json, reported beside the "
+                         "headline one so the T-pinned/T-searched pair is visible")
     ap.add_argument("--out", default="RESULTS.md")
     a = ap.parse_args()
 
@@ -105,6 +108,13 @@ def main():
     cf = read("runs/confound.json")
     speed = read("runs/speed.json")
     design = read(a.design) if a.design else read(run / "design.json")
+    design_alt = read(a.design_alt) if a.design_alt else None
+    degen = read("runs/design_degeneracy.json")
+    rcurve = read("runs/random_curve.json")
+    # Clause 3 replicated across seeds. Globbed rather than named, so a seed
+    # that finishes after this file was last edited still counts.
+    design_seeds = sorted(Path("runs").glob("design_Tfree_seed*.json"))
+    design_seed_docs = [(q.name, read(q)) for q in design_seeds]
     workers = read("runs/worker_scaling.json")
     invb = read("runs/inverse_baseline.json")
     spread = read("runs/seed_spread.json")
@@ -299,10 +309,12 @@ def main():
               "`surrogate_opinion` is what the operator believed its own answer achieved; the gap "
               "between it and `operator_gd` is the surrogate-reality gap.", ""]
         rows = []
+        gd0 = design["targets"][0]["operator_gd_surrogate"]
+        rb = design["targets"][0]["random_search"].get("budget")
         names = {"true_resim": "true recipe, re-simulated (tripwire)",
                  "operator_gd": "**gradient descent, scored in ViennaPS**",
                  "surrogate_opinion": "gradient descent, surrogate's own opinion",
-                 "random_search": "random search over the operator, matched budget"}
+                 "random_search": f"random search over the operator, {rb} candidates"}
         for k, nm in names.items():
             ae = s["area_error_vs_removed"][k]
             hd = s["hausdorff_um"][k]
@@ -312,6 +324,127 @@ def main():
         L += [f"Box margin: minimum {s['box_margin']['min']:.3f} of the box width from a wall; "
               f"{s['box_margin']['n_pinned_at_wall']} of {s['n_targets']} solutions pinned against "
               "a wall (a pinned solution is a clipped answer, not an interior optimum).", ""]
+
+        # The two protocols, and the fact that the "optimistic" one loses.
+        if design_alt:
+            sa = design_alt["summary"]
+            L += ["### Both protocols, and why the constrained one is worse", "",
+                  "A target profile arrives with no duration attached, so whether total etch "
+                  "time `T = n_steps·dt` is known is a protocol choice, not a detail. Both are "
+                  "reported.", "",
+                  table([[("T searched (no duration given)" if d["summary"]["dt_optimised"]
+                           else "T pinned to the target's own value"),
+                          f(d["summary"]["area_error_vs_removed"]["operator_gd"]["mean"]),
+                          f(d["summary"]["area_error_vs_removed"]["operator_gd"]["max"]),
+                          f"{d['summary']['kpi_clause_shape_error']['frac_targets_under_5pct']:.0%}",
+                          f(d["summary"]["hausdorff_um"]["operator_gd"]["mean"], 3)]
+                         for d in (design, design_alt)],
+                        ["protocol", "area error (mean)", "max", "targets < 5%",
+                         "Hausdorff µm"]), ""]
+            L += ["Pinning T was labelled the *optimistic* protocol in this repo, on the "
+                  "reasoning that handing over the degree of freedom that sets depth could only "
+                  "help. It does not: the searched-T arm is better on both readings. Pinning T "
+                  "is a **constraint**, and the constraint costs more than the information it "
+                  "supplies — with T free the optimiser can trade rate against time and slide "
+                  "along a family of processes that reach the same profile. The label has been "
+                  "corrected wherever it appeared.", ""]
+
+        # Shape matched is not recipe recovered. This is the claim the KPI does
+        # not make, kept in its own subsection so it cannot be read as the KPI.
+        if degen:
+            L += ["### What is *not* claimed: the recipe is not recovered", "",
+                  "The clause is 형상오차 — shape error — and shape error is what the table "
+                  "above scores. The distance between the recipe the optimiser proposed and the "
+                  "recipe that actually produced the target is a different quantity, and it is "
+                  "large. Distances are fractions of the recipe box, log-scaled on the axes the "
+                  "sampler draws in log space.", ""]
+            L += [table([[("T searched" if arm["dt_optimised"] else "T pinned"),
+                          f(arm["shape_error_area_vs_removed"]["mean"]),
+                          f(arm["recipe_distance_unit_box"]["rms"]["mean"], 3),
+                          f"{arm['recipe_distance_unit_box']['frac_beyond_10pct_of_box']:.0%}",
+                          f(arm["etch_time_rel_error"]["mean"], 3),
+                          f(arm["corr_recipe_distance_vs_shape_error"], 3)]
+                         for arm in degen["arms"]],
+                        ["protocol", "shape error", "recipe distance (RMS, fraction of box)",
+                         "beyond 10% of box", "etch-time rel. error", "corr(recipe dist, shape err)"]),
+                  ""]
+            L += ["So the forward map is **degenerate over (rate × time)**: many processes reach "
+                  "the same profile, and matching a profile does not identify the process that "
+                  "made it. The correlation between the two errors is weak, which is the "
+                  "mechanical statement that a small shape error does not certify a recipe. "
+                  "**Anyone reading this to set a tool rather than to hit a profile would be "
+                  "using a number that was not measured.**", ""]
+
+        # H3: the random-search baseline at honest budget.
+        if rcurve:
+            c, comp, v = rcurve["curve"], rcurve["compute"], rcurve["verdict"]
+            gdm = rcurve["gd_reference"]["mean_area_error"]
+            L += ["### Clause 3b — the random-search baseline, as a curve", "",
+                  f"The single random-search row above used **{rb} candidates**. Gradient "
+                  f"descent used {comp['gd_restarts']} restarts × {comp['gd_iters']} iterations "
+                  f"= {comp['gd_rollouts_forward']} rollouts forward *and* the same number "
+                  f"backward, so at a backward costing ~{comp['backward_cost_assumed_in_forwards']:.0f} "
+                  f"forwards it spent about **{comp['gd_forward_equivalents']} "
+                  "forward-equivalents**. Those budgets are not comparable, and an earlier "
+                  "version of `design.py`'s docstring called them comparable. The baseline is "
+                  "therefore reported as an objective-versus-budget curve, and random search "
+                  "keeps the target's true etch time throughout — which makes it stronger than "
+                  "the searched-T method it is being compared against.", ""]
+            L += [table([[b, f(c[b]["mean"]), f(c[b]["median"]), f(c[b]["max"]),
+                          "**≤ GD**" if c[b]["mean"] <= gdm else ""]
+                         for b in sorted(c, key=int)],
+                        ["candidates", "area error (mean)", "median", "max", "vs GD"]), ""]
+            L += [f"Gradient descent, same targets, same model: **{f(gdm)}**.", ""]
+            if v["h3_falsified"]:
+                L += [f"**H3 is falsified.** Random search reaches gradient descent's error at "
+                      f"{min(v['budgets_reaching_gd'])} candidates. The hypothesis written "
+                      "before the run was that it would not do so at any budget up to 16,384. "
+                      "The operator is therefore demonstrated to be a usable **ranker**; the "
+                      "claim that its *gradients* are what produce the answer is not supported "
+                      "by this comparison.", ""]
+            else:
+                L += ["**H3 survives.** No budget tested reaches gradient descent's error, "
+                      f"including {max(int(b) for b in c)} candidates at "
+                      f"{max(int(b) for b in c) / comp['gd_forward_equivalents']:.1f}× GD's "
+                      "forward-equivalent compute.", ""]
+            if v.get("random_at_matched_budget") is not None:
+                L += [f"At the compute-matched budget of {comp['budget_matched_to_gd']} "
+                      f"candidates, random search reads "
+                      f"**{f(v['random_at_matched_budget'])}** against GD's {f(gdm)}.", ""]
+            cc = rcurve["cross_check"]
+            L += [f"Cross-check: the N={rb} prefix is `design.py`'s own candidate set and "
+                  f"reproduces its random-search mean to "
+                  f"{cc.get('abs_delta', abs(cc['curve_n256_mean'] - cc['design_json_random_search_mean'])):.5f} "
+                  "— not exactly, because the spectral forward pass is not bitwise "
+                  "deterministic and a near-tie at the top of the ranking can flip the winner.",
+                  ""]
+
+        # Clause 3 across seeds.
+        if design_seed_docs:
+            vals = [(nm, d["summary"]["area_error_vs_removed"]["operator_gd"]["mean"],
+                     d["summary"]["area_error_vs_removed"]["operator_gd"]["max"],
+                     d["summary"]["kpi_clause_shape_error"]["frac_targets_under_5pct"])
+                    for nm, d in design_seed_docs if d]
+            head = ("runs/design_Tfree.json (seed1)",
+                    s["area_error_vs_removed"]["operator_gd"]["mean"],
+                    s["area_error_vs_removed"]["operator_gd"]["max"],
+                    s["kpi_clause_shape_error"]["frac_targets_under_5pct"])
+            allv = [head] + vals if design["summary"]["dt_optimised"] else vals
+            means = [x[1] for x in allv]
+            L += ["### Clause 3 across seeds", "",
+                  "One seed is a screen, not a verdict — this repo has already withdrawn a "
+                  "claim whose seed range exceeded its own mean. Same 20 targets, same "
+                  "protocol (T searched), one independently trained operator each.", "",
+                  table([[nm, f(m), f(mx), f"{fr:.0%}"] for nm, m, mx, fr in allv],
+                        ["run", "area error (mean)", "max", "targets < 5%"]), ""]
+            if len(means) >= 2:
+                L += [f"Across {len(means)} seeds: mean **{f(sum(means)/len(means))}**, "
+                      f"range **{f(max(means)-min(means))}**, worst seed "
+                      f"**{f(max(means))}** against the 0.05 threshold. "
+                      + ("Every seed meets the clause."
+                         if max(means) <= 0.05 else
+                         f"**{sum(1 for m in means if m > 0.05)} of {len(means)} seeds miss it.**"),
+                      ""]
     else:
         L += [NM, ""]
 
@@ -542,6 +675,8 @@ def main():
         ("clause 2 — speed", Path("runs/speed.json"), speed),
         ("clause 3 — inverse design", Path(a.design or (run / "design.json")), design),
         ("clause 3b — simulator-call baseline", Path("runs/inverse_baseline.json"), invb),
+        ("clause 3b — random-search budget curve", Path("runs/random_curve.json"), rcurve),
+        ("clause 3c — recipe recovery (degeneracy)", Path("runs/design_degeneracy.json"), degen),
         ("solver verification", Path("runs/verify_solver.json"), verify),
         ("dataset", Path(a.data) / "gen_report.json", gen),
         ("adaptive-dt confound", Path("runs/confound.json"), cf),

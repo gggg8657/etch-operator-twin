@@ -151,8 +151,12 @@ def design(
     caller supplies the target's own dt, so `T = n_steps * dt` is pinned to the
     ground truth -- and since dt was itself derived from a probe of the true
     recipe's etch rate, that hands the optimiser the degree of freedom that sets
-    depth, which is the dominant term in shape error. That is the easy protocol
-    and its numbers are an optimistic bound. With it True, dt is searched inside
+    depth, which is the dominant term in shape error. That was expected to be the
+    easy protocol and to bound the achievable error from below. **Measured, it is
+    the worse of the two** (0.0098 against 0.0061): pinning T is a constraint, and
+    the constraint costs more than the information it hands over, because with T
+    free the optimiser can trade rate against time along a family of processes
+    that reach the same profile. With it True, dt is searched inside
     the range seen in training alongside the recipe, which is the problem a real
     target poses: a profile arrives with no duration attached.
     """

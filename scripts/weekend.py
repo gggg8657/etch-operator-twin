@@ -269,7 +269,7 @@ def main():
           "```", "",
           "**Clause 3 is the one thing still outstanding.** `design.py` is running against "
           "`runs/seed1` and writes `runs/design_Tfixed.json` (total etch time pinned to the "
-          "target — the optimistic protocol), then `runs/design_Tfree.json` (etch time "
+          "target — the constrained protocol), then `runs/design_Tfree.json` (etch time "
           "searched — the honest one). Progress is one line per target in `logs/design.log`; "
           "the first 15 of 20 gave simulator-verified shape errors of 0.002–0.006 against the "
           "0.05 clause, with one at 0.0587 where random search beat gradient descent. Neither "
