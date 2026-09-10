@@ -1585,3 +1585,463 @@ That is the one thing that outranks the turn budget: a wrong number in a
 document is always worth a turn. Clause 3 is published with the warm start
 disclosed in the protocol string and recorded in the JSON as
 `dt_init_was_the_target`, so no reader is misled while the check runs.
+
+---
+
+## Turn 2026-09-10 08:2x — REOPENED by harness addendum 2026-09-10b. Rung 2, and a contaminated measurement found while preparing for it.
+
+The declaration above stands as a record but is no longer the verdict: the
+addendum reopens clause 2 on the ground that `UNREACHABLE` was reported without
+the architecture ever being attacked. It is right, and the route it names
+(predict K steps per application) is the route I would pick. Before running it I
+went to re-read `runs/speed.json` and found something worse than the clause.
+
+### Finding 1 (defect, mine, in the flattering direction): the speed table times a model that no surviving run produced
+
+`runs/speed.json` records `"params": 16810841`. No run on disk has that
+parameter count. The nine converged accuracy runs (`runs/base`, `runs/blind`,
+`runs/seed1..8`) are all `width=64, modes=20, layers=4` = **26,248,025**
+parameters. The only two directories that carry 16,810,841 are `modes=16`:
+
+- `runs/base_RACED_do_not_use` — the raced directory withdrawn in 7a9a66e, and
+- `runs/UNTRACED_t4_base_s0`.
+
+`bench_speed.py` reads `width/modes/layers` out of `<run>/args.json` and defaults
+`--run runs/base`, so the table was produced when `runs/base` still held the
+`modes=16` config — i.e. **the entire clause-2 speed grid, including the
+headline 1.47× like-for-like figure, times a network 1.56× smaller in parameters
+than the network whose 0.01256 accuracy clause 1 claims.**
+
+Why this matters and which way it cuts: a smaller operator is *faster*, so
+1.47× is an **over**-statement of the real like-for-like speedup, and every
+derived figure (199× throughput, 347× batched) is over-stated by the same ratio.
+The error therefore runs in the direction that flatters the clause, which is the
+direction this repo has already had to correct twice (the 40.8× clock-ramp
+artefact in A4, the stale `test_eval.json` here). It also means clause 1's
+accuracy and clause 2's cost were never measured on the same object, which is
+exactly the pairing the KPI is about — an accuracy number and a speed number
+belong to one model or they belong to nothing.
+
+This is rung 3 of the ladder (fix your own setup) and it is not optional:
+re-bench on `runs/seed1`, the model that carries a reported accuracy, before any
+K-step number is compared against it. Both the old and the new row go in the
+table; the old one is labelled with the run it actually timed.
+
+I do not yet know the size of the correction. `modes=20` vs `modes=16` changes
+the spectral einsum by (20/16)^2 = 1.56× in the multiply and nothing in the
+FFTs, so the wall-clock ratio will be smaller than 1.56× and larger than 1. It
+will be measured, not estimated, and this paragraph will be replaced by the
+measurement.
+
+### Finding 2: the step count is not the only thing between 1.47× and 1000×, and arithmetic says so before any run
+
+The addendum's reasoning is that cost is linear in the number of applications,
+so K applications collapsed into one divides operator cost by K. That is
+correct, and with T = 10 steps per wafer the largest possible K is 10. So the
+ceiling of the strict like-for-like reading under this change is
+
+    (measured 1-application CPU cost) -> speedup_K=10 = 10 x speedup_K=1
+
+which, taking the (contaminated, about to be corrected) 1.47× at face value, is
+**~14.7×, against a clause of 1000×.** The addendum's "199× becomes ~199K×"
+lands at ~1990× only on the *throughput-vs-throughput* row, and that row is the
+one this repo already refuses to quote as the verdict because it compares a
+batched H100 against parallel CPU processes — different hardware. Collapsing
+steps does not convert a hardware comparison into a like-for-like one.
+
+So the honest statement of the gap, before the run: horizon collapse can buy at
+most one order of magnitude of the two-and-a-half orders that are missing. The
+remaining factor has to come from the *per-application* cost — a 26.2M-parameter
+FNO at 128×128 costs ~0.10 s on one CPU thread, and 1000× against a 1.65 s
+solver requires 1.65 ms. That is a 60× cut in per-application cost, and it is a
+statement about network size, not about horizon.
+
+**This does not make the K-step experiment pointless — it makes it the first of
+two axes**, and it is the axis that also attacks clause 1, which is why it goes
+first exactly as the addendum says. What I am refusing to do is run K and then
+report "199K×" as though the clause had moved, when the reading that the verdict
+rests on would read 14.7×.
+
+### H5 (one hypothesis, one change): horizon collapse
+
+**Change:** the operator is trained on pairs (phi_t, recipe, K·dt) -> phi_{t+K}
+instead of (phi_t, recipe, dt) -> phi_{t+1}. Architecture, width, modes, layers,
+epochs, optimiser, normalisation constants: all unchanged. K in {1, 2, 5, 10},
+which are the divisors of T = 10, so every arm ends at the same physical time
+and the terminal states are comparable field-for-field.
+
+The conditioning already carries `log_dt`, so no architectural change is needed
+to express a longer step; the K arms differ only in which pairs they see and in
+the constant `log K` added to that input. `data/norm.json` is **not** refitted
+per arm — all arms are standardised by the same train-split constants, so the
+comparison is not confounded by a change of normalisation. The consequence is
+that the K=10 arm sees standardised `log_dt` up to ~+5.2 where K=1 saw at most
++1.8; that is stated because it is a real difference between the arms and it is
+the price of keeping the constants fixed.
+
+**Prediction, written before the run, so it can be wrong:**
+
+1. *Terminal-step* band rel-L2 falls from K=1 to some intermediate K, because
+   compounding over 10 applications is replaced by compounding over 10/K, and
+   then rises again as the single-application map gets harder. If it is
+   monotonically *increasing* in K, horizon collapse buys nothing for clause 1
+   and the accuracy-vs-K curve is a negative result.
+2. The crossing point is where the two error sources balance. I do not have a
+   prediction for where, and refuse to guess one.
+3. Clause 2's strict reading multiplies by K, to a hard ceiling of 10× the
+   corrected K=1 figure. Measured, not assumed: per-application CPU cost is
+   re-timed for each arm, because a K arm is not guaranteed to cost the same per
+   application as a K=1 arm even at identical architecture.
+
+**What would distinguish this from the obvious alternative.** The obvious
+alternative explanation for any accuracy gain at K>1 is not horizon collapse but
+*fewer optimisation targets*: a K=10 arm has 900 training pairs where K=1 has
+9000, so if K=10 wins it might be winning on an easier fit, and if it loses it
+might be losing on 10× less data rather than on map difficulty. Two things
+separate them, both of which I will run: (a) the pair count per arm is recorded
+in the run JSON so the comparison is never quoted without it, and (b) a
+**data-matched control** at each K trains on all T-K+1 overlapping start
+offsets rather than the K non-overlapping ones, which restores the pair count
+to ~9000 at every K. If the K-curve has the same shape in both, the effect is
+horizon; if it flattens in the data-matched arms, the effect was data volume and
+the horizon story is withdrawn.
+
+**Seeds.** The seed spread at K=1 is 0.00114 over 7 seeds on the in-distribution
+band reading. Any K effect smaller than that is not an effect. Verdict arms get
+8 seeds and an exact paired sign-flip test across the shared trajectory set, per
+the seed-count lesson; the first pass is 3 seeds and is labelled **screen, not
+verdict** until the eighth lands.
+
+---
+
+## Turn 2 (reopened) — H4 landed and it withdraws clause 3's headline
+
+`runs/design_Tfree_dtinit_random.json`, 20 targets, `runs/seed1`, `--restarts 3
+--iters 200`, duration initialised log-uniformly in the trained `dt` range,
+independently of the target (`dt_init_independent_of_target: true`).
+
+| reading | leaky init (`dt_init=target`, the declared number) | honest init (`dt_init=random`) |
+|---|---|---|
+| mean normalised area error over 20 targets | **0.0061** | **0.0613** |
+| median | 0.0060 | 0.0069 |
+| p90 | 0.0087 (`design_Tfree.json`) | 0.0125 |
+| max | 0.0087 | **1.0799** |
+| targets under the 5% clause | 20/20 | **19/20** |
+| `dt_rel_err` median / max | 0.201 / 0.548 | 0.458 / 1.678 |
+| best surrogate loss, median / max | 0.0144 / 0.0197 | 0.0159 / **1.9199** |
+
+**What the number was and what it is.** Clause 3 was declared MET at 0.0061 on
+the arm labelled "T unknown, honest". That arm was warm-started at the target's
+own duration (`eot/inverse.py`, found by `codex`), and the fix was implemented
+and the honest arm queued before the declaration, with the declaration saying in
+writing that it could withdraw clause 3. **It has, on the mean reading:
+0.0613 > 0.05.** The mean is not a near miss; it is 10× the leaky figure.
+
+**Why.** Not a uniform degradation — 19 of 20 targets are essentially unchanged
+(median 0.0069 against 0.0060) and one target, idx 237, goes to 1.0799. Its
+duration search converged to `dt = 0.7906` against a true 0.5249 (`dt_rel_err`
+0.506), which over-etches by 50% and truncates the simulation
+(`sim_status.steps_ok: false`). So the honest protocol does not make the
+inverse design worse; it makes the **duration search's non-convexity visible**,
+and with 3 restarts drawn log-uniformly across the whole trained `dt` range, 1
+in 20 targets keeps a bad basin as its best-of-3.
+
+**The binding constraint is the multi-start budget I chose, not the operator.**
+Two measurements say so rather than one intuition:
+
+1. The failure is **self-announcing without any ground truth**. Best surrogate
+   loss is ≤ 0.0327 for all 19 successes and **1.9199** for the failure — a 59×
+   separation, and rank correlation between surrogate loss and simulated area
+   error rises from −0.117 (leaky) to **+0.630** (honest). Any threshold in
+   (0.033, 1.92) rejects exactly the one bad design and keeps all 19. Restart
+   selection is *already* by surrogate loss, so this is the same oracle-free
+   quantity the optimiser has in hand — no protocol change, no label.
+2. Random search with 256 candidates scored **0.0260** on idx 237 — the target
+   is not intrinsically hard, and GD's failure there is a basin, not a limit of
+   the operator's accuracy on that profile.
+
+**What would distinguish this from the obvious alternative.** The obvious
+alternative is that the honest protocol is simply harder and the operator cannot
+hit 5% without being told the duration — in which case error would rise across
+*all* targets and more restarts would not help. What I measure instead is a
+19-vs-1 split with the 19 unmoved, which predicts that a larger multi-start
+budget removes the failure and that the accepted-design error stays at ~0.007.
+If a restart curve flattens with the failure still present, the alternative is
+right and clause 3 is genuinely lost under the honest protocol.
+
+**Also true and reported next to it:** `dt_rel_err` median 0.458 under the
+honest init against 0.201 under the leaky one. The (rate × time) degeneracy this
+repo already recorded is *worse* than it looked: with no hint about duration, the
+recovered process is off by ~46% in etch time while the profile matches to
+0.7%. Profile targeting, not recipe identification — unchanged conclusion,
+larger effect.
+
+### H6 (one hypothesis, one change): the multi-start budget, and a curve not a point
+
+**Change:** `--restarts 3` becomes a restart *curve* R ∈ {1, 2, 3, 6, 12} under
+the honest `dt_init=random`, with the design at each R chosen by the same
+surrogate-loss argmin over the first R restarts and simulated in ViennaPS.
+Everything else — operator, targets, iters, box, metric — is held fixed.
+
+**Prediction, written before the run:**
+
+1. Mean area error falls below 0.05 by some R ≤ 12 because idx 237's bad basin
+   is escaped, and the median stays ~0.007 throughout (the 19 are already
+   converged, so extra restarts must not move them).
+2. The surrogate-loss screen at any τ ∈ (0.05, 1.0) accepts 19/20 at R = 3 and
+   20/20 at the R where the mean passes; if it ever *rejects* a design whose
+   simulated error is < 5%, the screen is not free and that is reported.
+3. Forward-equivalents scale linearly in R, so R = 12 costs 4× R = 3. Clause 3
+   has no compute clause, but the GD-vs-random comparison does, and the matched
+   budget for random search moves with R — the R = 12 row must be compared
+   against a random-search budget of 12/3 × the R = 3 one or the comparison is
+   the budget, not the method. `runs/random_curve_test.json` already carries the
+   64→16,384 curve to read that off.
+
+**What this is not.** It is not a protocol loosening: the initialisation stays
+independent of the target, the selector stays oracle-free, and the number
+reported for a given R is the mean over all 20 targets with no target dropped.
+If the mean only passes because a target was screened out, the screened figure
+is reported as a *screened* figure with its rejection rate next to it, and the
+all-targets mean stays in the same table.
+
+---
+
+## Turn 2 (reopened) — H5's first pass falsifies its own prediction 1
+
+`runs/kcurve_screen.json`, one seed per K arm against the 8-seed K=1 anchor,
+terminal-step band rel-L2 (the only reading comparable across K), coverage rule
+B (train p1–p99 displacement, 121 of 209 crossed trajectories inside).
+
+| arm | pairs | applications/wafer | in-dist terminal | crossed **in coverage** terminal |
+|---|---|---|---|---|
+| K=1 (anchor, 8 seeds) | 9000 | 10 | **0.01890** | **0.05433** |
+| K=2 nv | 4500 | 5 | 0.02803 | 0.06832 |
+| K=5 nv | 1800 | 2 | 0.03460 | 0.08482 |
+| K=10 nv | 900 | 1 | 0.04868 | 0.11363 |
+| K=2 ov (data-matched) | 8100 | 5 | 0.10859 | 0.14481 |
+| K=5 ov (data-matched) | 5400 | 2 | 0.08057 | 0.12956 |
+
+**Prediction 1 was that the terminal error would fall from K=1 to some
+intermediate K and rise after. It does not fall anywhere.** The curve is
+monotonically increasing in K on both splits. Every arm loses to the anchor on
+a paired per-trajectory comparison — the pairing unit is the test trajectory,
+which every arm sees — with mean differences +0.0091 to +0.0897 in distribution
+and +0.0140 to +0.0905 in coverage, at sign-test p < 1e-4 over 121–250 pairs.
+The smallest of those effects is **5× the anchor's own 8-seed range** (0.00172
+on the terminal reading), so this is not seed noise.
+
+**What that does to the two clauses the addendum coupled.**
+
+* Clause 1 in coverage moves the **wrong way**: 0.0543 → 0.1136 at K=10. The
+  route that was supposed to rescue the reading that failed makes it fail worse.
+  The compounding saved (10 applications → 1) is smaller than the accuracy lost
+  in making one application cover ten timesteps.
+* Clause 2's K multiplier is real but it buys a number nobody can use: the
+  arm with 1 application per wafer is the arm whose in-coverage terminal error
+  is 0.1136, i.e. 2.3× the clause-1 threshold. **The K knob trades clause 1 for
+  clause 2 rather than moving both**, and the accuracy-versus-K curve above is
+  the measurement of that trade. This is the result the addendum asked for; it
+  is a negative one.
+
+**Screen, not verdict** — one seed per arm. The 8-seed grid is running
+(`scripts/kcurve.sh`, `runs/kcurve/`), and the sign of every effect here is far
+outside the anchor's seed range, so I expect the sign to hold and the sizes to
+move. Nothing from this table goes into RESULTS.md until the arms are at 8 seeds.
+
+**The data-matched control refutes the obvious alternative, and in the
+surprising direction.** The alternative to "a K-step map is intrinsically
+harder" was "a K arm trained on K× fewer pairs". The `ov` arms restore the pair
+count (8100 and 5400 against the anchor's 9000) and they are **worse than the
+`nv` arms at the same K**, by 0.081 at K=2. So more training pairs at the same
+horizon *hurt*, which no data-volume story predicts. The explanation I can
+defend is **input-distribution mismatch**: with non-overlapping starts the
+training inputs are exactly the states the rollout visits (t = 0, K, 2K, …),
+while overlapping starts spend capacity on start times the rollout never sees.
+That is a testable claim and the test is cheap — score the `ov` arm's
+single-application error on rollout-visited starts against all starts — so it
+is queued rather than asserted.
+
+**One alternative is not yet excluded and is being run.** An `nv` arm at stride
+K trains on T/K pairs for the same 80 epochs, so it takes K× fewer gradient
+steps. `scripts/kcurve_sm.sh` adds the step-matched control: identical pairs and
+identical input distribution to `nv`, epochs = 80K, so the gradient-step count
+matches the anchor's ~22.5k. If the `sm` arms collapse onto the `nv` arms, the
+K-curve is about the map and the horizon story is settled negative; if `sm`
+recovers the anchor, my arms were undertrained and the curve above is an
+artefact of my epoch budget. I would rather find the second, and the first is
+what the `ov` result already points at.
+
+---
+
+## Turn 2 (reopened) — a defect in my own speed table, found by arithmetic
+
+`runs/speed.json` records `params: 16810841`. The architecture every accuracy
+number in this repo comes from — width 64, modes 20, layers 4 — has
+**26,248,025** parameters, and `param_count()` on width 64 / **modes 16** /
+layers 4 is exactly 16,810,841. The committed speed table was therefore measured
+on a network **1.56× smaller in parameters** than the one it was quoted beside,
+because it was run against an early `runs/base` whose default was `modes=16`
+(the same `runs/base` later withdrawn as raced, commit 8cca0d1, which is why the
+file has no `--run` field to catch it with).
+
+**Direction: it flattered the clause.** A smaller network is faster, so the
+published **1.47×** like-for-like is an upper bound on the real figure for the
+reported model, and clause 2's shortfall is larger than 679×, not smaller. The
+verdict does not change — the clause was already `UNREACHABLE` by two orders of
+magnitude — but the number in the headline was not a measurement of the model in
+the headline, which is exactly the rule this workspace exists to enforce.
+
+Fixed: `scripts/bench_speed.py` now records `run`, `arch` and
+`applications_per_wafer` in its output, times `n_steps/stride` applications so a
+K-step arm is priced correctly, and reports seconds per application beside
+seconds per wafer. Re-measuring on `runs/seed1` (the modes=20 anchor) and on
+`runs/kcurve/K10_nv_s1`; the old file is kept for the record and every document
+that quotes 1.47× is regenerated from the new one.
+
+---
+
+## Turn 3 (reopened) — the K-curve at 5 seeds, and every speedup number in this repo withdrawn
+
+### 1. The addendum's route is measured, and it is a trade, not a joint win
+
+`runs/kcurve.json`, terminal-step rel-L2 (the only reading comparable across K,
+since every arm ends at the same physical time while the mean-over-emitted-states
+reading averages T/K states):
+
+| arm | seeds | apps/wafer | in-dist | seed range | crossed-in-coverage | seed range |
+|---|---|---|---|---|---|---|
+| K1_nv (anchor) | 8 | 10 | **0.01890** | 0.00172 | **0.05433** | 0.03511 |
+| K2_nv | 5 | 5 | 0.03075 | 0.04662 | 0.06710 | 0.07651 |
+| K5_nv | 5 | 2 | 0.04429 | 0.05316 | 0.08608 | 0.06443 |
+| K10_nv | 5 | 1 | 0.04847 | 0.01069 | 0.10057 | 0.01850 |
+| K2_ov | 5 | 5 | 0.07130 | 0.20476 | 0.10643 | 0.24262 |
+| K5_ov | 4 | 2 | 0.04090 | 0.06899 | 0.09658 | 0.10925 |
+| K2_sm | 2 | 5 | 0.09503 | 0.15001 | 0.12728 | 0.14877 |
+| K5_sm | 2 | 2 | 0.06842 | 0.08888 | 0.12129 | 0.06852 |
+
+**The addendum predicted the wrong sign.** Its argument was that error compounds
+over K× fewer applications, so clause 1's terminal reading "gets easier". It does
+not: terminal error rises monotonically in K on *both* splits — 0.0189 → 0.0308 →
+0.0443 → 0.0485 in distribution, 0.0543 → 0.0671 → 0.0861 → 0.1006 on the
+crossed split that clause 1 actually fails. Paired per trajectory against the
+anchor, every K>1 arm is worse with sign-test p ≤ 1e-20 and sign-flip p ≈ 1e-5
+(100k permutations); at K=2 the anchor wins 243 of 250 in-distribution
+trajectories. The reduced-compounding benefit is real but is dominated by the
+K-step map being intrinsically harder to fit. **The K knob buys clause 2 with
+clause 1, which is what the previous turn's one-seed screen said and this now
+says at 5 seeds with an exact paired test.**
+
+The one place it nearly holds: K10_nv in distribution is 0.04847, under the 0.05
+threshold on the **point estimate only** — its upper bootstrap CI is 0.05193 and
+it fails `met_every_seed`. So K=10 converts a clause-1 pass that was robust under
+all three coverage rules (0.01890, every seed, upper CI 0.02044) into one that
+survives on the loosest rule alone. Reporting that as "clause 1 still met at
+K=10" would be exactly the silent test-loosening the rules forbid.
+
+**The undertraining alternative is refuted, not assumed.** An `nv` arm at stride
+K takes K× fewer gradient steps, so "the arms are undertrained" was the
+explanation to kill. `sm` matches the anchor's ~22.5k gradient steps at identical
+pairs and identical input distribution (epochs = 80K). It is **worse**: K2_sm
+0.09503 against K2_nv 0.03075, K5_sm 0.06842 against K5_nv 0.04429. More gradient
+steps on the same pairs hurt, so the curve is not an epoch-budget artefact — it
+is overfitting a smaller pair set. Two K's, same direction. **Screen, not
+verdict**: 2 seeds each, and K2_sm's seed range is 0.15001, larger than its own
+point estimate. The 8-seed grid and the `sm` seeds are running.
+
+`ov` (the data-matched control, pair count restored) remains worse than `nv` at
+the same K, and K2_ov's seed range of 0.20476 exceeds its point estimate of
+0.07130 — this arm is unstable, and nothing about it is a result yet.
+
+### 2. Every like-for-like speedup number this repo has published is withdrawn
+
+This is the turn's real finding and it is a defect in my own measurement, found
+by arithmetic on a quantity that should have been constant. The like-for-like
+denominator is ViennaPS at one OpenMP thread on one wafer — identical code,
+identical grid (0.2 µm, 128), identical 10 timesteps in every measurement — and
+it has been reported as:
+
+| file | solver s/wafer | load avg | like-for-like speedup |
+|---|---|---|---|
+| `runs/speed.json` | 1.538 | 11.56 | 1.47× |
+| `runs/speed_seed1_cpu.json` | 8.457 | 40.65 | 6.57× |
+| `runs/speed_K10_cpu.json` | 8.390 | 22.32 | 119.12× |
+
+A 5.5× spread on a fixed computation. **My first explanation was box load and it
+is wrong.** `runs/solver_drift.json` times the same wafer at 1.11 CPU-s under
+load 11.3 and 1.26 CPU-s under load 41.0 — 1.15× across a 3.6× load range. Load
+moves this by ~15%, not 5.5×.
+
+**My second explanation was process reuse and it is also wrong, but it found the
+real defect.** Recording each wafer separately instead of a median:
+
+```
+reuse_single_only       1.257, 0.191, 0.396, 0.297, 0.302, 0.104, 0.256, 0.352
+fresh_process_per_wafer 1.253, 0.888, 1.070, 0.988, 1.011, 0.790, 0.945, 1.046
+```
+
+The first wafer in a process costs 1.257 s and every later one 0.10–0.40 s.
+**ViennaPS charges a large one-time initialisation inside the timed `.apply()`
+region.** So reuse makes the solver look *cheaper*, not dearer, and the committed
+8.46 s is still unexplained by either hypothesis — see §3.
+
+The consequence is mine. `scripts/bench_paired.py`, which I wrote this turn,
+timed the solver in a **fresh process per wafer** (paying init every time) while
+giving the operator **3 untimed warm-up rollouts** (paying its FFT-plan creation
+on none). Solver cold, operator warm, ratio labelled "like-for-like". Under
+`scripts/bench_symmetric.py`, which pays the one-time cost on both sides or
+neither:
+
+| arm | marginal_warm | cold_single_wafer |
+|---|---|---|
+| K=1 (`runs/seed1`) | **0.41×** | **0.73×** |
+| K=10 (`runs/kcurve/K10_nv_s1`) | **2.37×** | **7.15×** |
+
+solver cold/warm = 3.15×. **At K=1 the operator is slower than the simulator it
+replaces**, like-for-like, on the same hardware at the same verified thread
+count. Withdrawn: 1.47×, 6.57×, 119.12×, and this turn's own 1.53×/13.84× from
+`bench_paired.py`. The inflation factor on the headline was 16–50×.
+
+Clause 2's shortfall is therefore **140× at the most favourable of the four
+honest rows**, not the 679× recorded at declaration — the declaration's figure
+was itself computed from a contaminated denominator, and it was too kind in the
+sense that mattered less and too harsh in the sense that mattered more: the
+*route* is worse than believed because K=1 has no speedup at all.
+
+Two directions this closes off and one it does not. It closes off "the operator
+is intrinsically faster and the reporting is just conservative" — on CPU at one
+thread, for a 128×128 2-D level set over 10 steps, ViennaPS costs 0.10–0.40
+CPU-s warm and a 26.2 M-parameter FNO forward costs ~0.084 CPU-s per
+application, so the two are the same order and the operator loses at K=1 on
+application count alone. It does not close off the GPU throughput reading, which
+is a different claim about different hardware and is labelled as such.
+
+### 3. Recorded as unexplained rather than explained away
+
+Neither load (1.15× across 3.6×) nor process reuse (which lowers the number)
+accounts for 8.457 and 8.390 s/wafer, against 1.00 s cold and 0.296 s warm
+measured under three conditions at comparable load in one invocation. I have no
+account of it. It is not being reinterpreted into a story: the two files are
+marked contaminated, every number derived from them is withdrawn, and the
+reproduction is the open item. The `stepped_vs_single_overhead` field (2.52×) is
+in the right ballpark to matter but does not close a 28× gap, and both files
+already used `single` as the reference.
+
+### 4. What the verdict looks like now
+
+Clause 2 is *more* firmly `UNREACHABLE` at 1000×, on a protocol that no longer
+flatters it, and clause 1's K-route is a measured negative. What changed is that
+both are now wrong for stated reasons rather than for a reason that turned out to
+be a measurement artefact. The board entry's "short by 679×" is withdrawn along
+with the number it came from.
+
+Infrastructure, same turn: four `runs/kcurve` arms had been killed mid-training
+when a parent process exited and took its process group with it — their logs end
+mid-write at `Traceback (most recent call last):\n  File "/h`. `train.py`'s
+`log.jsonl` guard then refused to restart them, because it could not tell an
+orphan from a race. It can: `runlock.acquire` holds an exclusive `flock` that
+dies with its holder, so reaching that guard proves no live writer. Added
+`runlock.reclaim_orphan`, which archives such a directory to `runs/_orphaned/`
+with an `orphaned.json` recording the epoch count and why — archive rather than
+append, since appending is what produced the interleaved log the guard exists
+for. All long jobs this turn went to their own tmux sessions.

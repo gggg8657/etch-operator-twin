@@ -48,7 +48,7 @@ from eot.operator import EtchOperator, band_rel_l2  # noqa: E402
 from scripts.analyse_confound import per_step_displacement  # noqa: E402
 
 
-def per_traj_both_readings(model, ds, device, scale, band_um):
+def per_traj_both_readings(model, ds, device, scale, band_um, stride=1):
     """Per-trajectory band rel-L2 as mean-over-steps and as terminal step, and
     the model's own predicted per-step displacement (no ground truth used)."""
     loader = DataLoader(ds, batch_size=16, shuffle=False, num_workers=2)
@@ -74,7 +74,13 @@ def per_traj_both_readings(model, ds, device, scale, band_um):
             bw = ((nxt.abs() < band_um) | (prev.abs() < band_um)).flatten(2).double()
             df = (nxt - prev).flatten(2).double()
             step = (df * bw).sum(-1) / bw.sum(-1).clamp_min(1.0)
-            pred_disp += step.abs().mean(dim=1).tolist()
+            # `step` is the advance per APPLICATION; at stride K one application
+            # covers K dataset timesteps, and the coverage rules are stated in
+            # per-dataset-step displacement (per_step_displacement runs on the
+            # raw arrays and knows nothing about the model). Divide, or a K=10
+            # arm would appear to advance 10x too far and the a-priori selector
+            # would reject every trajectory for being out of coverage.
+            pred_disp += (step.abs().mean(dim=1) / stride).tolist()
     return np.asarray(mean_r), np.asarray(term_r), np.asarray(pred_disp)
 
 
@@ -121,7 +127,17 @@ def main():
     disp_te = np.abs(per_step_displacement(te).mean(axis=1))
     disp_cr = np.abs(per_step_displacement(cr).mean(axis=1))
 
-    ds = TrajDataset(Path(a.data) / "test_crossed.npz", norm)
+    # The stride (K, how many dataset timesteps one application advances) is read
+    # from the runs themselves and must agree across them: the terminal state is
+    # at the same physical time for every K, but the *mean-over-emitted-states*
+    # reading averages T/K states, so pooling two strides into one bootstrap
+    # would average unlike quantities.
+    strides = {int(json.loads((Path(r) / "args.json").read_text()).get("stride", 1))
+               for r in a.runs}
+    if len(strides) > 1:
+        raise SystemExit(f"runs mix strides {sorted(strides)}; score one stride per call")
+    stride = strides.pop()
+    ds = TrajDataset(Path(a.data) / "test_crossed.npz", norm, stride=stride)
     mean_rows, term_rows, pred_rows, used = [], [], [], []
     for r in a.runs:
         run = Path(r)
@@ -130,7 +146,8 @@ def main():
                              modes=cfg["modes"], n_layers=cfg["layers"]).to(device)
         model.load_state_dict(torch.load(run / "best.pt", map_location=device))
         model.eval()
-        m, t, pd_ = per_traj_both_readings(model, ds, device, scale, band_um)
+        m, t, pd_ = per_traj_both_readings(model, ds, device, scale, band_um,
+                                           stride=stride)
         mean_rows.append(m); term_rows.append(t); pred_rows.append(pd_)
         used.append(run.name)
     M = np.stack(mean_rows); T = np.stack(term_rows); P = np.stack(pred_rows)
@@ -154,6 +171,14 @@ def main():
     }
 
     out = {"runs": used, "n_crossed": int(len(disp_cr)), "target": a.target,
+           "stride": stride,
+           "applications_per_wafer": len(ds.times) if hasattr(ds, "times") else None,
+           "stride_note": (
+               "One application advances `stride` dataset timesteps, so a wafer "
+               "takes T/stride applications and the rollout compounds that many "
+               "times. terminal_step is at the same physical time for every "
+               "stride and is the reading a K-curve may be compared on; "
+               "mean_over_steps averages T/stride states and is not."),
            "readings": ["mean_over_steps", "terminal_step"], "rules": {}}
     for name, r in rules.items():
         sel = (disp_cr >= r["lo"]) & (disp_cr <= r["hi"])

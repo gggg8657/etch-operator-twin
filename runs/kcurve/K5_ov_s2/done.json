@@ -1,0 +1,22 @@
+{
+  "finished": 1789032413.447947,
+  "pid": 4108340,
+  "argv": [
+    "scripts/train.py",
+    "--run",
+    "runs/kcurve/K5_ov_s2",
+    "--epochs",
+    "80",
+    "--device",
+    "cuda:0",
+    "--seed",
+    "2",
+    "--stride",
+    "5",
+    "--overlap-pairs"
+  ],
+  "epochs": 80,
+  "seed": 2,
+  "best_val_roll_band": 0.0188232101018851,
+  "train_wall_s": 1452.7008787840605
+}

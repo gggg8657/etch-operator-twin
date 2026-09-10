@@ -85,6 +85,17 @@ def main():
     ap.add_argument("--layers", type=int, default=4)
     ap.add_argument("--rollout-steps", type=int, default=0,
                     help="0 = one-step training; k>0 = pushforward over k steps")
+    ap.add_argument("--stride", type=int, default=1,
+                    help="K: how many dataset timesteps ONE application of the "
+                         "operator advances. K>1 divides the number of "
+                         "applications per wafer by K, so both the cost and the "
+                         "number of compoundings fall by K. The conditioning's "
+                         "log_dt channel becomes log(K*dt); nothing else changes.")
+    ap.add_argument("--overlap-pairs", action="store_true",
+                    help="data-matched control: train on every legal start offset "
+                         "(T-K+1 per trajectory) instead of the K non-overlapping "
+                         "ones, so the pair count stays ~T at any K. Separates a "
+                         "horizon effect from a training-set-size effect.")
     ap.add_argument("--band-weight", type=float, default=0.0,
                     help="extra loss weight on the narrow band; 0 = plain rel-L2")
     ap.add_argument("--blind", action="store_true",
@@ -115,11 +126,15 @@ def main():
     # other's best.pt. The weights stayed coherent (each process had its own
     # model) but the checkpoint's provenance did not, and two evaluations of
     # "the same run" differed by 3x. Refuse rather than race.
+    #
+    # `acquire` above is the guard that actually enforces this: its flock dies
+    # with its holder, so reaching this line proves no live process is writing
+    # `run`. A leftover log.jsonl under a free lock is therefore an orphan of a
+    # killed trainer, not a race -- archive it and start clean rather than
+    # refusing (a blanket refusal stranded four kcurve arms) or appending
+    # (appending is what produced the interleaved log in the first place).
     if (run / "log.jsonl").exists() and not a.force:
-        raise SystemExit(
-            f"{run}/log.jsonl already exists. A second trainer writing here would "
-            f"interleave epochs and overwrite best.pt. Use a fresh --run, or --force "
-            f"if you really mean to append.")
+        runlock.reclaim_orphan(run, what="train")
     data = Path(a.data)
 
     norm_p = data / "norm.json"
@@ -128,9 +143,10 @@ def main():
     norm = json.loads(norm_p.read_text())
     scale, band_um = norm["sdf_scale_um"], norm["band_um"]
 
-    tr_pairs = PairDataset(data / "train.npz", norm)
-    tr_traj = TrajDataset(data / "train.npz", norm)
-    va_traj = TrajDataset(data / "val.npz", norm)
+    tr_pairs = PairDataset(data / "train.npz", norm, stride=a.stride,
+                           overlap=a.overlap_pairs)
+    tr_traj = TrajDataset(data / "train.npz", norm, stride=a.stride)
+    va_traj = TrajDataset(data / "val.npz", norm, stride=a.stride)
     device = torch.device(a.device)
 
     model = EtchOperator(cond_dim=len(norm["cond_keys"]), width=a.width,
@@ -151,6 +167,9 @@ def main():
 
     args_p = run / "args.json"
     args_p.write_text(json.dumps({**vars(a), "params": model.param_count(),
+                                  "n_train_pairs": len(tr_pairs),
+                                  "pair_starts": tr_pairs.starts,
+                                  "applications_per_wafer": len(va_traj.times),
                                   "gpu": torch.cuda.get_device_name(device)}, indent=2))
     logf = (run / "log.jsonl").open("a")
     best = float("inf")

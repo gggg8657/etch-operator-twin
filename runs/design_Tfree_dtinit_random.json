@@ -1,0 +1,2382 @@
+{
+  "summary": {
+    "n_targets": 20,
+    "dt_optimised": true,
+    "protocol": "total etch time searched (T unknown, honest)",
+    "area_error_vs_removed": {
+      "true_resim": {
+        "mean": 0.00238956544854758,
+        "median": 0.0021639849837286583,
+        "p90": 0.0033704115404927983,
+        "max": 0.004617137495713187,
+        "n": 20,
+        "n_failed_simulation": 0,
+        "n_truncated_simulation": 0,
+        "n_verified_complete": 20,
+        "n_targets": 20
+      },
+      "operator_gd": {
+        "mean": 0.06125862942314179,
+        "median": 0.006944203683035741,
+        "p90": 0.012499549862247246,
+        "max": 1.0799026194595172,
+        "n": 20,
+        "n_failed_simulation": 0,
+        "n_truncated_simulation": 1,
+        "n_verified_complete": 19,
+        "n_targets": 20
+      },
+      "surrogate_opinion": {
+        "mean": 0.07712082085781986,
+        "median": 0.010258822915137772,
+        "p90": 0.012571863917721809,
+        "max": 1.359475549648519,
+        "n": 20,
+        "n_failed_simulation": 0,
+        "n_truncated_simulation": 0,
+        "n_verified_complete": 20,
+        "n_targets": 20
+      },
+      "random_search": {
+        "mean": 0.0233517568241383,
+        "median": 0.017508064237804807,
+        "p90": 0.04387384689719087,
+        "max": 0.07352557547447176,
+        "n": 20,
+        "n_failed_simulation": 0,
+        "n_truncated_simulation": 0,
+        "n_verified_complete": 20,
+        "n_targets": 20
+      }
+    },
+    "hausdorff_um": {
+      "true_resim": {
+        "mean": 0.019862869158965714,
+        "median": 0.018506877866360884,
+        "p90": 0.028297735876902284,
+        "max": 0.03734189856769036,
+        "n": 20,
+        "n_failed_simulation": 0,
+        "n_truncated_simulation": 0,
+        "n_verified_complete": 20,
+        "n_targets": 20
+      },
+      "operator_gd": {
+        "mean": 0.39401235004407487,
+        "median": 0.04247582460439367,
+        "p90": 0.07394836389019667,
+        "max": 7.014305926890878,
+        "n": 20,
+        "n_failed_simulation": 0,
+        "n_truncated_simulation": 1,
+        "n_verified_complete": 19,
+        "n_targets": 20
+      },
+      "surrogate_opinion": {
+        "mean": 0.2025093351792721,
+        "median": 0.04620882603178625,
+        "p90": 0.08132109354746275,
+        "max": 3.177705190528144,
+        "n": 20,
+        "n_failed_simulation": 0,
+        "n_truncated_simulation": 0,
+        "n_verified_complete": 20,
+        "n_targets": 20
+      },
+      "random_search": {
+        "mean": 0.11701699835406351,
+        "median": 0.10079635371348764,
+        "p90": 0.1911987394517591,
+        "max": 0.2403051937041445,
+        "n": 20,
+        "n_failed_simulation": 0,
+        "n_truncated_simulation": 0,
+        "n_verified_complete": 20,
+        "n_targets": 20
+      }
+    },
+    "box_margin": {
+      "min": 0.009382903575897217,
+      "n_pinned_at_wall": 1
+    },
+    "kpi_clause_shape_error": {
+      "target": 0.05,
+      "frac_targets_under_5pct": 0.95,
+      "p90": 0.012499549862247246,
+      "max": 1.0799026194595172,
+      "dt_optimised": true,
+      "headline_metric": "normalised area error vs target-removed area, measured in ViennaPS on the recipe the operator proposed",
+      "value": 0.06125862942314179,
+      "met": false,
+      "met_mean": false,
+      "met_every_target": false,
+      "dt_init_mode": "random",
+      "dt_init_independent_of_target": true,
+      "surrogate_reality_gap": -0.015862191434678076,
+      "beats_random_search": false,
+      "simulator_determinism_check": 0.004617137495713187
+    }
+  },
+  "targets": [
+    {
+      "target_index": 220,
+      "dt": 0.15991581976413727,
+      "n_steps": 10,
+      "geometry": {
+        "trench_width": 7.808982849121094,
+        "mask_height": 1.3919583559036255
+      },
+      "true_recipe": {
+        "ion_flux": 17.64773178100586,
+        "etchant_flux": 3733.27685546875,
+        "oxygen_flux": 297.6785888671875,
+        "ion_energy": 134.9237060546875
+      },
+      "true_resim": {
+        "mismatch_area_um2": 0.14035459340307707,
+        "target_removed_area_um2": 64.54781065335703,
+        "area_error_vs_removed": 0.002174428411783436,
+        "area_error_vs_solid": 0.0004911031341419441,
+        "mismatch_area_um2_hard_threshold": 0.14880029760059488,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.024587849126142425,
+        "mean_surface_dist_um": 0.0031488186284706924,
+        "n_contour_pts": [
+          306,
+          306
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 7.271145526319742
+      },
+      "operator_gd_surrogate": {
+        "best_surrogate_loss": 0.014656325802206993,
+        "box_margin": 0.2696632146835327,
+        "recipe": {
+          "ion_flux": 9.250822067260742,
+          "etchant_flux": 2682.461669921875,
+          "oxygen_flux": 196.28871154785156,
+          "ion_energy": 159.55050659179688
+        },
+        "restarts": 3,
+        "iters": 200,
+        "dt_was_optimised": true,
+        "dt_init_mode": "random",
+        "dt_init": 0.17642349549707143,
+        "dt_init_was_the_target": false,
+        "dt_found": 0.25102755427360535,
+        "dt_true": 0.15991581976413727,
+        "dt_rel_err": 0.5697481002433057
+      },
+      "surrogate_opinion": {
+        "mismatch_area_um2": 0.4169674243892772,
+        "target_removed_area_um2": 64.54781065335703,
+        "area_error_vs_removed": 0.006459822884288507,
+        "area_error_vs_solid": 0.0014589761830208741,
+        "mismatch_area_um2_hard_threshold": 0.12400024800049575,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.03778733185742167,
+        "mean_surface_dist_um": 0.009381044738427307,
+        "n_contour_pts": [
+          306,
+          306
+        ]
+      },
+      "operator_gd": {
+        "mismatch_area_um2": 0.21006377895533734,
+        "target_removed_area_um2": 64.54781065335703,
+        "area_error_vs_removed": 0.0032543904561449636,
+        "area_error_vs_solid": 0.0007350167722576655,
+        "mismatch_area_um2_hard_threshold": 0.0992001984003966,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.038714505245360686,
+        "mean_surface_dist_um": 0.004810297536462336,
+        "n_contour_pts": [
+          306,
+          306
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 5.640573222190142
+      },
+      "random_search": {
+        "mismatch_area_um2": 1.1534648704791932,
+        "target_removed_area_um2": 64.54781065335703,
+        "area_error_vs_removed": 0.017869930192887237,
+        "area_error_vs_solid": 0.004035993402710712,
+        "mismatch_area_um2_hard_threshold": 1.2400024800049574,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.17041770499292852,
+        "mean_surface_dist_um": 0.02751226020982421,
+        "n_contour_pts": [
+          308,
+          306
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 4.219388201832771,
+        "surrogate_loss": 0.08030109852552414,
+        "budget": 256,
+        "recipe": {
+          "ion_flux": 20.41811741419617,
+          "etchant_flux": 3053.7210435025104,
+          "oxygen_flux": 387.654407009141,
+          "ion_energy": 162.2089659364348
+        }
+      }
+    },
+    {
+      "target_index": 72,
+      "dt": 0.5059282183647156,
+      "n_steps": 10,
+      "geometry": {
+        "trench_width": 7.378846168518066,
+        "mask_height": 2.6127593517303467
+      },
+      "true_recipe": {
+        "ion_flux": 14.96804141998291,
+        "etchant_flux": 757.1676025390625,
+        "oxygen_flux": 359.6622314453125,
+        "ion_energy": 104.13949584960938
+      },
+      "true_resim": {
+        "mismatch_area_um2": 0.13915514361266088,
+        "target_removed_area_um2": 41.39448701552928,
+        "area_error_vs_removed": 0.003361683007702363,
+        "area_error_vs_solid": 0.00043478913625602164,
+        "mismatch_area_um2_hard_threshold": 0.17360034720069403,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.03048370002224515,
+        "mean_surface_dist_um": 0.0049144866196991115,
+        "n_contour_pts": [
+          200,
+          204
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.7049738094210625
+      },
+      "operator_gd_surrogate": {
+        "best_surrogate_loss": 0.021582428365945816,
+        "box_margin": 0.3523450493812561,
+        "recipe": {
+          "ion_flux": 12.223201751708984,
+          "etchant_flux": 1805.9718017578125,
+          "oxygen_flux": 258.5629577636719,
+          "ion_energy": 127.94159698486328
+        },
+        "restarts": 3,
+        "iters": 200,
+        "dt_was_optimised": true,
+        "dt_init_mode": "random",
+        "dt_init": 0.17904696468602352,
+        "dt_init_was_the_target": false,
+        "dt_found": 0.22673019766807556,
+        "dt_true": 0.5059282183647156,
+        "dt_rel_err": 0.5518530308490732
+      },
+      "surrogate_opinion": {
+        "mismatch_area_um2": 0.4841465055497717,
+        "target_removed_area_um2": 41.39448701552928,
+        "area_error_vs_removed": 0.01169591751114448,
+        "area_error_vs_solid": 0.0015127118948278972,
+        "mismatch_area_um2_hard_threshold": 0.5456010912021813,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.04510270789038834,
+        "mean_surface_dist_um": 0.016403946515421666,
+        "n_contour_pts": [
+          204,
+          204
+        ]
+      },
+      "operator_gd": {
+        "mismatch_area_um2": 0.36413230049102574,
+        "target_removed_area_um2": 41.39448701552928,
+        "area_error_vs_removed": 0.008796637589793547,
+        "area_error_vs_solid": 0.001137728468407161,
+        "mismatch_area_um2_hard_threshold": 0.4216008432016855,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.04539478372969302,
+        "mean_surface_dist_um": 0.01213127994967238,
+        "n_contour_pts": [
+          204,
+          204
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 5.513661377131939
+      },
+      "random_search": {
+        "mismatch_area_um2": 0.2790353994188567,
+        "target_removed_area_um2": 41.39448701552928,
+        "area_error_vs_removed": 0.0067408831353357665,
+        "area_error_vs_solid": 0.000871843879776934,
+        "mismatch_area_um2_hard_threshold": 0.29760059520118975,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.042638976226430716,
+        "mean_surface_dist_um": 0.009619186336894603,
+        "n_contour_pts": [
+          206,
+          204
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 5.87329450622201,
+        "surrogate_loss": 0.01934126578271389,
+        "budget": 256,
+        "recipe": {
+          "ion_flux": 8.229442628058036,
+          "etchant_flux": 711.7813742438044,
+          "oxygen_flux": 234.24753736370238,
+          "ion_energy": 172.41491008796274
+        }
+      }
+    },
+    {
+      "target_index": 63,
+      "dt": 0.5460713505744934,
+      "n_steps": 10,
+      "geometry": {
+        "trench_width": 4.528049945831299,
+        "mask_height": 2.650582790374756
+      },
+      "true_recipe": {
+        "ion_flux": 11.852188110351562,
+        "etchant_flux": 747.58740234375,
+        "oxygen_flux": 124.41404724121094,
+        "ion_energy": 106.08560943603516
+      },
+      "true_resim": {
+        "mismatch_area_um2": 0.12062509896454919,
+        "target_removed_area_um2": 37.61942764948243,
+        "area_error_vs_removed": 0.0032064575806008775,
+        "area_error_vs_solid": 0.0003535930320112543,
+        "mismatch_area_um2_hard_threshold": 0.12400024800049575,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.022728280237472198,
+        "mean_surface_dist_um": 0.0038275948853839616,
+        "n_contour_pts": [
+          218,
+          216
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 7.261517897248268
+      },
+      "operator_gd_surrogate": {
+        "best_surrogate_loss": 0.009106555953621864,
+        "box_margin": 0.3926297426223755,
+        "recipe": {
+          "ion_flux": 14.242317199707031,
+          "etchant_flux": 1236.5728759765625,
+          "oxygen_flux": 158.25289916992188,
+          "ion_energy": 125.72972869873047
+        },
+        "restarts": 3,
+        "iters": 200,
+        "dt_was_optimised": true,
+        "dt_init_mode": "random",
+        "dt_init": 0.3462204948104861,
+        "dt_init_was_the_target": false,
+        "dt_found": 0.33347779512405396,
+        "dt_true": 0.5460713505744934,
+        "dt_rel_err": 0.38931461104264264
+      },
+      "surrogate_opinion": {
+        "mismatch_area_um2": 0.2303274666436003,
+        "target_removed_area_um2": 37.61942764948243,
+        "area_error_vs_removed": 0.006122567009516136,
+        "area_error_vs_solid": 0.0006751678380791788,
+        "mismatch_area_um2_hard_threshold": 0.32240064480128894,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.03003863052913813,
+        "mean_surface_dist_um": 0.007853156466550111,
+        "n_contour_pts": [
+          210,
+          216
+        ]
+      },
+      "operator_gd": {
+        "mismatch_area_um2": 0.24406414383014638,
+        "target_removed_area_um2": 37.61942764948243,
+        "area_error_vs_removed": 0.006487715499135304,
+        "area_error_vs_solid": 0.0007154346928038174,
+        "mismatch_area_um2_hard_threshold": 0.2480004960009915,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.030319273564404975,
+        "mean_surface_dist_um": 0.008329606425587966,
+        "n_contour_pts": [
+          216,
+          216
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.653420984745026
+      },
+      "random_search": {
+        "mismatch_area_um2": 1.6494788281254542,
+        "target_removed_area_um2": 37.61942764948243,
+        "area_error_vs_removed": 0.04384646261751799,
+        "area_error_vs_solid": 0.004835181277212142,
+        "mismatch_area_um2_hard_threshold": 2.2816045632091217,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.18644916468826223,
+        "mean_surface_dist_um": 0.05786152723958109,
+        "n_contour_pts": [
+          220,
+          216
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.010874904692173,
+        "surrogate_loss": 0.07544600963592529,
+        "budget": 256,
+        "recipe": {
+          "ion_flux": 12.10297940421941,
+          "etchant_flux": 633.1600947804002,
+          "oxygen_flux": 153.4716381146165,
+          "ion_energy": 190.33192664736197
+        }
+      }
+    },
+    {
+      "target_index": 233,
+      "dt": 0.7204088568687439,
+      "n_steps": 10,
+      "geometry": {
+        "trench_width": 8.088290214538574,
+        "mask_height": 2.9767684936523438
+      },
+      "true_recipe": {
+        "ion_flux": 8.078121185302734,
+        "etchant_flux": 1109.9755859375,
+        "oxygen_flux": 268.04229736328125,
+        "ion_energy": 117.79159545898438
+      },
+      "true_resim": {
+        "mismatch_area_um2": 0.09818552766268132,
+        "target_removed_area_um2": 67.22508868415882,
+        "area_error_vs_removed": 0.0014605488751972169,
+        "area_error_vs_solid": 0.0003387226508189408,
+        "mismatch_area_um2_hard_threshold": 0.0496000992001983,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.017539301785450413,
+        "mean_surface_dist_um": 0.0029226311137935204,
+        "n_contour_pts": [
+          246,
+          246
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 7.607079513370991
+      },
+      "operator_gd_surrogate": {
+        "best_surrogate_loss": 0.032651450484991074,
+        "box_margin": 0.2606118321418762,
+        "recipe": {
+          "ion_flux": 7.975638389587402,
+          "etchant_flux": 1825.5157470703125,
+          "oxygen_flux": 206.71408081054688,
+          "ion_energy": 94.64852905273438
+        },
+        "restarts": 3,
+        "iters": 200,
+        "dt_was_optimised": true,
+        "dt_init_mode": "random",
+        "dt_init": 0.3068764546670997,
+        "dt_init_was_the_target": false,
+        "dt_found": 0.5148259997367859,
+        "dt_true": 0.7204088568687439,
+        "dt_rel_err": 0.28536969690451003
+      },
+      "surrogate_opinion": {
+        "mismatch_area_um2": 0.7517077485263404,
+        "target_removed_area_um2": 67.22508868415882,
+        "area_error_vs_removed": 0.011181952500770382,
+        "area_error_vs_solid": 0.002593258367941294,
+        "mismatch_area_um2_hard_threshold": 0.5456010912021813,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.10612445854593577,
+        "mean_surface_dist_um": 0.021130756170868827,
+        "n_contour_pts": [
+          246,
+          246
+        ]
+      },
+      "operator_gd": {
+        "mismatch_area_um2": 0.7588807504927372,
+        "target_removed_area_um2": 67.22508868415882,
+        "area_error_vs_removed": 0.011288653765235758,
+        "area_error_vs_solid": 0.002618003952124887,
+        "mismatch_area_um2_hard_threshold": 0.5704011408022804,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.10072759149870741,
+        "mean_surface_dist_um": 0.02128596088435287,
+        "n_contour_pts": [
+          250,
+          246
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.067675516009331
+      },
+      "random_search": {
+        "mismatch_area_um2": 0.7363319616181919,
+        "target_removed_area_um2": 67.22508868415882,
+        "area_error_vs_removed": 0.010953231539458036,
+        "area_error_vs_solid": 0.0025402146310084146,
+        "mismatch_area_um2_hard_threshold": 0.9176018352036684,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.10824540681380836,
+        "mean_surface_dist_um": 0.02305565651531858,
+        "n_contour_pts": [
+          248,
+          246
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 7.34272738173604,
+        "surrogate_loss": 0.03851774334907532,
+        "budget": 256,
+        "recipe": {
+          "ion_flux": 11.368781637317625,
+          "etchant_flux": 1162.0160497715763,
+          "oxygen_flux": 296.3629948508166,
+          "ion_energy": 79.64553889500593
+        }
+      }
+    },
+    {
+      "target_index": 119,
+      "dt": 0.06391078233718872,
+      "n_steps": 10,
+      "geometry": {
+        "trench_width": 6.8360595703125,
+        "mask_height": 2.711160898208618
+      },
+      "true_recipe": {
+        "ion_flux": 15.649721145629883,
+        "etchant_flux": 4407.6201171875,
+        "oxygen_flux": 142.86898803710938,
+        "ion_energy": 191.0289764404297
+      },
+      "true_resim": {
+        "mismatch_area_um2": 0.08894842487545479,
+        "target_removed_area_um2": 32.0260668978899,
+        "area_error_vs_removed": 0.002777375853208979,
+        "area_error_vs_solid": 0.0002673823629477954,
+        "mismatch_area_um2_hard_threshold": 0.12400024800049575,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.01675769838694062,
+        "mean_surface_dist_um": 0.0031691814349401977,
+        "n_contour_pts": [
+          190,
+          194
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.738198425620794
+      },
+      "operator_gd_surrogate": {
+        "best_surrogate_loss": 0.021770138293504715,
+        "box_margin": 0.3046707808971405,
+        "recipe": {
+          "ion_flux": 12.864346504211426,
+          "etchant_flux": 1802.33544921875,
+          "oxygen_flux": 121.8683090209961,
+          "ion_energy": 128.86199951171875
+        },
+        "restarts": 3,
+        "iters": 200,
+        "dt_was_optimised": true,
+        "dt_init_mode": "random",
+        "dt_init": 0.13888907903208086,
+        "dt_init_was_the_target": false,
+        "dt_found": 0.13862323760986328,
+        "dt_true": 0.06391078233718872,
+        "dt_rel_err": 1.1690117463825898
+      },
+      "surrogate_opinion": {
+        "mismatch_area_um2": 0.45341130280805714,
+        "target_removed_area_um2": 32.0260668978899,
+        "area_error_vs_removed": 0.014157570589410437,
+        "area_error_vs_solid": 0.0013629716962589083,
+        "mismatch_area_um2_hard_threshold": 0.7440014880029745,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.042360989070868715,
+        "mean_surface_dist_um": 0.017378689786975175,
+        "n_contour_pts": [
+          188,
+          194
+        ]
+      },
+      "operator_gd": {
+        "mismatch_area_um2": 0.3970555664378892,
+        "target_removed_area_um2": 32.0260668978899,
+        "area_error_vs_removed": 0.012397887249278493,
+        "area_error_vs_solid": 0.0011935641999775812,
+        "mismatch_area_um2_hard_threshold": 0.843201686403371,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.03317268302730665,
+        "mean_surface_dist_um": 0.015413664421438758,
+        "n_contour_pts": [
+          188,
+          194
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 5.626009207218885
+      },
+      "random_search": {
+        "mismatch_area_um2": 0.5078743756378672,
+        "target_removed_area_um2": 32.0260668978899,
+        "area_error_vs_removed": 0.015858156334249383,
+        "area_error_vs_solid": 0.0015266897736393992,
+        "mismatch_area_um2_hard_threshold": 0.7440014880029745,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.0624962439285248,
+        "mean_surface_dist_um": 0.019231605783372227,
+        "n_contour_pts": [
+          194,
+          194
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.345495864748955,
+        "surrogate_loss": 0.027837617322802544,
+        "budget": 256,
+        "recipe": {
+          "ion_flux": 19.877507982423403,
+          "etchant_flux": 4873.84517972022,
+          "oxygen_flux": 146.67982639493968,
+          "ion_energy": 121.81551276110184
+        }
+      }
+    },
+    {
+      "target_index": 148,
+      "dt": 0.0753365308046341,
+      "n_steps": 10,
+      "geometry": {
+        "trench_width": 5.508376121520996,
+        "mask_height": 2.4325754642486572
+      },
+      "true_recipe": {
+        "ion_flux": 23.57202911376953,
+        "etchant_flux": 4004.24609375,
+        "oxygen_flux": 199.9018096923828,
+        "ion_energy": 129.13023376464844
+      },
+      "true_resim": {
+        "mismatch_area_um2": 0.06265638700268007,
+        "target_removed_area_um2": 29.332742320537005,
+        "area_error_vs_removed": 0.0021360562308833935,
+        "area_error_vs_solid": 0.00018239974267930662,
+        "mismatch_area_um2_hard_threshold": 0.02480004960009915,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.014625614207444126,
+        "mean_surface_dist_um": 0.0024048212621447457,
+        "n_contour_pts": [
+          186,
+          186
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.686923291534185
+      },
+      "operator_gd_surrogate": {
+        "best_surrogate_loss": 0.017437344416975975,
+        "box_margin": 0.2899215519428253,
+        "recipe": {
+          "ion_flux": 11.120519638061523,
+          "etchant_flux": 1857.0257568359375,
+          "oxygen_flux": 116.24227905273438,
+          "ion_energy": 114.74699401855469
+        },
+        "restarts": 3,
+        "iters": 200,
+        "dt_was_optimised": true,
+        "dt_init_mode": "random",
+        "dt_init": 0.1983133225906657,
+        "dt_init_was_the_target": false,
+        "dt_found": 0.17790751159191132,
+        "dt_true": 0.0753365308046341,
+        "dt_rel_err": 1.361503903773704
+      },
+      "surrogate_opinion": {
+        "mismatch_area_um2": 0.36359911976554626,
+        "target_removed_area_um2": 29.332742320537005,
+        "area_error_vs_removed": 0.012395674287534181,
+        "area_error_vs_solid": 0.0010584776597607078,
+        "mismatch_area_um2_hard_threshold": 0.37200074400148725,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.03522707214454057,
+        "mean_surface_dist_um": 0.013740448228268736,
+        "n_contour_pts": [
+          185,
+          186
+        ]
+      },
+      "operator_gd": {
+        "mismatch_area_um2": 0.3934844643006062,
+        "target_removed_area_um2": 29.332742320537005,
+        "area_error_vs_removed": 0.013414513378966013,
+        "area_error_vs_solid": 0.0011454772365611413,
+        "mismatch_area_um2_hard_threshold": 0.2480004960009915,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.042007679804616796,
+        "mean_surface_dist_um": 0.01571234942888476,
+        "n_contour_pts": [
+          184,
+          186
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 4.711647905409336
+      },
+      "random_search": {
+        "mismatch_area_um2": 1.2941695498194943,
+        "target_removed_area_um2": 29.332742320537005,
+        "area_error_vs_removed": 0.044120305414246774,
+        "area_error_vs_solid": 0.0037674721470992694,
+        "mismatch_area_um2_hard_threshold": 1.7856035712071388,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.0975315725222905,
+        "mean_surface_dist_um": 0.04793779082143529,
+        "n_contour_pts": [
+          188,
+          186
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 5.985726695507765,
+        "surrogate_loss": 0.05530679598450661,
+        "budget": 256,
+        "recipe": {
+          "ion_flux": 20.345896670671745,
+          "etchant_flux": 4129.688763767097,
+          "oxygen_flux": 84.03639391398232,
+          "ion_energy": 114.86084605455785
+        }
+      }
+    },
+    {
+      "target_index": 139,
+      "dt": 0.1910339593887329,
+      "n_steps": 10,
+      "geometry": {
+        "trench_width": 6.421411991119385,
+        "mask_height": 2.5219669342041016
+      },
+      "true_recipe": {
+        "ion_flux": 7.990765571594238,
+        "etchant_flux": 3555.806640625,
+        "oxygen_flux": 340.42919921875,
+        "ion_energy": 130.68496704101562
+      },
+      "true_resim": {
+        "mismatch_area_um2": 0.07143694501986951,
+        "target_removed_area_um2": 29.531510832760844,
+        "area_error_vs_removed": 0.0024190074603504803,
+        "area_error_vs_solid": 0.00021155142664864435,
+        "mismatch_area_um2_hard_threshold": 0.14880029760059488,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.016052676953837497,
+        "mean_surface_dist_um": 0.003067906509896694,
+        "n_contour_pts": [
+          186,
+          186
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.217842943966389
+      },
+      "operator_gd_surrogate": {
+        "best_surrogate_loss": 0.012371119111776352,
+        "box_margin": 0.08168905973434448,
+        "recipe": {
+          "ion_flux": 8.220321655273438,
+          "etchant_flux": 3919.0458984375,
+          "oxygen_flux": 310.3116760253906,
+          "ion_energy": 187.74664306640625
+        },
+        "restarts": 3,
+        "iters": 200,
+        "dt_was_optimised": true,
+        "dt_init_mode": "random",
+        "dt_init": 0.09107069741548028,
+        "dt_init_was_the_target": false,
+        "dt_found": 0.13681915402412415,
+        "dt_true": 0.1910339593887329,
+        "dt_rel_err": 0.2837966900653912
+      },
+      "surrogate_opinion": {
+        "mismatch_area_um2": 0.2170398746235402,
+        "target_removed_area_um2": 29.531510832760844,
+        "area_error_vs_removed": 0.007349433486578227,
+        "area_error_vs_solid": 0.0006427359835094011,
+        "mismatch_area_um2_hard_threshold": 0.22320044640089234,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.028212221951180894,
+        "mean_surface_dist_um": 0.008529316659309342,
+        "n_contour_pts": [
+          186,
+          186
+        ]
+      },
+      "operator_gd": {
+        "mismatch_area_um2": 0.23402147751018307,
+        "target_removed_area_um2": 29.531510832760844,
+        "area_error_vs_removed": 0.007924466812262474,
+        "area_error_vs_solid": 0.0006930248405769984,
+        "mismatch_area_um2_hard_threshold": 0.2480004960009915,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.04134163186641526,
+        "mean_surface_dist_um": 0.00920796258241182,
+        "n_contour_pts": [
+          186,
+          186
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 5.525338977575302
+      },
+      "random_search": {
+        "mismatch_area_um2": 0.3878994563791239,
+        "target_removed_area_um2": 29.531510832760844,
+        "area_error_vs_removed": 0.013135103672000648,
+        "area_error_vs_solid": 0.0011487149033376615,
+        "mismatch_area_um2_hard_threshold": 0.8184016368032719,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.06269064913075931,
+        "mean_surface_dist_um": 0.016768519517121844,
+        "n_contour_pts": [
+          184,
+          186
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 5.288474265486002,
+        "surrogate_loss": 0.019983060657978058,
+        "budget": 256,
+        "recipe": {
+          "ion_flux": 17.92620855194475,
+          "etchant_flux": 2856.9525536402016,
+          "oxygen_flux": 300.5572953447844,
+          "ion_energy": 54.109072495283584
+        }
+      }
+    },
+    {
+      "target_index": 237,
+      "dt": 0.5248979926109314,
+      "n_steps": 10,
+      "geometry": {
+        "trench_width": 7.36806058883667,
+        "mask_height": 1.1680413484573364
+      },
+      "true_recipe": {
+        "ion_flux": 7.962900161743164,
+        "etchant_flux": 1481.1148681640625,
+        "oxygen_flux": 203.2311248779297,
+        "ion_energy": 83.60138702392578
+      },
+      "true_resim": {
+        "mismatch_area_um2": 0.11011617057238823,
+        "target_removed_area_um2": 51.13259611000679,
+        "area_error_vs_removed": 0.0021535415556738807,
+        "area_error_vs_solid": 0.0003686422129600732,
+        "mismatch_area_um2_hard_threshold": 0.2728005456010906,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.01377905463382173,
+        "mean_surface_dist_um": 0.0028192913063071422,
+        "n_contour_pts": [
+          294,
+          294
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 5.225129179656506
+      },
+      "operator_gd_surrogate": {
+        "best_surrogate_loss": 1.9198620319366455,
+        "box_margin": 0.009382903575897217,
+        "recipe": {
+          "ion_flux": 5.198880672454834,
+          "etchant_flux": 4891.55712890625,
+          "oxygen_flux": 300.4783020019531,
+          "ion_energy": 196.6310577392578
+        },
+        "restarts": 3,
+        "iters": 200,
+        "dt_was_optimised": true,
+        "dt_init_mode": "random",
+        "dt_init": 0.5725354982545485,
+        "dt_init_was_the_target": false,
+        "dt_found": 0.7905682921409607,
+        "dt_true": 0.5248979926109314,
+        "dt_rel_err": 0.5061370080852097
+      },
+      "surrogate_opinion": {
+        "mismatch_area_um2": 69.5135142016072,
+        "target_removed_area_um2": 51.13259611000679,
+        "area_error_vs_removed": 1.359475549648519,
+        "area_error_vs_solid": 0.23271437403524828,
+        "mismatch_area_um2_hard_threshold": 69.16733833467653,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 3.177705190528144,
+        "mean_surface_dist_um": 1.413358114639818,
+        "n_contour_pts": [
+          432,
+          294
+        ]
+      },
+      "operator_gd": {
+        "mismatch_area_um2": 55.21822447896185,
+        "target_removed_area_um2": 51.13259611000679,
+        "area_error_vs_removed": 1.0799026194595172,
+        "area_error_vs_solid": 0.18485721363030053,
+        "mismatch_area_um2_hard_threshold": 55.10571021142031,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 7.014305926890878,
+        "mean_surface_dist_um": 0.9787634688785325,
+        "n_contour_pts": [
+          358,
+          294
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": false
+        },
+        "sim_seconds": 6.259130995720625
+      },
+      "random_search": {
+        "mismatch_area_um2": 1.3306541882411733,
+        "target_removed_area_um2": 51.13259611000679,
+        "area_error_vs_removed": 0.026023599219926186,
+        "area_error_vs_solid": 0.004454707261322238,
+        "mismatch_area_um2_hard_threshold": 1.2648025296050567,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.14464260210921376,
+        "mean_surface_dist_um": 0.035173090350582595,
+        "n_contour_pts": [
+          288,
+          294
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.246071167290211,
+        "surrogate_loss": 0.06329308450222015,
+        "budget": 256,
+        "recipe": {
+          "ion_flux": 8.976271563487556,
+          "etchant_flux": 1258.4776858578039,
+          "oxygen_flux": 370.32180544995856,
+          "ion_energy": 148.1069182258476
+        }
+      }
+    },
+    {
+      "target_index": 147,
+      "dt": 0.47959163784980774,
+      "n_steps": 10,
+      "geometry": {
+        "trench_width": 4.295372009277344,
+        "mask_height": 1.6948777437210083
+      },
+      "true_recipe": {
+        "ion_flux": 19.77161407470703,
+        "etchant_flux": 1769.53466796875,
+        "oxygen_flux": 383.71368408203125,
+        "ion_energy": 68.04853820800781
+      },
+      "true_resim": {
+        "mismatch_area_um2": 0.18289712872772546,
+        "target_removed_area_um2": 39.61266670042587,
+        "area_error_vs_removed": 0.004617137495713187,
+        "area_error_vs_solid": 0.000546761285134427,
+        "mismatch_area_um2_hard_threshold": 0.0992001984003966,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.03734189856769036,
+        "mean_surface_dist_um": 0.003926585517477521,
+        "n_contour_pts": [
+          328,
+          328
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 7.995716296136379
+      },
+      "operator_gd_surrogate": {
+        "best_surrogate_loss": 0.015051758848130703,
+        "box_margin": 0.15172018110752106,
+        "recipe": {
+          "ion_flux": 15.182211875915527,
+          "etchant_flux": 1481.870849609375,
+          "oxygen_flux": 337.4705810546875,
+          "ion_energy": 72.78327941894531
+        },
+        "restarts": 3,
+        "iters": 200,
+        "dt_was_optimised": true,
+        "dt_init_mode": "random",
+        "dt_init": 0.6397541424975293,
+        "dt_init_was_the_target": false,
+        "dt_found": 0.605967104434967,
+        "dt_true": 0.47959163784980774,
+        "dt_rel_err": 0.263506401303719
+      },
+      "surrogate_opinion": {
+        "mismatch_area_um2": 0.42429453530734723,
+        "target_removed_area_um2": 39.61266670042587,
+        "area_error_vs_removed": 0.010711082354442594,
+        "area_error_vs_solid": 0.0012684060543427906,
+        "mismatch_area_um2_hard_threshold": 0.29760059520118975,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.047590948096188315,
+        "mean_surface_dist_um": 0.008498831853533641,
+        "n_contour_pts": [
+          328,
+          328
+        ]
+      },
+      "operator_gd": {
+        "mismatch_area_um2": 0.22665134825371508,
+        "target_removed_area_um2": 39.61266670042587,
+        "area_error_vs_removed": 0.005721688720625274,
+        "area_error_vs_solid": 0.000677562208388382,
+        "mismatch_area_um2_hard_threshold": 0.17360034720069403,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.04294396940417054,
+        "mean_surface_dist_um": 0.00492742289717416,
+        "n_contour_pts": [
+          326,
+          328
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.382496114820242
+      },
+      "random_search": {
+        "mismatch_area_um2": 0.6792066377528959,
+        "target_removed_area_um2": 39.61266670042587,
+        "area_error_vs_removed": 0.017146198282722378,
+        "area_error_vs_solid": 0.002030452291476085,
+        "mismatch_area_um2_hard_threshold": 0.5952011904023795,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.08070938607901912,
+        "mean_surface_dist_um": 0.01501108187295851,
+        "n_contour_pts": [
+          328,
+          328
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 7.710064850747585,
+        "surrogate_loss": 0.028699111193418503,
+        "budget": 256,
+        "recipe": {
+          "ion_flux": 6.619836292319535,
+          "etchant_flux": 3850.5583027289704,
+          "oxygen_flux": 350.0862629939262,
+          "ion_energy": 119.52916001450151
+        }
+      }
+    },
+    {
+      "target_index": 156,
+      "dt": 0.4064982831478119,
+      "n_steps": 10,
+      "geometry": {
+        "trench_width": 8.808208465576172,
+        "mask_height": 2.300466299057007
+      },
+      "true_recipe": {
+        "ion_flux": 10.641910552978516,
+        "etchant_flux": 1858.0582275390625,
+        "oxygen_flux": 234.83447265625,
+        "ion_energy": 122.87724304199219
+      },
+      "true_resim": {
+        "mismatch_area_um2": 0.14261729027776246,
+        "target_removed_area_um2": 83.59106460426561,
+        "area_error_vs_removed": 0.001706130804206611,
+        "area_error_vs_solid": 0.0005299508316617394,
+        "mismatch_area_um2_hard_threshold": 0.22320044640089234,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.021376682130586844,
+        "mean_surface_dist_um": 0.0038753562085279726,
+        "n_contour_pts": [
+          268,
+          268
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 7.855135943740606
+      },
+      "operator_gd_surrogate": {
+        "best_surrogate_loss": 0.023075170814990997,
+        "box_margin": 0.20505225658416748,
+        "recipe": {
+          "ion_flux": 12.965319633483887,
+          "etchant_flux": 2849.290771484375,
+          "oxygen_flux": 317.9790954589844,
+          "ion_energy": 153.24813842773438
+        },
+        "restarts": 3,
+        "iters": 200,
+        "dt_was_optimised": true,
+        "dt_init_mode": "random",
+        "dt_init": 0.12415800532780459,
+        "dt_init_was_the_target": false,
+        "dt_found": 0.2643456757068634,
+        "dt_true": 0.4064982831478119,
+        "dt_rel_err": 0.34970038825295263
+      },
+      "surrogate_opinion": {
+        "mismatch_area_um2": 0.5663638498303162,
+        "target_removed_area_um2": 83.59106460426561,
+        "area_error_vs_removed": 0.006775411373351679,
+        "area_error_vs_solid": 0.0021045484222576103,
+        "mismatch_area_um2_hard_threshold": 0.5456010912021813,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.07856516410318792,
+        "mean_surface_dist_um": 0.014744168734695424,
+        "n_contour_pts": [
+          266,
+          268
+        ]
+      },
+      "operator_gd": {
+        "mismatch_area_um2": 0.3446852502585586,
+        "target_removed_area_um2": 83.59106460426561,
+        "area_error_vs_removed": 0.0041234700370231855,
+        "area_error_vs_solid": 0.0012808140911967677,
+        "mismatch_area_um2_hard_threshold": 0.4712009424018838,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.04380053658100417,
+        "mean_surface_dist_um": 0.009267623755280526,
+        "n_contour_pts": [
+          268,
+          268
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 7.355518475174904
+      },
+      "random_search": {
+        "mismatch_area_um2": 0.7124063369457644,
+        "target_removed_area_um2": 83.59106460426561,
+        "area_error_vs_removed": 0.008522517811184937,
+        "area_error_vs_solid": 0.002647226924661105,
+        "mismatch_area_um2_hard_threshold": 0.8184016368032719,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.09024372232120513,
+        "mean_surface_dist_um": 0.019246294979488536,
+        "n_contour_pts": [
+          268,
+          268
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 8.025242134928703,
+        "surrogate_loss": 0.019315827637910843,
+        "budget": 256,
+        "recipe": {
+          "ion_flux": 22.862774800983654,
+          "etchant_flux": 1796.9581730268274,
+          "oxygen_flux": 285.52083757851887,
+          "ion_energy": 58.20561038173688
+        }
+      }
+    },
+    {
+      "target_index": 41,
+      "dt": 0.5119938850402832,
+      "n_steps": 10,
+      "geometry": {
+        "trench_width": 8.623969078063965,
+        "mask_height": 2.5835769176483154
+      },
+      "true_recipe": {
+        "ion_flux": 12.394217491149902,
+        "etchant_flux": 1109.904541015625,
+        "oxygen_flux": 394.9405517578125,
+        "ion_energy": 146.7202606201172
+      },
+      "true_resim": {
+        "mismatch_area_um2": 0.1652708196324703,
+        "target_removed_area_um2": 66.97047502628263,
+        "area_error_vs_removed": 0.0024678161468559036,
+        "area_error_vs_solid": 0.0005760297858449369,
+        "mismatch_area_um2_hard_threshold": 0.07440014880029744,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.028054850971864186,
+        "mean_surface_dist_um": 0.004890182481763747,
+        "n_contour_pts": [
+          236,
+          238
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 7.721474606543779
+      },
+      "operator_gd_surrogate": {
+        "best_surrogate_loss": 0.025291208177804947,
+        "box_margin": 0.10471981763839722,
+        "recipe": {
+          "ion_flux": 16.94259262084961,
+          "etchant_flux": 1872.16455078125,
+          "oxygen_flux": 358.112060546875,
+          "ion_energy": 106.38777160644531
+        },
+        "restarts": 3,
+        "iters": 200,
+        "dt_was_optimised": true,
+        "dt_init_mode": "random",
+        "dt_init": 0.28384109606355973,
+        "dt_init_was_the_target": false,
+        "dt_found": 0.305602103471756,
+        "dt_true": 0.5119938850402832,
+        "dt_rel_err": 0.4031137628768525
+      },
+      "surrogate_opinion": {
+        "mismatch_area_um2": 0.590689154458419,
+        "target_removed_area_um2": 66.97047502628263,
+        "area_error_vs_removed": 0.008820142820050215,
+        "area_error_vs_solid": 0.0020587696479043844,
+        "mismatch_area_um2_hard_threshold": 0.8928017856035694,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.05180853885743825,
+        "mean_surface_dist_um": 0.01712229734167187,
+        "n_contour_pts": [
+          240,
+          238
+        ]
+      },
+      "operator_gd": {
+        "mismatch_area_um2": 0.4791883921308936,
+        "target_removed_area_um2": 66.97047502628263,
+        "area_error_vs_removed": 0.007155218653336947,
+        "area_error_vs_solid": 0.001670148351126759,
+        "mismatch_area_um2_hard_threshold": 0.7688015376030736,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.050197419019512926,
+        "mean_surface_dist_um": 0.013843474194138679,
+        "n_contour_pts": [
+          244,
+          238
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 7.3773929961025715
+      },
+      "random_search": {
+        "mismatch_area_um2": 1.4994100288775016,
+        "target_removed_area_um2": 66.97047502628263,
+        "area_error_vs_removed": 0.022389120404014706,
+        "area_error_vs_solid": 0.005225997182979833,
+        "mismatch_area_um2_hard_threshold": 1.6368032736065439,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.1341996154296622,
+        "mean_surface_dist_um": 0.04644749028686718,
+        "n_contour_pts": [
+          244,
+          238
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 5.772076431661844,
+        "surrogate_loss": 0.06227526441216469,
+        "budget": 256,
+        "recipe": {
+          "ion_flux": 18.968223512345983,
+          "etchant_flux": 908.5715009732821,
+          "oxygen_flux": 293.43719928065883,
+          "ion_energy": 86.61312620641056
+        }
+      }
+    },
+    {
+      "target_index": 195,
+      "dt": 0.13240277767181396,
+      "n_steps": 10,
+      "geometry": {
+        "trench_width": 4.175485134124756,
+        "mask_height": 1.570924162864685
+      },
+      "true_recipe": {
+        "ion_flux": 16.349485397338867,
+        "etchant_flux": 2498.637451171875,
+        "oxygen_flux": 287.5581359863281,
+        "ion_energy": 152.0872802734375
+      },
+      "true_resim": {
+        "mismatch_area_um2": 0.07698199844039821,
+        "target_removed_area_um2": 22.320297245308332,
+        "area_error_vs_removed": 0.0034489683356067145,
+        "area_error_vs_solid": 0.0002196636411985689,
+        "mismatch_area_um2_hard_threshold": 0.17360034720069403,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.019364022647861287,
+        "mean_surface_dist_um": 0.0021182162347428177,
+        "n_contour_pts": [
+          278,
+          274
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.402243830263615
+      },
+      "operator_gd_surrogate": {
+        "best_surrogate_loss": 0.009003675542771816,
+        "box_margin": 0.4171577990055084,
+        "recipe": {
+          "ion_flux": 11.771121978759766,
+          "etchant_flux": 1296.547119140625,
+          "oxygen_flux": 186.50865173339844,
+          "ion_energy": 122.9311752319336
+        },
+        "restarts": 3,
+        "iters": 200,
+        "dt_was_optimised": true,
+        "dt_init_mode": "random",
+        "dt_init": 0.3188447927828421,
+        "dt_init_was_the_target": false,
+        "dt_found": 0.2505790591239929,
+        "dt_true": 0.13240277767181396,
+        "dt_rel_err": 0.892551376415243
+      },
+      "surrogate_opinion": {
+        "mismatch_area_um2": 0.26208060303468933,
+        "target_removed_area_um2": 22.320297245308332,
+        "area_error_vs_removed": 0.01174180613073054,
+        "area_error_vs_solid": 0.0007478317102236398,
+        "mismatch_area_um2_hard_threshold": 0.14880029760059488,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.025273382484140627,
+        "mean_surface_dist_um": 0.006272134988838615,
+        "n_contour_pts": [
+          276,
+          274
+        ]
+      },
+      "operator_gd": {
+        "mismatch_area_um2": 0.11144335808197,
+        "target_removed_area_um2": 22.320297245308332,
+        "area_error_vs_removed": 0.004992915500056573,
+        "area_error_vs_solid": 0.0003179971203609983,
+        "mismatch_area_um2_hard_threshold": 0.0992001984003966,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.01947245719646911,
+        "mean_surface_dist_um": 0.0031152353996514626,
+        "n_contour_pts": [
+          274,
+          274
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.464295424520969
+      },
+      "random_search": {
+        "mismatch_area_um2": 1.6411126997225618,
+        "target_removed_area_um2": 22.320297245308332,
+        "area_error_vs_removed": 0.07352557547447176,
+        "area_error_vs_solid": 0.004682819341425333,
+        "mismatch_area_um2_hard_threshold": 1.4384028768057506,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.2403051937041445,
+        "mean_surface_dist_um": 0.0447543899392619,
+        "n_contour_pts": [
+          276,
+          274
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.433912131935358,
+        "surrogate_loss": 0.08689720928668976,
+        "budget": 256,
+        "recipe": {
+          "ion_flux": 11.021889689204443,
+          "etchant_flux": 2989.986405745633,
+          "oxygen_flux": 153.36246112822414,
+          "ion_energy": 161.449632780714
+        }
+      }
+    },
+    {
+      "target_index": 246,
+      "dt": 0.6554104089736938,
+      "n_steps": 10,
+      "geometry": {
+        "trench_width": 4.93992805480957,
+        "mask_height": 1.7278387546539307
+      },
+      "true_recipe": {
+        "ion_flux": 7.37451171875,
+        "etchant_flux": 566.0935668945312,
+        "oxygen_flux": 162.9512481689453,
+        "ion_energy": 102.91381072998047
+      },
+      "true_resim": {
+        "mismatch_area_um2": 0.03792319468910146,
+        "target_removed_area_um2": 24.684678864662693,
+        "area_error_vs_removed": 0.001536304964590418,
+        "area_error_vs_solid": 0.00010953829301144628,
+        "mismatch_area_um2_hard_threshold": 0.0,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.010699924308923785,
+        "mean_surface_dist_um": 0.0009847421112130414,
+        "n_contour_pts": [
+          270,
+          270
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.991059727966785
+      },
+      "operator_gd_surrogate": {
+        "best_surrogate_loss": 0.009397638961672783,
+        "box_margin": 0.27574822306632996,
+        "recipe": {
+          "ion_flux": 14.128190994262695,
+          "etchant_flux": 1045.0867919921875,
+          "oxygen_flux": 265.07037353515625,
+          "ion_energy": 91.36222839355469
+        },
+        "restarts": 3,
+        "iters": 200,
+        "dt_was_optimised": true,
+        "dt_init_mode": "random",
+        "dt_init": 0.237206929846929,
+        "dt_init_was_the_target": false,
+        "dt_found": 0.33371254801750183,
+        "dt_true": 0.6554104089736938,
+        "dt_rel_err": 0.4908342262368677
+      },
+      "surrogate_opinion": {
+        "mismatch_area_um2": 0.2547194799792442,
+        "target_removed_area_um2": 24.684678864662693,
+        "area_error_vs_removed": 0.010318930271517018,
+        "area_error_vs_solid": 0.000735738042705251,
+        "mismatch_area_um2_hard_threshold": 0.0,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.01810826862861012,
+        "mean_surface_dist_um": 0.00617894277899216,
+        "n_contour_pts": [
+          270,
+          270
+        ]
+      },
+      "operator_gd": {
+        "mismatch_area_um2": 0.12320364690823424,
+        "target_removed_area_um2": 24.684678864662693,
+        "area_error_vs_removed": 0.004991097821596788,
+        "area_error_vs_solid": 0.0003558644593566199,
+        "mismatch_area_um2_hard_threshold": 0.0496000992001983,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.026726869592462493,
+        "mean_surface_dist_um": 0.0031804833073075687,
+        "n_contour_pts": [
+          270,
+          270
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.347496751695871
+      },
+      "random_search": {
+        "mismatch_area_um2": 0.3920765613002384,
+        "target_removed_area_um2": 24.684678864662693,
+        "area_error_vs_removed": 0.01588339728662684,
+        "area_error_vs_solid": 0.0011324836318963448,
+        "mismatch_area_um2_hard_threshold": 0.4216008432016855,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.07661477518356885,
+        "mean_surface_dist_um": 0.010863771219120657,
+        "n_contour_pts": [
+          268,
+          270
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.252487864345312,
+        "surrogate_loss": 0.045349206775426865,
+        "budget": 256,
+        "recipe": {
+          "ion_flux": 6.1335821440932214,
+          "etchant_flux": 547.9811757743583,
+          "oxygen_flux": 203.6962449464012,
+          "ion_energy": 167.77132556350594
+        }
+      }
+    },
+    {
+      "target_index": 3,
+      "dt": 0.12577693164348602,
+      "n_steps": 10,
+      "geometry": {
+        "trench_width": 6.917071342468262,
+        "mask_height": 2.7082266807556152
+      },
+      "true_recipe": {
+        "ion_flux": 16.74017906188965,
+        "etchant_flux": 2648.63427734375,
+        "oxygen_flux": 133.64422607421875,
+        "ion_energy": 160.14378356933594
+      },
+      "true_resim": {
+        "mismatch_area_um2": 0.12171097278709396,
+        "target_removed_area_um2": 47.44681909494629,
+        "area_error_vs_removed": 0.0025652082712549593,
+        "area_error_vs_solid": 0.00038421738305574046,
+        "mismatch_area_um2_hard_threshold": 0.0496000992001983,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.01848879958692251,
+        "mean_surface_dist_um": 0.003969778255932918,
+        "n_contour_pts": [
+          216,
+          216
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.642456952482462
+      },
+      "operator_gd_surrogate": {
+        "best_surrogate_loss": 0.02328004688024521,
+        "box_margin": 0.20597803592681885,
+        "recipe": {
+          "ion_flux": 20.741453170776367,
+          "etchant_flux": 1988.8646240234375,
+          "oxygen_flux": 167.6715545654297,
+          "ion_energy": 152.22683715820312
+        },
+        "restarts": 3,
+        "iters": 200,
+        "dt_was_optimised": true,
+        "dt_init_mode": "random",
+        "dt_init": 0.10020282279290336,
+        "dt_init_was_the_target": false,
+        "dt_found": 0.1448109894990921,
+        "dt_true": 0.12577693164348602,
+        "dt_rel_err": 0.15133186671748367
+      },
+      "surrogate_opinion": {
+        "mismatch_area_um2": 0.5505242122737245,
+        "target_removed_area_um2": 47.44681909494629,
+        "area_error_vs_removed": 0.0116029740828793,
+        "area_error_vs_solid": 0.0017378956663064542,
+        "mismatch_area_um2_hard_threshold": 0.32240064480128894,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.0498456864035991,
+        "mean_surface_dist_um": 0.018671682902444003,
+        "n_contour_pts": [
+          216,
+          216
+        ]
+      },
+      "operator_gd": {
+        "mismatch_area_um2": 0.5424157357192333,
+        "target_removed_area_um2": 47.44681909494629,
+        "area_error_vs_removed": 0.01143207797837406,
+        "area_error_vs_solid": 0.0017122988152502626,
+        "mismatch_area_um2_hard_threshold": 0.5208010416020821,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.07097289415591765,
+        "mean_surface_dist_um": 0.0198225087883519,
+        "n_contour_pts": [
+          216,
+          216
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 7.169863265007734
+      },
+      "random_search": {
+        "mismatch_area_um2": 1.21448981298971,
+        "target_removed_area_um2": 47.44681909494629,
+        "area_error_vs_removed": 0.025596864787908808,
+        "area_error_vs_solid": 0.003833903279296133,
+        "mismatch_area_um2_hard_threshold": 0.6696013392026771,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.10406113490468476,
+        "mean_surface_dist_um": 0.038715608696045206,
+        "n_contour_pts": [
+          220,
+          216
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.917066086083651,
+        "surrogate_loss": 0.055991459637880325,
+        "budget": 256,
+        "recipe": {
+          "ion_flux": 24.083818320287406,
+          "etchant_flux": 2465.688111538585,
+          "oxygen_flux": 372.3619403872302,
+          "ion_energy": 196.93121903251185
+        }
+      }
+    },
+    {
+      "target_index": 134,
+      "dt": 0.5446031093597412,
+      "n_steps": 10,
+      "geometry": {
+        "trench_width": 4.674319267272949,
+        "mask_height": 1.3465650081634521
+      },
+      "true_recipe": {
+        "ion_flux": 5.943384170532227,
+        "etchant_flux": 512.2300415039062,
+        "oxygen_flux": 98.03912353515625,
+        "ion_energy": 182.18319702148438
+      },
+      "true_resim": {
+        "mismatch_area_um2": 0.055487243639014965,
+        "target_removed_area_um2": 26.38400411126954,
+        "area_error_vs_removed": 0.0021030637883851146,
+        "area_error_vs_solid": 0.00016311298776117185,
+        "mismatch_area_um2_hard_threshold": 0.0,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.010693791858039425,
+        "mean_surface_dist_um": 0.0014769798048241956,
+        "n_contour_pts": [
+          272,
+          272
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 5.5113632418215275
+      },
+      "operator_gd_surrogate": {
+        "best_surrogate_loss": 0.009612168185412884,
+        "box_margin": 0.22076824307441711,
+        "recipe": {
+          "ion_flux": 14.268936157226562,
+          "etchant_flux": 831.2625732421875,
+          "oxygen_flux": 158.6932830810547,
+          "ion_energy": 116.3752212524414
+        },
+        "restarts": 3,
+        "iters": 200,
+        "dt_was_optimised": true,
+        "dt_init_mode": "random",
+        "dt_init": 0.44784329355493213,
+        "dt_init_was_the_target": false,
+        "dt_found": 0.3129289448261261,
+        "dt_true": 0.5446031093597412,
+        "dt_rel_err": 0.4254000033271591
+      },
+      "surrogate_opinion": {
+        "mismatch_area_um2": 0.256505896905599,
+        "target_removed_area_um2": 26.38400411126954,
+        "area_error_vs_removed": 0.009722023079735508,
+        "area_error_vs_solid": 0.0007540371530225489,
+        "mismatch_area_um2_hard_threshold": 0.12400024800049575,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.026167085681468315,
+        "mean_surface_dist_um": 0.0064562886991037065,
+        "n_contour_pts": [
+          270,
+          272
+        ]
+      },
+      "operator_gd": {
+        "mismatch_area_um2": 0.14642044182103175,
+        "target_removed_area_um2": 26.38400411126954,
+        "area_error_vs_removed": 0.005549591381335876,
+        "area_error_vs_solid": 0.00043042461957772083,
+        "mismatch_area_um2_hard_threshold": 0.2728005456010906,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.025485413212624486,
+        "mean_surface_dist_um": 0.004356640334872786,
+        "n_contour_pts": [
+          276,
+          272
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.444247733801603
+      },
+      "random_search": {
+        "mismatch_area_um2": 0.41230158895293667,
+        "target_removed_area_um2": 26.38400411126954,
+        "area_error_vs_removed": 0.01562695287698307,
+        "area_error_vs_solid": 0.0012120217120589693,
+        "mismatch_area_um2_hard_threshold": 0.34720069440138807,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.08823287478540455,
+        "mean_surface_dist_um": 0.011911433061648102,
+        "n_contour_pts": [
+          272,
+          272
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.311949651688337,
+        "surrogate_loss": 0.036583829671144485,
+        "budget": 256,
+        "recipe": {
+          "ion_flux": 9.511452108673172,
+          "etchant_flux": 550.2337605664208,
+          "oxygen_flux": 98.2665577960971,
+          "ion_energy": 87.60805697008152
+        }
+      }
+    },
+    {
+      "target_index": 17,
+      "dt": 0.7360403537750244,
+      "n_steps": 10,
+      "geometry": {
+        "trench_width": 6.01495361328125,
+        "mask_height": 1.549370527267456
+      },
+      "true_recipe": {
+        "ion_flux": 7.681316375732422,
+        "etchant_flux": 833.03955078125,
+        "oxygen_flux": 115.20222473144531,
+        "ion_energy": 107.83599090576172
+      },
+      "true_resim": {
+        "mismatch_area_um2": 0.10581913621673113,
+        "target_removed_area_um2": 58.018755112775025,
+        "area_error_vs_removed": 0.0018238780892668798,
+        "area_error_vs_solid": 0.0003479121474527148,
+        "mismatch_area_um2_hard_threshold": 0.0496000992001983,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.018537094084793336,
+        "mean_surface_dist_um": 0.002372666551065301,
+        "n_contour_pts": [
+          326,
+          326
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 7.534215524792671
+      },
+      "operator_gd_surrogate": {
+        "best_surrogate_loss": 0.008216745220124722,
+        "box_margin": 0.20255029201507568,
+        "recipe": {
+          "ion_flux": 10.400660514831543,
+          "etchant_flux": 1865.8592529296875,
+          "oxygen_flux": 203.6329345703125,
+          "ion_energy": 168.477294921875
+        },
+        "restarts": 3,
+        "iters": 200,
+        "dt_was_optimised": true,
+        "dt_init_mode": "random",
+        "dt_init": 0.29925299229327257,
+        "dt_init_was_the_target": false,
+        "dt_found": 0.33038923144340515,
+        "dt_true": 0.7360403537750244,
+        "dt_rel_err": 0.5511261987893794
+      },
+      "surrogate_opinion": {
+        "mismatch_area_um2": 0.5024290796895857,
+        "target_removed_area_um2": 58.018755112775025,
+        "area_error_vs_removed": 0.008659770081467276,
+        "area_error_vs_solid": 0.0016518862873675304,
+        "mismatch_area_um2_hard_threshold": 0.4464008928017847,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.051755549520847266,
+        "mean_surface_dist_um": 0.011583217857758184,
+        "n_contour_pts": [
+          330,
+          326
+        ]
+      },
+      "operator_gd": {
+        "mismatch_area_um2": 0.28482010635026656,
+        "target_removed_area_um2": 58.018755112775025,
+        "area_error_vs_removed": 0.004909104061206453,
+        "area_error_vs_solid": 0.0009364315225091045,
+        "mismatch_area_um2_hard_threshold": 0.4216008432016855,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.041429530846628135,
+        "mean_surface_dist_um": 0.00732708816776056,
+        "n_contour_pts": [
+          326,
+          326
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 7.7965247593820095
+      },
+      "random_search": {
+        "mismatch_area_um2": 2.528220812512972,
+        "target_removed_area_um2": 58.018755112775025,
+        "area_error_vs_removed": 0.04357592312345717,
+        "area_error_vs_solid": 0.008312284181894142,
+        "mismatch_area_um2_hard_threshold": 2.6536053072106087,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.1831037104991288,
+        "mean_surface_dist_um": 0.05381846821000673,
+        "n_contour_pts": [
+          332,
+          326
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 5.90533709898591,
+        "surrogate_loss": 0.09272520244121552,
+        "budget": 256,
+        "recipe": {
+          "ion_flux": 13.378818362014014,
+          "etchant_flux": 934.9585937003154,
+          "oxygen_flux": 327.75886597664515,
+          "ion_energy": 106.39177338635065
+        }
+      }
+    },
+    {
+      "target_index": 196,
+      "dt": 0.24699515104293823,
+      "n_steps": 10,
+      "geometry": {
+        "trench_width": 7.393822193145752,
+        "mask_height": 2.55309796333313
+      },
+      "true_recipe": {
+        "ion_flux": 18.061965942382812,
+        "etchant_flux": 4008.416015625,
+        "oxygen_flux": 187.52618408203125,
+        "ion_energy": 62.547630310058594
+      },
+      "true_resim": {
+        "mismatch_area_um2": 0.16015094114007616,
+        "target_removed_area_um2": 70.48475903768615,
+        "area_error_vs_removed": 0.0022721357542621113,
+        "area_error_vs_solid": 0.0005505833731395282,
+        "mismatch_area_um2_hard_threshold": 0.14880029760059488,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.02362791847911399,
+        "mean_surface_dist_um": 0.0043874916219038395,
+        "n_contour_pts": [
+          256,
+          256
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.820849746465683
+      },
+      "operator_gd_surrogate": {
+        "best_surrogate_loss": 0.02842012792825699,
+        "box_margin": 0.05492067337036133,
+        "recipe": {
+          "ion_flux": 19.970657348632812,
+          "etchant_flux": 4406.04931640625,
+          "oxygen_flux": 253.84619140625,
+          "ion_energy": 120.36970520019531
+        },
+        "restarts": 3,
+        "iters": 200,
+        "dt_was_optimised": true,
+        "dt_init_mode": "random",
+        "dt_init": 0.10156455564870993,
+        "dt_init_was_the_target": false,
+        "dt_found": 0.1560157835483551,
+        "dt_true": 0.24699515104293823,
+        "dt_rel_err": 0.3683447513460176
+      },
+      "surrogate_opinion": {
+        "mismatch_area_um2": 0.7585894416110008,
+        "target_removed_area_um2": 70.48475903768615,
+        "area_error_vs_removed": 0.010762460593862641,
+        "area_error_vs_solid": 0.00260795678512375,
+        "mismatch_area_um2_hard_threshold": 1.2400024800049574,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.05822604691402722,
+        "mean_surface_dist_um": 0.022354902775568015,
+        "n_contour_pts": [
+          254,
+          256
+        ]
+      },
+      "operator_gd": {
+        "mismatch_area_um2": 0.672859942431075,
+        "target_removed_area_um2": 70.48475903768615,
+        "area_error_vs_removed": 0.009546176387881477,
+        "area_error_vs_solid": 0.0023132270976175037,
+        "mismatch_area_um2_hard_threshold": 1.2896025792051558,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.06194743916850542,
+        "mean_surface_dist_um": 0.02050508094191615,
+        "n_contour_pts": [
+          252,
+          256
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.294385343790054
+      },
+      "random_search": {
+        "mismatch_area_um2": 1.7739484060339366,
+        "target_removed_area_um2": 70.48475903768615,
+        "area_error_vs_removed": 0.025167829616690014,
+        "area_error_vs_solid": 0.006098662238365349,
+        "mismatch_area_um2_hard_threshold": 1.5624031248062464,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.1369597747013911,
+        "mean_surface_dist_um": 0.048634700465330284,
+        "n_contour_pts": [
+          256,
+          256
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 4.693236790597439,
+        "surrogate_loss": 0.059249721467494965,
+        "budget": 256,
+        "recipe": {
+          "ion_flux": 12.371123072690208,
+          "etchant_flux": 4749.392290935724,
+          "oxygen_flux": 132.65921187497122,
+          "ion_energy": 77.47791184165598
+        }
+      }
+    },
+    {
+      "target_index": 122,
+      "dt": 0.42005637288093567,
+      "n_steps": 10,
+      "geometry": {
+        "trench_width": 8.818556785583496,
+        "mask_height": 2.298456907272339
+      },
+      "true_recipe": {
+        "ion_flux": 29.02530860900879,
+        "etchant_flux": 543.53955078125,
+        "oxygen_flux": 327.61407470703125,
+        "ion_energy": 88.39826965332031
+      },
+      "true_resim": {
+        "mismatch_area_um2": 0.10115079019978844,
+        "target_removed_area_um2": 48.0972166344625,
+        "area_error_vs_removed": 0.002103048726676465,
+        "area_error_vs_solid": 0.0003321361255460101,
+        "mismatch_area_um2_hard_threshold": 0.07440014880029744,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.017020754221152568,
+        "mean_surface_dist_um": 0.0032784191304776914,
+        "n_contour_pts": [
+          214,
+          214
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 4.0267791748046875
+      },
+      "operator_gd_surrogate": {
+        "best_surrogate_loss": 0.015694404020905495,
+        "box_margin": 0.24487538635730743,
+        "recipe": {
+          "ion_flux": 15.4570951461792,
+          "etchant_flux": 879.9409790039062,
+          "oxygen_flux": 221.22772216796875,
+          "ion_energy": 160.77322387695312
+        },
+        "restarts": 3,
+        "iters": 200,
+        "dt_was_optimised": true,
+        "dt_init_mode": "random",
+        "dt_init": 0.2264103354399333,
+        "dt_init_was_the_target": false,
+        "dt_found": 0.26857489347457886,
+        "dt_true": 0.42005637288093567,
+        "dt_rel_err": 0.36062178599369565
+      },
+      "surrogate_opinion": {
+        "mismatch_area_um2": 0.30924706288691334,
+        "target_removed_area_um2": 48.0972166344625,
+        "area_error_vs_removed": 0.006429624924809732,
+        "area_error_vs_solid": 0.0010154356787610895,
+        "mismatch_area_um2_hard_threshold": 0.6696013392026771,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.03239739412396492,
+        "mean_surface_dist_um": 0.010284574091195018,
+        "n_contour_pts": [
+          220,
+          214
+        ]
+      },
+      "operator_gd": {
+        "mismatch_area_um2": 0.32384763615711065,
+        "target_removed_area_um2": 48.0972166344625,
+        "area_error_vs_removed": 0.006733188712734536,
+        "area_error_vs_solid": 0.0010633777445337414,
+        "mismatch_area_um2_hard_threshold": 0.8928017856035694,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.035046418390134004,
+        "mean_surface_dist_um": 0.010805809331475617,
+        "n_contour_pts": [
+          220,
+          214
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 5.559718765318394
+      },
+      "random_search": {
+        "mismatch_area_um2": 1.2528267550621874,
+        "target_removed_area_um2": 48.0972166344625,
+        "area_error_vs_removed": 0.02604780157204596,
+        "area_error_vs_solid": 0.004113749616635278,
+        "mismatch_area_um2_hard_threshold": 1.0416020832041641,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.23394491232323045,
+        "mean_surface_dist_um": 0.04698483093350421,
+        "n_contour_pts": [
+          214,
+          214
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.620914440602064,
+        "surrogate_loss": 0.0966501235961914,
+        "budget": 256,
+        "recipe": {
+          "ion_flux": 14.524047426011531,
+          "etchant_flux": 960.611809176824,
+          "oxygen_flux": 156.18500896217165,
+          "ion_energy": 51.227589163096454
+        }
+      }
+    },
+    {
+      "target_index": 179,
+      "dt": 0.44038867950439453,
+      "n_steps": 10,
+      "geometry": {
+        "trench_width": 6.94615364074707,
+        "mask_height": 2.8375117778778076
+      },
+      "true_recipe": {
+        "ion_flux": 9.025511741638184,
+        "etchant_flux": 1912.310302734375,
+        "oxygen_flux": 342.1477966308594,
+        "ion_energy": 135.84718322753906
+      },
+      "true_resim": {
+        "mismatch_area_um2": 0.08839445528020813,
+        "target_removed_area_um2": 55.341474219643345,
+        "area_error_vs_removed": 0.0015972551603772183,
+        "area_error_vs_solid": 0.000286331819624643,
+        "mismatch_area_um2_hard_threshold": 0.0496000992001983,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.016972514823212555,
+        "mean_surface_dist_um": 0.0026879064613584596,
+        "n_contour_pts": [
+          234,
+          234
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.083165273070335
+      },
+      "operator_gd_surrogate": {
+        "best_surrogate_loss": 0.014046911150217056,
+        "box_margin": 0.3337629735469818,
+        "recipe": {
+          "ion_flux": 9.255167961120605,
+          "etchant_flux": 1106.8970947265625,
+          "oxygen_flux": 263.61383056640625,
+          "ion_energy": 103.29522705078125
+        },
+        "restarts": 3,
+        "iters": 200,
+        "dt_was_optimised": true,
+        "dt_init_mode": "random",
+        "dt_init": 0.7819551034751412,
+        "dt_init_was_the_target": false,
+        "dt_found": 0.6725748181343079,
+        "dt_true": 0.44038867950439453,
+        "dt_rel_err": 0.5272300343669402
+      },
+      "surrogate_opinion": {
+        "mismatch_area_um2": 0.5644119541685105,
+        "target_removed_area_um2": 55.341474219643345,
+        "area_error_vs_removed": 0.010198715558758528,
+        "area_error_vs_solid": 0.0018282719356397816,
+        "mismatch_area_um2_hard_threshold": 0.3968007936015864,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.060575092081167625,
+        "mean_surface_dist_um": 0.017936318730997016,
+        "n_contour_pts": [
+          234,
+          234
+        ]
+      },
+      "operator_gd": {
+        "mismatch_area_um2": 0.551062214408678,
+        "target_removed_area_um2": 55.341474219643345,
+        "area_error_vs_removed": 0.009957490691729342,
+        "area_error_vs_solid": 0.0017850287789866724,
+        "mismatch_area_um2_hard_threshold": 0.29760059520118975,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.06615946417115431,
+        "mean_surface_dist_um": 0.01788946620818338,
+        "n_contour_pts": [
+          234,
+          234
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 7.9029964581131935
+      },
+      "random_search": {
+        "mismatch_area_um2": 0.689026439417708,
+        "target_removed_area_um2": 55.341474219643345,
+        "area_error_vs_removed": 0.01245045328360876,
+        "area_error_vs_solid": 0.002231929520268623,
+        "mismatch_area_um2_hard_threshold": 0.7440014880029745,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.07760982412605699,
+        "mean_surface_dist_um": 0.022953497446778895,
+        "n_contour_pts": [
+          234,
+          234
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 7.888506684452295,
+        "surrogate_loss": 0.046332187950611115,
+        "budget": 256,
+        "recipe": {
+          "ion_flux": 6.297966552653771,
+          "etchant_flux": 2014.261350195036,
+          "oxygen_flux": 260.16121077047296,
+          "ion_energy": 166.8438994144699
+        }
+      }
+    },
+    {
+      "target_index": 9,
+      "dt": 0.3460387885570526,
+      "n_steps": 10,
+      "geometry": {
+        "trench_width": 8.050739288330078,
+        "mask_height": 2.5833590030670166
+      },
+      "true_recipe": {
+        "ion_flux": 7.119381904602051,
+        "etchant_flux": 1791.3677978515625,
+        "oxygen_flux": 351.4613037109375,
+        "ion_energy": 164.77066040039062
+      },
+      "true_resim": {
+        "mismatch_area_um2": 0.08142793889900055,
+        "target_removed_area_um2": 43.74876768908271,
+        "area_error_vs_removed": 0.001861262458355381,
+        "area_error_vs_solid": 0.00025968424581290463,
+        "mismatch_area_um2_hard_threshold": 0.0496000992001983,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.018524956145799253,
+        "mean_surface_dist_um": 0.0031512670546946023,
+        "n_contour_pts": [
+          204,
+          204
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 5.156273126602173
+      },
+      "operator_gd_surrogate": {
+        "best_surrogate_loss": 0.0161723829805851,
+        "box_margin": 0.11508499830961227,
+        "recipe": {
+          "ion_flux": 8.875115394592285,
+          "etchant_flux": 651.82421875,
+          "oxygen_flux": 348.2432556152344,
+          "ion_energy": 92.11997985839844
+        },
+        "restarts": 3,
+        "iters": 200,
+        "dt_was_optimised": true,
+        "dt_init_mode": "random",
+        "dt_init": 0.9686797916642776,
+        "dt_init_was_the_target": false,
+        "dt_found": 0.9267123341560364,
+        "dt_true": 0.3460387885570526,
+        "dt_rel_err": 1.678059121696544
+      },
+      "surrogate_opinion": {
+        "mismatch_area_um2": 0.3427710684163916,
+        "target_removed_area_um2": 43.74876768908271,
+        "area_error_vs_removed": 0.007834987967030861,
+        "area_error_vs_solid": 0.001093141341801625,
+        "mismatch_area_um2_hard_threshold": 0.5208010416020821,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.04731494417318416,
+        "mean_surface_dist_um": 0.011572026876743094,
+        "n_contour_pts": [
+          208,
+          204
+        ]
+      },
+      "operator_gd": {
+        "mismatch_area_um2": 0.2884655629446684,
+        "target_removed_area_um2": 43.74876768908271,
+        "area_error_vs_removed": 0.006593684306601705,
+        "area_error_vs_solid": 0.0009199540497911416,
+        "mismatch_area_um2_hard_threshold": 0.34720069440138807,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.05008051351553216,
+        "mean_surface_dist_um": 0.010187630736649415,
+        "n_contour_pts": [
+          204,
+          204
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.54845205321908
+      },
+      "random_search": {
+        "mismatch_area_um2": 0.11177065704284468,
+        "target_removed_area_um2": 43.74876768908271,
+        "area_error_vs_removed": 0.0025548298374296037,
+        "area_error_vs_solid": 0.00035645110475146996,
+        "mismatch_area_um2_hard_threshold": 0.07440014880029744,
+        "cell_um2": 0.02480004960009915,
+        "hausdorff_um": 0.019242722611555685,
+        "mean_surface_dist_um": 0.004055657673212053,
+        "n_contour_pts": [
+          204,
+          204
+        ],
+        "sim_status": {
+          "failed": null,
+          "steps_ok": true
+        },
+        "sim_seconds": 6.608688071370125,
+        "surrogate_loss": 0.009655599482357502,
+        "budget": 256,
+        "recipe": {
+          "ion_flux": 8.920356055554969,
+          "etchant_flux": 1822.1582028219393,
+          "oxygen_flux": 353.24517201517193,
+          "ion_energy": 118.36637762349265
+        }
+      }
+    }
+  ]
+}

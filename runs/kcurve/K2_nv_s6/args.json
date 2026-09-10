@@ -1,0 +1,31 @@
+{
+  "data": "data",
+  "run": "runs/kcurve/K2_nv_s6",
+  "epochs": 80,
+  "batch": 32,
+  "lr": 0.002,
+  "width": 64,
+  "modes": 20,
+  "layers": 4,
+  "rollout_steps": 0,
+  "stride": 2,
+  "overlap_pairs": false,
+  "band_weight": 0.0,
+  "blind": false,
+  "init_from": null,
+  "seed": 6,
+  "force": false,
+  "device": "cuda:0",
+  "num_workers": 0,
+  "params": 26248025,
+  "n_train_pairs": 4500,
+  "pair_starts": [
+    0,
+    2,
+    4,
+    6,
+    8
+  ],
+  "applications_per_wafer": 5,
+  "gpu": "NVIDIA H100 NVL"
+}

@@ -7,20 +7,26 @@ Plasma etch surface evolution in 2-D, learned as a neural operator against a
 ViennaPS ground truth, then inverted: descend on the recipe to hit a target
 profile, and check the recipe it finds back in the simulator.
 
-Status: **UNREACHABLE — declared 2026-09-10.** Two of three clauses met, one
-short by a factor of ~680:
+Status: **REOPENED 2026-09-10** (attack ladder, rung 2: a K-step horizon
+operator, which attacks the accuracy and speedup clauses together). Two of three
+clauses met, one short by a factor of ~144.
 
 | clause | measured | verdict |
 |---|---|---|
 | 2D 표면진화 rel-L2 ≤0.05 | **0.0126** band rel-L2, 7 seeds, range 0.0011 | **MET, in distribution and nowhere else** — the crossed-dt probe misses under every coverage rule (terminal step 0.0531–0.0665, upper CI to 0.0947) |
-| 시뮬 대비 ≥1000× 가속 | **1.47×** like-for-like (CPU 1 thread, batch 1, vs ViennaPS CPU 1 thread) | **UNREACHABLE** — 199× throughput-vs-throughput, 347× for a batched H100 against a single-threaded C++ solver, which is a hardware comparison and not the KPI number |
+| 시뮬 대비 ≥1000× 가속 | **6.95×** like-for-like, CPU-seconds, one-time cost paid on both sides or neither (`K10_nv_s1`, `cold_single_wafer`) | **UNREACHABLE** — short by **144×**. At one step per application the operator is *slower* than ViennaPS (0.29–0.85×); only a 10-step horizon makes it faster at all. The batched-H100 readings are hardware comparisons and are not the KPI number |
 | 역설계 형상오차 ≤5% | **0.0061** normalised area error, 20/20 targets, measured in ViennaPS | **MET** — profile targeting only; the inverse problem is degenerate over (rate × time), so the recovered recipe is not the one that made the target |
 
 The verdict rows in `RESULTS.md` are derived from the run JSONs by
 `scripts/report.py`, not typed. The clause that fails is the one the brief warned
-would be cheated by accident, and the near-miss reading that would have passed it
-(timing the solver as 10 concurrent processes: 1006×) is printed in the grid and
-rejected in the text.
+would be cheated by accident, and it was — by us, three times. **Withdrawn on
+2026-09-10: 1.47×, 6.57× and 119.12×.** All three timed a *cold* reference,
+which pays a one-time ViennaPS initialisation inside `apply()`, against a *warm*
+operator given untimed warm-up rollouts, and quoted the ratio as like-for-like.
+`scripts/bench_symmetric.py` pays that cost on both sides or neither and reports
+both readings; `runs/solver_drift.json` is the diagnosis. Two of the three also
+rest on a reference denominator (8.46 s/wafer) that no condition reproduces, and
+that discrepancy is recorded as unexplained rather than explained away.
 
 `RESULTS.md` is regenerated from run JSONs by
 `scripts/report.py`; no number in this repo is hand-typed, and none of them come

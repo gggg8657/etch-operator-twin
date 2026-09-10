@@ -82,7 +82,8 @@ def main():
     scale, band_um = norm["sdf_scale_um"], norm["band_um"]
     device = torch.device(a.device)
 
-    ds = TrajDataset(Path(a.data) / f"{a.split}.npz", norm)
+    stride = int(cfg.get("stride", 1))
+    ds = TrajDataset(Path(a.data) / f"{a.split}.npz", norm, stride=stride)
     subset_note = None
     if a.indices_from:
         idx = json.loads(Path(a.indices_from).read_text())["overlap"]["crossed_indices_inside"]
@@ -98,7 +99,10 @@ def main():
 
     keys = ["op", "persist", "blind", "uniform"]
     # constant advance fitted on train, ignoring recipe, dt and target
-    blind_c = norm["mean_step_displacement_um"] / scale
+    # One application advances `stride` dataset timesteps, so the constant-advance
+    # null must advance by that much too, or a K>1 arm would be scored against a
+    # null that under-etches by K and would beat it for free.
+    blind_c = stride * norm["mean_step_displacement_um"] / scale
     one = {k: {"full": [], "band": []} for k in keys}
     roll = {k: {"full": [], "band": []} for k in keys}
     per_step = None
@@ -161,6 +165,9 @@ def main():
 
     out = {
         "run": str(run), "split": a.split, "ckpt": a.ckpt,
+        "stride": stride,
+        "applications_per_wafer": int(traj.shape[1]),
+        "physical_steps_per_wafer": int(traj.shape[1]) * stride,
         "n_trajectories": len(ds), "steps": int(traj.shape[1]),
         "subset_note": subset_note,
         "band_um": band_um, "sdf_scale_um": scale,
@@ -184,7 +191,17 @@ def main():
     op_terminal = float(np.mean(per_step[-1]))
     out["kpi_clause_rel_l2"] = {
         "target": kpi,
-        "headline_metric": "rollout band rel-L2, mean over test trajectories",
+        "headline_metric": ("rollout band rel-L2, mean over the states the "
+                            "operator emits (T/stride of them), mean over test "
+                            "trajectories"),
+        "terminal_is_comparable_across_stride": True,
+        "mean_reading_is_comparable_across_stride": False,
+        "stride_comparability_note": (
+            "The terminal-step value is at the same physical time (end of etch) "
+            "for every stride, so it is the reading a K-curve may be built from. "
+            "The mean-over-emitted-states value averages a different number of "
+            "states at each stride and is NOT comparable across arms; it is kept "
+            "because it is the historical headline at stride 1."),
         "value": op_b,
         "met": bool(op_b <= kpi),
         "value_terminal_step": op_terminal,

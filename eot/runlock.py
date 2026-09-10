@@ -65,3 +65,53 @@ def mark_done(run, **extra):
     (run / "done.json").write_text(json.dumps(
         {"finished": time.time(), "pid": os.getpid(), "argv": sys.argv, **extra},
         indent=2))
+
+
+def reclaim_orphan(run, what="train"):
+    """Make a run directory killed mid-training restartable, exactly once.
+
+    The `log.jsonl` guard in train.py exists because two trainers once
+    interleaved their epochs into one log while overwriting each other's
+    `best.pt` (commit 8cca0d1, a withdrawn 0.0400 clause-1 number). But that
+    guard also refuses the *other* case: a directory whose only writer was
+    SIGKILLed, which is what happened to four `runs/kcurve` arms when a parent
+    process exited and took its process group with it.
+
+    `acquire()` has already run by the time this is called, so the exclusive
+    flock is held here and **no live process is writing this directory** -- the
+    lock dies with its holder, so a free lock is proof of death, not of
+    politeness. That makes the two cases distinguishable, and only this one
+    safe to restart.
+
+    Archive rather than append: appending is precisely what produced the
+    interleaved log. Returns the archive path, or None if there was nothing to
+    reclaim.
+    """
+    run = Path(run)
+    if not (run / "log.jsonl").exists():
+        return None
+    if (run / "done.json").exists():
+        raise SystemExit(
+            f"{run} carries done.json: it is a finished run, not an orphan. "
+            f"Score it or choose a fresh --run; --force to overwrite.")
+    stamp = time.strftime("%Y%m%dT%H%M%S", time.gmtime())
+    dest = run.parent / "_orphaned" / f"{run.name}_{stamp}"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.mkdir()
+    for p in sorted(run.iterdir()):
+        if p.name == ".lock":
+            continue  # the live lock this process holds
+        p.rename(dest / p.name)
+    epochs = 0
+    log = dest / "log.jsonl"
+    if log.exists():
+        epochs = sum(1 for ln in log.read_text().splitlines() if ln.strip())
+    (dest / "orphaned.json").write_text(json.dumps(
+        {"reclaimed_by_pid": os.getpid(), "reclaimed_at": time.time(),
+         "original": str(run), "epoch_lines": epochs, "argv": sys.argv,
+         "reason": "log.jsonl present, done.json absent, flock free -> the "
+                   "only writer is dead. Archived, not appended to."},
+        indent=2))
+    print(f"reclaimed orphan {run} ({epochs} epoch lines) -> {dest}",
+          file=sys.stderr, flush=True)
+    return dest

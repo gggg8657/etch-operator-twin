@@ -52,7 +52,7 @@ Held-out test split, 250 trajectories × 10 autoregressive steps, model `runs/se
 
 **MET** — 3.9× of headroom against ≤0.05, beating every null by two orders of magnitude. The full-window reading is 5× more flattering than the band reading on identical predictions: the loose reading of this clause is not a weaker test, it is a different one.
 
-Across converged seeds [1, 2, 3, 4, 5, 6, 7]: 0.0129, 0.0119, 0.0123, 0.0126, 0.0131, 0.0126, 0.0125, range **0.00114** — two orders of magnitude below the threshold, so the in-distribution verdict is not seed-sensitive.
+Across converged seeds [1, 2, 3, 4, 5, 6, 7, 8]: 0.0129, 0.0119, 0.0123, 0.0126, 0.0131, 0.0126, 0.0125, 0.0125, range **0.00114** — two orders of magnitude below the threshold, so the in-distribution verdict is not seed-sensitive.
 
 **The qualification that must travel with the number.** On the crossed-dt split — same recipe box, timestep drawn *independently of the recipe* — the same architecture scores **0.2497** (terminal 0.4962), a **miss**, and a factor of 19.3 worse.
 
@@ -60,22 +60,28 @@ Across converged seeds [1, 2, 3, 4, 5, 6, 7]: 0.0129, 0.0119, 0.0123, 0.0126, 0.
 
 ### 4.2 Clause 2 — speedup
 
-| configuration | s / wafer | vs solver, 1 thread, single process |
-|---|---|---|
-| ViennaPS, 1 thread, single process | 1.538 | 1.00× |
-| ViennaPS, 1 thread, stepped (10 processes) | 4.457 | 0.35× |
-| ViennaPS, 8 threads | 1.254 | 1.23× |
-| ViennaPS, 8 procs × 1 thread (best throughput) | 0.883 | 1.74× |
-| operator, CPU 1 thread, batch 1 | 1.04444 | 1× |
-| operator, H100 batch 1 | 0.02356 | 65× |
-| operator, H100 batch 64, incl. host transfer | 0.00471 | 327× |
-| operator, H100 batch 256 | 0.00443 | 347× |
+A speedup is a ratio, and both a numerator and a denominator can be chosen to flatter it. Two choices decide this one. First, **CPU-seconds rather than wall-seconds**: contention does not slow two processes with different threading behaviour by the same factor, so a wall-clock ratio measured on a shared box is not a property of the implementations. Second, **the one-time cost is paid on both sides or neither**: ViennaPS charges a large initialisation inside its `apply()` (cold/warm = 2.64×) and the operator pays FFT-plan creation on its first call, so a cold reference timed against a warmed surrogate awards the clause the difference. Both readings are therefore reported for every horizon.
 
-Like-for-like, hardware and thread count held fixed: **1.47×**. Throughput against the solver's own best parallel configuration: **199×**. Largest cell in the grid: **347×**. None reaches 1000×, so the clause is **UNREACHABLE**, with the grid as the evidence.
+| configuration | CPU-s / wafer | CPU/wall | vs solver, same reading |
+|---|---|---|---|
+| ViennaPS, 1 thread, marginal_warm | 0.2758 | 1.00 | — |
+| ViennaPS, 1 thread, cold_single_wafer | 0.7281 | 0.96 | — |
+| operator `seed1`, 10 application(s)/wafer, marginal_warm | 0.9506 | 1.00 | 0.29× |
+| operator `seed1`, 10 application(s)/wafer, cold_single_wafer | 0.8602 | 1.00 | 0.85× |
+| operator `K2_nv_s1`, 5 application(s)/wafer, marginal_warm | 0.3750 | 1.00 | 0.74× |
+| operator `K2_nv_s1`, 5 application(s)/wafer, cold_single_wafer | 0.3910 | 1.00 | 1.86× |
+| operator `K5_nv_s1`, 2 application(s)/wafer, marginal_warm | 0.1683 | 1.00 | 1.64× |
+| operator `K5_nv_s1`, 2 application(s)/wafer, cold_single_wafer | 0.2623 | 1.00 | 2.78× |
+| operator `K10_nv_s1`, 1 application(s)/wafer, marginal_warm | 0.0720 | 1.00 | 3.83× |
+| operator `K10_nv_s1`, 1 application(s)/wafer, cold_single_wafer | 0.1047 | 1.00 | 6.95× |
 
-**The denominator decided this.** Timing the reference as ten separate processes rather than one process of the full duration inflates it **2.90×**; against that denominator the best cell reads **1006×** and the clause would have been recorded as met, by 0.6%, on an artefact of how the reference was timed. For any ratio the denominator deserves at least the adversarial attention the numerator gets, because it is the part nobody is excited about.
+The best of these 8 rows is **6.95×** (`K10_nv_s1`, cold_single_wafer), short of 1000× by a factor of **144**, so the clause is **UNREACHABLE** with the table as the evidence. The `CPU/wall` column is a check rather than a setting: a row labelled one thread whose ratio exceeded 1 would void the like-for-like claim resting on it.
 
-The operator's advantage is not that it does less arithmetic — on one CPU core it is barely faster than the simulator — but that its arithmetic is dense, regular and batchable. The solver's is a scattered Monte Carlo ray trace, which is also why it refuses to parallelise.
+**At one step per application the operator is slower than the simulator it replaces.** That is the result the horizon sweep exists to explain: cost is linear in applications per wafer, and only by advancing ten dataset timesteps per application does the surrogate become faster at all. The accuracy cost of doing so is §4.1's, and it is not small.
+
+**A denominator we cannot reproduce, reported as such.** Three earlier measurements in this repository record the same fixed reference — identical code, grid and step count — at 1.538, 8.457 and 8.390 seconds per wafer. Under three separate conditions at comparable load the reference costs 1.00 s cold and 0.296 s warm. Neither box load (1.15× across a 3.6× load range) nor process reuse (which lowers the figure) accounts for the discrepancy. We have no explanation for it, so the three like-for-like speedups derived from those files — 1.47×, 6.57× and 119.12× — are withdrawn rather than reinterpreted, and this section quotes none of them.
+
+The operator's advantage is not that it does less arithmetic — on one CPU core, one step per application, it is *slower* than the simulator — but that its arithmetic is dense, regular and batchable. The solver's is a scattered Monte Carlo ray trace, which is also why it refuses to parallelise. That is the honest statement of what a learned operator buys on this problem, and it is a statement about hardware utilisation rather than about operation count.
 
 ### 4.3 Clause 3 — inverse-design shape error
 
@@ -135,7 +141,11 @@ Gradient descent is significantly better at every budget up to 4096 candidates a
 
 The published searched-duration arm initialised its duration parameter at the target's own dt, which `gen_data` had obtained by probing the true recipe's etch rate. The arm was labelled honest and was warm-started at the answer; an adversarial review found it. The optimiser does leave that start — the recovered duration is 23.1% from the true value on average — but that is an argument, not a measurement.
 
-Independent initialisations: `[not measured]` — queued, and this section fills from `runs/design_Tfree_dtinit_*.json` when they land. Until then the searched-duration number should be read as warm-started.
+| duration initialisation | area error (mean) | max | targets < 5% |
+|---|---|---|---|
+| target's own dt (published, warm-started) | 0.0061 | 0.0098 | 100% |
+| random, independent of the target | 0.0613 | 1.0799 | 95% |
+| mid, independent of the target | 0.0070 | 0.0121 | 100% |
 
 #### 4.3.3 What a matched profile does not certify
 

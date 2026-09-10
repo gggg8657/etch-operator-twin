@@ -1,0 +1,527 @@
+{
+  "hypothesis": "H5 horizon collapse: training the operator to advance K dataset timesteps per application divides both the application count and the number of compoundings by K, which the 2026-09-10 addendum predicted would lower the terminal-step error (clause 1) and raise the throughput reading by K (clause 2).",
+  "protocol": {
+    "comparable_reading": "terminal_step (same physical time for every K)",
+    "incomparable_reading_reported_anyway": "mean over the T/K emitted states",
+    "coverage_rule": {
+      "name": "B_train_p1_p99",
+      "lo": 0.07555290407071312,
+      "hi": 0.2987453897955747,
+      "n_in": 121,
+      "n_total": 209
+    },
+    "target": 0.05,
+    "anchor": "runs/seed1..8 (stride=1, pinned identical to the historical one-step dataset by tests/test_stride.py)",
+    "seed_rule": "8 seeds per arm plus an exact paired test before a comparison is a verdict; fewer is a screen"
+  },
+  "arms": {
+    "K1_nv": {
+      "stride": 1,
+      "variant": "nv",
+      "variant_note": "non-overlapping starts: T/K pairs per trajectory",
+      "runs": [
+        "runs/seed1",
+        "runs/seed2",
+        "runs/seed3",
+        "runs/seed4",
+        "runs/seed5",
+        "runs/seed6",
+        "runs/seed7",
+        "runs/seed8"
+      ],
+      "n_seeds": 8,
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "n_train_pairs": [
+        9000
+      ],
+      "applications_per_wafer": 10,
+      "in_distribution": {
+        "terminal_step": {
+          "per_seed": [
+            0.019352013520896435,
+            0.018051594631746413,
+            0.0183573831692338,
+            0.019254365239292383,
+            0.019768870061263443,
+            0.018949094800278544,
+            0.018788799880072475,
+            0.018700777634978294
+          ],
+          "point": 0.018902862367220222,
+          "seed_range": 0.0017172754295170303,
+          "lo": 0.017529986936127534,
+          "hi": 0.02044093855682877,
+          "n": 250,
+          "met_point": true,
+          "met_every_seed": true,
+          "met_upper_ci": true
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.012552677310304716
+      },
+      "crossed_in_coverage": {
+        "n_trajectories": 121,
+        "terminal_step": {
+          "per_seed": [
+            0.07029722317714583,
+            0.04165912236371809,
+            0.03549717906631591,
+            0.05579200604053076,
+            0.04790182951222027,
+            0.05240086620011605,
+            0.07060257989666925,
+            0.06051727047975152
+          ],
+          "point": 0.05433350959205846,
+          "seed_range": 0.035105400830353344,
+          "lo": 0.03469859516223573,
+          "hi": 0.07869597529316096,
+          "n": 121,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.033535111461735274
+      }
+    },
+    "K2_nv": {
+      "stride": 2,
+      "variant": "nv",
+      "variant_note": "non-overlapping starts: T/K pairs per trajectory",
+      "runs": [
+        "runs/kcurve/K2_nv_s1"
+      ],
+      "n_seeds": 1,
+      "seeds": [
+        1
+      ],
+      "n_train_pairs": [
+        4500
+      ],
+      "applications_per_wafer": 5,
+      "in_distribution": {
+        "terminal_step": {
+          "per_seed": [
+            0.028034648068249225
+          ],
+          "point": 0.028034648068249225,
+          "seed_range": null,
+          "lo": 0.025538594915065913,
+          "hi": 0.030735856062173845,
+          "n": 250,
+          "met_point": true,
+          "met_every_seed": true,
+          "met_upper_ci": true
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.01923359841108322
+      },
+      "crossed_in_coverage": {
+        "n_trajectories": 121,
+        "terminal_step": {
+          "per_seed": [
+            0.0683165690361345
+          ],
+          "point": 0.0683165690361345,
+          "seed_range": null,
+          "lo": 0.04688895941723508,
+          "hi": 0.09515297287586337,
+          "n": 121,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.044358039882865324
+      }
+    },
+    "K2_ov": {
+      "stride": 2,
+      "variant": "ov",
+      "variant_note": "data-matched control: T-K+1 overlapping starts, so the pair count (and the gradient-step count) is restored to ~T at every K",
+      "runs": [
+        "runs/kcurve/K2_ov_s1"
+      ],
+      "n_seeds": 1,
+      "seeds": [
+        1
+      ],
+      "n_train_pairs": [
+        8100
+      ],
+      "applications_per_wafer": 5,
+      "in_distribution": {
+        "terminal_step": {
+          "per_seed": [
+            0.1085872557759285
+          ],
+          "point": 0.1085872557759285,
+          "seed_range": null,
+          "lo": 0.10225025661885738,
+          "hi": 0.11505417262986303,
+          "n": 250,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.06610723951458931
+      },
+      "crossed_in_coverage": {
+        "n_trajectories": 121,
+        "terminal_step": {
+          "per_seed": [
+            0.14480567586508172
+          ],
+          "point": 0.14480567586508172,
+          "seed_range": null,
+          "lo": 0.12590151722196583,
+          "hi": 0.16737022373617497,
+          "n": 121,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.0881602436396455
+      }
+    },
+    "K5_nv": {
+      "stride": 5,
+      "variant": "nv",
+      "variant_note": "non-overlapping starts: T/K pairs per trajectory",
+      "runs": [
+        "runs/kcurve/K5_nv_s1"
+      ],
+      "n_seeds": 1,
+      "seeds": [
+        1
+      ],
+      "n_train_pairs": [
+        1800
+      ],
+      "applications_per_wafer": 2,
+      "in_distribution": {
+        "terminal_step": {
+          "per_seed": [
+            0.03460184147208929
+          ],
+          "point": 0.03460184147208929,
+          "seed_range": null,
+          "lo": 0.03182710254797712,
+          "hi": 0.03761129854740575,
+          "n": 250,
+          "met_point": true,
+          "met_every_seed": true,
+          "met_upper_ci": true
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.028477731421589852
+      },
+      "crossed_in_coverage": {
+        "n_trajectories": 121,
+        "terminal_step": {
+          "per_seed": [
+            0.08481605731966821
+          ],
+          "point": 0.08481605731966821,
+          "seed_range": null,
+          "lo": 0.059380046386764314,
+          "hi": 0.11653221968103444,
+          "n": 121,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.0662094499869657
+      }
+    },
+    "K5_ov": {
+      "stride": 5,
+      "variant": "ov",
+      "variant_note": "data-matched control: T-K+1 overlapping starts, so the pair count (and the gradient-step count) is restored to ~T at every K",
+      "runs": [
+        "runs/kcurve/K5_ov_s1"
+      ],
+      "n_seeds": 1,
+      "seeds": [
+        1
+      ],
+      "n_train_pairs": [
+        5400
+      ],
+      "applications_per_wafer": 2,
+      "in_distribution": {
+        "terminal_step": {
+          "per_seed": [
+            0.08057390619814396
+          ],
+          "point": 0.08057390619814396,
+          "seed_range": null,
+          "lo": 0.07535065020564943,
+          "hi": 0.08589365459457039,
+          "n": 250,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.06538002269715071
+      },
+      "crossed_in_coverage": {
+        "n_trajectories": 121,
+        "terminal_step": {
+          "per_seed": [
+            0.12956399436701427
+          ],
+          "point": 0.12956399436701427,
+          "seed_range": null,
+          "lo": 0.10285404402193082,
+          "hi": 0.16241771138527178,
+          "n": 121,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.10463167982530003
+      }
+    },
+    "K10_nv": {
+      "stride": 10,
+      "variant": "nv",
+      "variant_note": "non-overlapping starts: T/K pairs per trajectory",
+      "runs": [
+        "runs/kcurve/K10_nv_s1"
+      ],
+      "n_seeds": 1,
+      "seeds": [
+        1
+      ],
+      "n_train_pairs": [
+        900
+      ],
+      "applications_per_wafer": 1,
+      "in_distribution": {
+        "terminal_step": {
+          "per_seed": [
+            0.048681534700095654
+          ],
+          "point": 0.048681534700095654,
+          "seed_range": null,
+          "lo": 0.044921813830360764,
+          "hi": 0.05265812390781939,
+          "n": 250,
+          "met_point": true,
+          "met_every_seed": true,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.048681534700095654
+      },
+      "crossed_in_coverage": {
+        "n_trajectories": 121,
+        "terminal_step": {
+          "per_seed": [
+            0.11363330840571853
+          ],
+          "point": 0.11363330840571853,
+          "seed_range": null,
+          "lo": 0.08126159477247741,
+          "hi": 0.15388788479103221,
+          "n": 121,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.11363330840571853
+      }
+    }
+  },
+  "tests_vs_K1": {
+    "K2_nv": {
+      "in_distribution": {
+        "paired_unit": "test trajectory, shared by every arm",
+        "mean_diff_vs_K1": 0.009131785701029002,
+        "n_trajectories_arm_better": 25,
+        "sign_test": {
+          "n": 250,
+          "n_arm_better": 25,
+          "p": 2.055610523038485e-41
+        },
+        "sign_flip": {
+          "mean_diff": 0.009131785701029002,
+          "n_perm": 100000,
+          "exact": false,
+          "p": 9.99990000099999e-06
+        },
+        "smaller_than_anchor_seed_range": false
+      },
+      "crossed_in_coverage": {
+        "paired_unit": "test trajectory, shared by every arm",
+        "mean_diff_vs_K1": 0.013983059444076051,
+        "n_trajectories_arm_better": 12,
+        "sign_test": {
+          "n": 121,
+          "n_arm_better": 12,
+          "p": 9.869698741898277e-21
+        },
+        "sign_flip": {
+          "mean_diff": 0.013983059444076051,
+          "n_perm": 100000,
+          "exact": false,
+          "p": 9.99990000099999e-06
+        },
+        "smaller_than_anchor_seed_range": false
+      }
+    },
+    "K2_ov": {
+      "in_distribution": {
+        "paired_unit": "test trajectory, shared by every arm",
+        "mean_diff_vs_K1": 0.08968439340870828,
+        "n_trajectories_arm_better": 0,
+        "sign_test": {
+          "n": 250,
+          "n_arm_better": 0,
+          "p": 1.105429575052089e-75
+        },
+        "sign_flip": {
+          "mean_diff": 0.08968439340870828,
+          "n_perm": 100000,
+          "exact": false,
+          "p": 9.99990000099999e-06
+        },
+        "smaller_than_anchor_seed_range": false
+      },
+      "crossed_in_coverage": {
+        "paired_unit": "test trajectory, shared by every arm",
+        "mean_diff_vs_K1": 0.09047216627302325,
+        "n_trajectories_arm_better": 3,
+        "sign_test": {
+          "n": 121,
+          "n_arm_better": 3,
+          "p": 2.222056719664464e-31
+        },
+        "sign_flip": {
+          "mean_diff": 0.09047216627302325,
+          "n_perm": 100000,
+          "exact": false,
+          "p": 9.99990000099999e-06
+        },
+        "smaller_than_anchor_seed_range": false
+      }
+    },
+    "K5_nv": {
+      "in_distribution": {
+        "paired_unit": "test trajectory, shared by every arm",
+        "mean_diff_vs_K1": 0.015698979104869067,
+        "n_trajectories_arm_better": 17,
+        "sign_test": {
+          "n": 250,
+          "n_arm_better": 17,
+          "p": 1.1178948684685347e-49
+        },
+        "sign_flip": {
+          "mean_diff": 0.015698979104869067,
+          "n_perm": 100000,
+          "exact": false,
+          "p": 9.99990000099999e-06
+        },
+        "smaller_than_anchor_seed_range": false
+      },
+      "crossed_in_coverage": {
+        "paired_unit": "test trajectory, shared by every arm",
+        "mean_diff_vs_K1": 0.030482547727609745,
+        "n_trajectories_arm_better": 10,
+        "sign_test": {
+          "n": 121,
+          "n_arm_better": 10,
+          "p": 1.044129126315013e-22
+        },
+        "sign_flip": {
+          "mean_diff": 0.030482547727609745,
+          "n_perm": 100000,
+          "exact": false,
+          "p": 9.99990000099999e-06
+        },
+        "smaller_than_anchor_seed_range": false
+      }
+    },
+    "K5_ov": {
+      "in_distribution": {
+        "paired_unit": "test trajectory, shared by every arm",
+        "mean_diff_vs_K1": 0.061671043830923734,
+        "n_trajectories_arm_better": 2,
+        "sign_test": {
+          "n": 250,
+          "n_arm_better": 2,
+          "p": 3.468395834683434e-71
+        },
+        "sign_flip": {
+          "mean_diff": 0.061671043830923734,
+          "n_perm": 100000,
+          "exact": false,
+          "p": 9.99990000099999e-06
+        },
+        "smaller_than_anchor_seed_range": false
+      },
+      "crossed_in_coverage": {
+        "paired_unit": "test trajectory, shared by every arm",
+        "mean_diff_vs_K1": 0.07523048477495582,
+        "n_trajectories_arm_better": 0,
+        "sign_test": {
+          "n": 121,
+          "n_arm_better": 0,
+          "p": 7.52316384526264e-37
+        },
+        "sign_flip": {
+          "mean_diff": 0.07523048477495582,
+          "n_perm": 100000,
+          "exact": false,
+          "p": 9.99990000099999e-06
+        },
+        "smaller_than_anchor_seed_range": false
+      }
+    },
+    "K10_nv": {
+      "in_distribution": {
+        "paired_unit": "test trajectory, shared by every arm",
+        "mean_diff_vs_K1": 0.02977867233287543,
+        "n_trajectories_arm_better": 4,
+        "sign_test": {
+          "n": 250,
+          "n_arm_better": 4,
+          "p": 1.7851264507056314e-67
+        },
+        "sign_flip": {
+          "mean_diff": 0.02977867233287543,
+          "n_perm": 100000,
+          "exact": false,
+          "p": 9.99990000099999e-06
+        },
+        "smaller_than_anchor_seed_range": false
+      },
+      "crossed_in_coverage": {
+        "paired_unit": "test trajectory, shared by every arm",
+        "mean_diff_vs_K1": 0.05929979881366007,
+        "n_trajectories_arm_better": 0,
+        "sign_test": {
+          "n": 121,
+          "n_arm_better": 0,
+          "p": 7.52316384526264e-37
+        },
+        "sign_flip": {
+          "mean_diff": 0.05929979881366007,
+          "n_perm": 100000,
+          "exact": false,
+          "p": 9.99990000099999e-06
+        },
+        "smaller_than_anchor_seed_range": false
+      }
+    }
+  },
+  "n_arms_at_verdict_strength": 1,
+  "arms_at_verdict_strength": [
+    "K1_nv"
+  ]
+}

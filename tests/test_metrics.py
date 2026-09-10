@@ -85,9 +85,42 @@ def test_mean_step_displacement_is_zero_for_a_static_surface():
     assert abs(mean_step_displacement(sdf)) < 1e-6
 
 
+
+def test_symmetric_bench_pairs_cold_with_cold_and_warm_with_warm():
+    """The defect `bench_symmetric.py` exists to fix: a cold solver timed against
+    a warm operator, with the ratio labelled like-for-like.
+
+    ViennaPS charges a one-time initialisation inside .apply() (measured: first
+    wafer 1.257 s, later wafers 0.10-0.40 s, runs/solver_drift.json), so which
+    side pays its one-time cost decides the answer by ~3x. This pins the
+    invariant that each reading uses the same warm-up policy on both sides.
+    """
+    import ast
+    from pathlib import Path
+
+    src = (Path(__file__).resolve().parents[1] / "scripts" / "bench_symmetric.py").read_text()
+    tree = ast.parse(src)
+    fns = {n.name: n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)}
+
+    # marginal_warm: the solver discards its first wafer, the operator warms up
+    assert "n_discard" in [a.arg for a in fns["solver_warm"].args.args + fns["solver_warm"].args.kwonlyargs] \
+        or fns["solver_warm"].args.defaults, "solver_warm must discard warm-up wafers"
+    # cold_single_wafer: the operator is timed in a fresh process, like the solver
+    assert "n_warm" in [a.arg for a in fns["operator_run"].args.args], \
+        "operator_run must expose n_warm so a cold reading can ask for zero"
+
+    main_src = ast.get_source_segment(src, fns["main"])
+    assert "n_warm=3" in main_src and "n_warm=0" in main_src, \
+        "both a warm and a cold operator reading must be taken"
+    assert "solver_cold" in main_src and "solver_warm" in main_src, \
+        "both a warm and a cold solver reading must be taken"
+
+
 if __name__ == "__main__":
-    fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
-    for f in fns:
-        f()
-        print("ok", f.__name__)
-    print(f"{len(fns)} passed")
+    n = 0
+    for k, v in sorted(globals().items()):
+        if k.startswith("test_"):
+            v()
+            n += 1
+            print(f"  ok  {k}")
+    print(f"{n} passed")

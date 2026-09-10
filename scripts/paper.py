@@ -33,7 +33,13 @@ def main():
     ev = rd(Path(a.run) / "test_eval.json")
     evx = (rd(Path(a.run) / "test_crossed_eval.json")
            or rd("runs/UNTRACED_t4_base_s0/test_crossed_eval.json"))
-    sp = rd("runs/speed.json")
+    # See scripts/report.py: runs/speed.json and its two successors timed a cold
+    # solver against a warm operator, so their like-for-like readings (1.47x,
+    # 6.57x, 119.12x) are withdrawn. Only the symmetric bench may fill this
+    # clause; if it is absent the section says so rather than reaching for them.
+    sp = rd("runs/speed_symmetric.json")
+    sp_withdrawn = rd("runs/speed.json")
+    sp_drift = rd("runs/solver_drift.json")
     ss = rd("runs/seed_spread.json", {})
     dsn_fx = rd("runs/design_Tfixed.json")
     dsn_fr = rd("runs/design_Tfree.json")
@@ -195,42 +201,69 @@ def main():
     # ---- clause 2
     L += ["### 4.2 Clause 2 — speedup", ""]
     if sp:
-        S, O, ks = sp["solver"], sp["operator"], sp["kpi_clause"]
-        base = S["1_thread_single"]["seconds_per_wafer_median"]
-        rows = ["| configuration | s / wafer | vs solver, 1 thread, single process |", "|---|---|---|"]
-        for lbl, key in [("ViennaPS, 1 thread, single process", "1_thread_single"),
-                         ("ViennaPS, 1 thread, stepped (10 processes)", "1_thread_stepped"),
-                         ("ViennaPS, 8 threads", "8_thread_single"),
-                         ("ViennaPS, 8 procs × 1 thread (best throughput)", "parallel_best_throughput")]:
-            if key in S and "seconds_per_wafer_median" in S[key]:
-                v = S[key]["seconds_per_wafer_median"]
-                rows.append(f"| {lbl} | {v:.3f} | {base/v:.2f}× |")
-        for lbl, key in [("operator, CPU 1 thread, batch 1", "cpu_1_thread_batch1"),
-                         ("operator, H100 batch 1", "h100_batch1"),
-                         ("operator, H100 batch 64, incl. host transfer", "h100_batch64_with_host_transfer"),
-                         ("operator, H100 batch 256", "h100_batch256")]:
-            if key in O and "seconds_per_wafer_median" in O[key]:
-                v = O[key]["seconds_per_wafer_median"]
-                rows.append(f"| {lbl} | {v:.5f} | {base/v:.0f}× |")
-        naive = S["1_thread_stepped"]["seconds_per_wafer_median"] / min(
-            v["seconds_per_wafer_median"] for v in O.values() if v.get("device") == "cuda")
-        L += rows + ["",
-              f"Like-for-like, hardware and thread count held fixed: **{ks['value']:.2f}×**. "
-              f"Throughput against the solver's own best parallel configuration: "
-              f"**{ks['context_throughput_speedup']:.0f}×**. Largest cell in the grid: "
-              f"**{ks['context_naive_best_cell']:.0f}×**. None reaches 1000×, so the clause is "
-              "**UNREACHABLE**, with the grid as the evidence.", "",
-              f"**The denominator decided this.** Timing the reference as ten separate "
-              f"processes rather than one process of the full duration inflates it "
-              f"**{ks['stepped_vs_single_overhead']:.2f}×**; against that denominator the best "
-              f"cell reads **{naive:.0f}×** and the clause would have been recorded as met, by "
-              "0.6%, on an artefact of how the reference was timed. For any ratio the "
-              "denominator deserves at least the adversarial attention the numerator gets, "
-              "because it is the part nobody is excited about.", "",
-              "The operator's advantage is not that it does less arithmetic — on one CPU core "
-              "it is barely faster than the simulator — but that its arithmetic is dense, "
-              "regular and batchable. The solver's is a scattered Monte Carlo ray trace, "
-              "which is also why it refuses to parallelise.", ""]
+        S, ks = sp["solver"], sp["kpi_clause"]
+        L += ["A speedup is a ratio, and both a numerator and a denominator can be "
+              "chosen to flatter it. Two choices decide this one. First, **CPU-seconds "
+              "rather than wall-seconds**: contention does not slow two processes with "
+              "different threading behaviour by the same factor, so a wall-clock ratio "
+              "measured on a shared box is not a property of the implementations. "
+              "Second, **the one-time cost is paid on both sides or neither**: ViennaPS "
+              f"charges a large initialisation inside its `apply()` "
+              f"(cold/warm = {sp['solver']['cold_over_warm']:.2f}×) and the operator pays "
+              "FFT-plan creation on its first call, so a cold reference timed against a "
+              "warmed surrogate awards the clause the difference. Both readings are "
+              "therefore reported for every horizon.", "",
+              "| configuration | CPU-s / wafer | CPU/wall | vs solver, same reading |",
+              "|---|---|---|---|"]
+        for rd_ in ("marginal_warm", "cold_single_wafer"):
+            L.append(f"| ViennaPS, 1 thread, {rd_} | {S[rd_]['median_cpu']:.4f} | "
+                     f"{S[rd_]['cpu_over_wall_median']:.2f} | — |")
+        for r, e in sp["arms"].items():
+            for rd_ in ("marginal_warm", "cold_single_wafer"):
+                L.append(f"| operator `{r.split('/')[-1]}`, "
+                         f"{e['applications_per_wafer']} application(s)/wafer, {rd_} | "
+                         f"{e[rd_]['median_cpu']:.4f} | "
+                         f"{e[rd_]['cpu_over_wall_median']:.2f} | "
+                         f"{e[rd_]['speedup_cpu']:.2f}× |")
+        L += ["",
+              f"The best of these {len(ks['all_rows'])} rows is "
+              f"**{ks['best_value']:.2f}×** (`{ks['best_arm'].split('/')[-1]}`, "
+              f"{ks['best_reading']}), short of 1000× by a factor of "
+              f"**{ks['shortfall_factor']:.0f}**, so the clause is **UNREACHABLE** with "
+              "the table as the evidence. The `CPU/wall` column is a check rather than a "
+              "setting: a row labelled one thread whose ratio exceeded 1 would void the "
+              "like-for-like claim resting on it.", "",
+              "**At one step per application the operator is slower than the simulator "
+              "it replaces.** That is the result the horizon sweep exists to explain: "
+              "cost is linear in applications per wafer, and only by advancing ten "
+              "dataset timesteps per application does the surrogate become faster at "
+              "all. The accuracy cost of doing so is §4.1's, and it is not small.", ""]
+        if sp_drift:
+            L += ["**A denominator we cannot reproduce, reported as such.** Three earlier "
+                  "measurements in this repository record the same fixed reference — "
+                  "identical code, grid and step count — at 1.538, 8.457 and 8.390 "
+                  "seconds per wafer. Under three separate conditions at comparable load "
+                  f"the reference costs {sp_drift['verdict']['fresh_median_s_per_wafer']:.2f} s "
+                  f"cold and {sp_drift['verdict']['reuse_median_s_per_wafer']:.3f} s warm. "
+                  "Neither box load (1.15× across a 3.6× load range) nor process reuse "
+                  "(which lowers the figure) accounts for the discrepancy. We have no "
+                  "explanation for it, so the three like-for-like speedups derived from "
+                  "those files — 1.47×, 6.57× and 119.12× — are withdrawn rather than "
+                  "reinterpreted, and this section quotes none of them.", ""]
+    else:
+        L += ["`[not measured]` — `runs/speed_symmetric.json` is absent. The earlier "
+              "speed files in this repository timed a cold reference against a warmed "
+              "surrogate and their like-for-like readings are withdrawn, so this section "
+              "reports nothing rather than quoting them.", ""]
+    if sp:
+        L += [
+              "The operator's advantage is not that it does less arithmetic — on one CPU "
+              "core, one step per application, it is *slower* than the simulator — but "
+              "that its arithmetic is dense, regular and batchable. The solver's is a "
+              "scattered Monte Carlo ray trace, which is also why it refuses to "
+              "parallelise. That is the honest statement of what a learned operator buys "
+              "on this problem, and it is a statement about hardware utilisation rather "
+              "than about operation count.", ""]
     else:
         L += [NM, ""]
 

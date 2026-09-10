@@ -152,6 +152,15 @@ def main():
                     help="solver's measured best worker count (runs/worker_scaling.json)")
     ap.add_argument("--par-n", type=int, default=32)
     ap.add_argument("--out", default="runs/speed.json")
+    ap.add_argument("--skip-gpu-operator", action="store_true",
+                    help="omit the operator's GPU rows. For a re-measurement "
+                         "taken while the lease's GPUs are running training "
+                         "jobs: a contended GPU row is not a measurement, and "
+                         "the clause verdict keys on the CPU like-for-like row "
+                         "anyway. The GPU cannot simply be hidden with "
+                         "CUDA_VISIBLE_DEVICES='' because ViennaPS builds a CUDA "
+                         "context at import and aborts with CUDA_ERROR_NO_DEVICE, "
+                         "so the solver rows would be lost with it.")
     a = ap.parse_args()
 
     import torch
@@ -169,9 +178,38 @@ def main():
                          modes=cfg["modes"], n_layers=cfg["layers"])
     model.load_state_dict(torch.load(run / "best.pt", map_location="cpu"))
 
+    # One application advances `stride` dataset timesteps, so a wafer takes
+    # n_steps/stride applications. The cost of a wafer is applications x
+    # per-application cost, and this is the only place the K-step arms differ
+    # from the anchor in cost.
+    stride = int(cfg.get("stride", 1))
+    if n_steps % stride:
+        raise SystemExit(f"stride {stride} does not divide {n_steps} steps")
+    n_apply = n_steps // stride
+
     load1, load5, load15 = os.getloadavg()
     res = {
+        # Until 2026-09-10 this file recorded no run name, and the committed
+        # runs/speed.json had been measured on an early runs/base whose default
+        # was modes=16 -- 16,810,841 parameters, where every accuracy number in
+        # this repo comes from a modes=20 model with 26,248,025. The published
+        # 1.47x like-for-like was therefore for a network 1.56x smaller in
+        # parameters than the one it was quoted beside, and in the direction
+        # that flattered the clause. Found by checking `params` in the JSON
+        # against param_count() of the reported architecture. Record the run,
+        # the config and the parameter count so the row cannot drift again.
+        "run": str(run),
+        "arch": {k: cfg[k] for k in ("width", "modes", "layers") if k in cfg},
+        "stride": stride,
+        "applications_per_wafer": n_apply,
         "load_average_at_measurement": [load1, load5, load15],
+        "n_cpu": os.cpu_count(),
+        "load_note": ("A CPU latency row taken under load is not a clean "
+                      "measurement. Both sides of the like-for-like ratio are "
+                      "timed in this same invocation and under the same load, so "
+                      "the ratio is the defensible quantity and the absolute "
+                      "seconds are an upper bound. The load average at the time "
+                      "is recorded so a reader can judge."),
         "n_steps_per_wafer": n_steps,
         "grid_delta": grid_delta,
         "grid_n": gen["grid_n"],
@@ -182,6 +220,10 @@ def main():
         "solver": {},
         "operator": {},
     }
+    if a.skip_gpu_operator:
+        res["gpu_operator_rows_omitted"] = (
+            "the lease's GPUs were running this repo's training queue; a "
+            "contended GPU latency row would not be a measurement")
 
     for th in (1, 8, 16):
         d = time_solver(th, a.n_traj, n_steps, dt, grid_delta, seed=777)
@@ -215,20 +257,22 @@ def main():
         res["solver"]["parallel_best_throughput"] = {"error": str(e)}
 
     torch.set_num_threads(1)
-    ts = time_operator(model, torch.device("cpu"), n_steps, 1, max(a.n_rep // 4, 3))
+    ts = time_operator(model, torch.device("cpu"), n_apply, 1, max(a.n_rep // 4, 3))
     res["operator"]["cpu_1_thread_batch1"] = {
         "seconds_per_wafer_mean": float(np.mean(ts)),
         "seconds_per_wafer_median": float(np.median(ts)),
+        "seconds_per_application_median": float(np.median(ts)) / n_apply,
         "n": len(ts), "threads": 1, "device": "cpu", "batch": 1,
+        "applications_per_wafer": n_apply,
     }
 
-    if torch.cuda.is_available():
+    if torch.cuda.is_available() and not a.skip_gpu_operator:
         dev = torch.device("cuda:0")
         # A row that pays for host->device staging and the result coming back.
         # The pure-kernel rows below time neither, which is fine for an
         # algorithmic comparison and wrong for a deployment claim.
         try:
-            ts = time_operator(model, dev, n_steps, 64, max(a.n_rep // 2, 3),
+            ts = time_operator(model, dev, n_apply, 64, max(a.n_rep // 2, 3),
                                include_transfer=True)
             res["operator"]["h100_batch64_with_host_transfer"] = {
                 "seconds_per_wafer_mean": float(np.mean(ts)),
@@ -240,7 +284,7 @@ def main():
             res["operator"]["h100_batch64_with_host_transfer"] = {"error": str(e)}
         for b in (1, 16, 64, 256):
             try:
-                ts = time_operator(model, dev, n_steps, b, a.n_rep)
+                ts = time_operator(model, dev, n_apply, b, a.n_rep)
             except torch.cuda.OutOfMemoryError:
                 continue
             res["operator"][f"h100_batch{b}"] = {

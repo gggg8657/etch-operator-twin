@@ -1,0 +1,164 @@
+{
+  "question": "is the 1.5 -> 8.5 s/wafer spread in the committed solver denominators caused by box load, or by reusing one process across trajectories?",
+  "protocol": {
+    "n_traj": 8,
+    "n_steps_per_wafer": 10,
+    "dt": 0.2,
+    "grid_delta": 0.2,
+    "threads": 1,
+    "conditions": {
+      "reuse_stepped_then_single": "bench_speed.py's exact loop; the condition every committed solver denominator was measured under",
+      "reuse_single_only": "same long-lived process, no stepped applies: domain count rises, apply count does not",
+      "fresh_process_per_wafer": "bench_paired.py's condition, the control"
+    }
+  },
+  "load": {
+    "before": [
+      36.3427734375,
+      26.283203125,
+      16.8818359375
+    ],
+    "after": [
+      27.5751953125,
+      25.0234375,
+      16.7138671875
+    ],
+    "note": "one invocation, so all three conditions see the same load; a difference between them cannot be a load difference"
+  },
+  "conditions": {
+    "reuse_stepped_then_single": {
+      "single_wall_per_traj": [
+        0.5684526599943638,
+        0.18735622614622116,
+        0.3903280273079872,
+        0.2929133474826813,
+        0.29842352122068405,
+        0.10247940570116043,
+        0.2550652176141739,
+        0.352897472679615
+      ],
+      "single_cpu_per_traj": [
+        0.5687982580000002,
+        0.18749136500000008,
+        0.3905980229999999,
+        0.29305912000000056,
+        0.29850725899999997,
+        0.10254686099999955,
+        0.255172505,
+        0.35312001900000034
+      ],
+      "stepped_wall_per_traj": [
+        1.8660596087574959,
+        0.5872253477573395,
+        0.8484333045780659,
+        0.7758425548672676,
+        0.7665197476744652,
+        0.42108627036213875,
+        0.6952252350747585,
+        0.7487634792923927
+      ],
+      "wall_trend": {
+        "slope_per_traj": -0.024147345773166108,
+        "last_over_first": 0.6208036262564309,
+        "first": 0.5684526599943638,
+        "last": 0.352897472679615,
+        "median": 0.29566843435168266,
+        "max_over_min": 5.546994111695233
+      },
+      "cpu_trend": {
+        "slope_per_traj": -0.024167229999999963,
+        "last_over_first": 0.6208176871737189,
+        "first": 0.5687982580000002,
+        "last": 0.35312001900000034,
+        "median": 0.29578318950000027,
+        "max_over_min": 5.546715447487005
+      }
+    },
+    "reuse_single_only": {
+      "single_wall_per_traj": [
+        1.2568473145365715,
+        0.1910088136792183,
+        0.3956719599664211,
+        0.2972876578569412,
+        0.3020356521010399,
+        0.10388648137450218,
+        0.2562481425702572,
+        0.3517853915691376
+      ],
+      "single_cpu_per_traj": [
+        1.233644527,
+        0.19115152999999996,
+        0.395937894,
+        0.29751902100000005,
+        0.30223757399999984,
+        0.1039525600000002,
+        0.256434971,
+        0.351939749
+      ],
+      "stepped_wall_per_traj": [],
+      "wall_trend": {
+        "slope_per_traj": -0.0819029197362916,
+        "last_over_first": 0.27989508948336256,
+        "first": 1.2568473145365715,
+        "last": 0.3517853915691376,
+        "median": 0.29966165497899055,
+        "max_over_min": 12.09827590565649
+      },
+      "cpu_trend": {
+        "slope_per_traj": -0.07996135345238088,
+        "last_over_first": 0.2852845704717336,
+        "first": 1.233644527,
+        "last": 0.351939749,
+        "median": 0.29987829749999995,
+        "max_over_min": 11.867379956780264
+      }
+    },
+    "fresh_process_per_wafer": {
+      "single_wall_per_traj": [
+        1.2528682835400105,
+        0.8883518911898136,
+        1.0699637085199356,
+        0.9875703565776348,
+        1.0110719166696072,
+        0.789603479206562,
+        0.9447417631745338,
+        1.045719001442194
+      ],
+      "single_cpu_per_traj": [
+        1.229769095,
+        0.857975803,
+        1.046362765,
+        0.9612963999999999,
+        0.969131108,
+        0.766158767,
+        0.9214647649999999,
+        1.018112602
+      ],
+      "stepped_wall_per_traj": [],
+      "wall_trend": {
+        "slope_per_traj": -0.023638985031062605,
+        "last_over_first": 0.8346599679955893,
+        "first": 1.2528682835400105,
+        "last": 1.045719001442194,
+        "median": 0.999321136623621,
+        "max_over_min": 1.5867056269799658
+      },
+      "cpu_trend": {
+        "slope_per_traj": -0.02377295151190464,
+        "last_over_first": 0.8278892404594052,
+        "first": 1.229769095,
+        "last": 1.018112602,
+        "median": 0.965213754,
+        "max_over_min": 1.6051099954325785
+      }
+    }
+  },
+  "verdict": {
+    "fresh_median_s_per_wafer": 0.999321136623621,
+    "reuse_median_s_per_wafer": 0.29566843435168266,
+    "reuse_over_fresh": 0.29586928917629973,
+    "reuse_last_over_first": 0.6208036262564309,
+    "reading": "no material difference between the conditions; the committed spread is NOT explained by process reuse and this script's hypothesis is wrong",
+    "same_load_for_all_conditions": true
+  }
+}

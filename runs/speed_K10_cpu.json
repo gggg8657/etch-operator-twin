@@ -1,0 +1,121 @@
+{
+  "run": "runs/kcurve/K10_nv_s1",
+  "arch": {
+    "width": 64,
+    "modes": 20,
+    "layers": 4
+  },
+  "stride": 10,
+  "applications_per_wafer": 1,
+  "load_average_at_measurement": [
+    22.31591796875,
+    25.6669921875,
+    27.00732421875
+  ],
+  "n_cpu": 192,
+  "load_note": "A CPU latency row taken under load is not a clean measurement. Both sides of the like-for-like ratio are timed in this same invocation and under the same load, so the ratio is the defensible quantity and the absolute seconds are an upper bound. The load average at the time is recorded so a reader can judge.",
+  "n_steps_per_wafer": 10,
+  "grid_delta": 0.2,
+  "grid_n": 128,
+  "params": 26248025,
+  "cpu": "Model name:                           INTEL(R) XEON(R) PLATINUM 8558",
+  "gpu": "NVIDIA H100 NVL",
+  "solver": {
+    "1_thread_single": {
+      "seconds_per_wafer_mean": 8.861026227474213,
+      "seconds_per_wafer_median": 8.390090867877007,
+      "seconds_per_wafer_std": 2.872890742385928,
+      "n": 8,
+      "threads": 1,
+      "device": "cpu",
+      "mode": "single"
+    },
+    "1_thread_stepped": {
+      "seconds_per_wafer_mean": 21.5091215595603,
+      "seconds_per_wafer_median": 21.198122328147292,
+      "seconds_per_wafer_std": 2.6738411468355996,
+      "n": 8,
+      "threads": 1,
+      "device": "cpu",
+      "mode": "stepped"
+    },
+    "8_thread_single": {
+      "seconds_per_wafer_mean": 8.497931401245296,
+      "seconds_per_wafer_median": 8.107884101569653,
+      "seconds_per_wafer_std": 3.1632815684983586,
+      "n": 8,
+      "threads": 8,
+      "device": "cpu",
+      "mode": "single"
+    },
+    "8_thread_stepped": {
+      "seconds_per_wafer_mean": 21.25654843263328,
+      "seconds_per_wafer_median": 21.212770802900195,
+      "seconds_per_wafer_std": 4.302975097923506,
+      "n": 8,
+      "threads": 8,
+      "device": "cpu",
+      "mode": "stepped"
+    },
+    "16_thread_single": {
+      "seconds_per_wafer_mean": 8.470068536698818,
+      "seconds_per_wafer_median": 8.124512936919928,
+      "seconds_per_wafer_std": 2.723159498662344,
+      "n": 8,
+      "threads": 16,
+      "device": "cpu",
+      "mode": "single"
+    },
+    "16_thread_stepped": {
+      "seconds_per_wafer_mean": 20.880060070659965,
+      "seconds_per_wafer_median": 21.16150881536305,
+      "seconds_per_wafer_std": 2.8136025350560874,
+      "n": 8,
+      "threads": 16,
+      "device": "cpu",
+      "mode": "stepped"
+    },
+    "parallel_best_throughput": {
+      "seconds_per_wafer_median": 1.9489027566742152,
+      "seconds_per_wafer_mean": 1.9489027566742152,
+      "n": 32,
+      "threads": "8 procs x 1",
+      "device": "cpu",
+      "mode": "single, parallel throughput",
+      "note": "wall clock / n_wafers with the solver at its measured best worker count"
+    }
+  },
+  "operator": {
+    "cpu_1_thread_batch1": {
+      "seconds_per_wafer_mean": 0.0745902605354786,
+      "seconds_per_wafer_median": 0.07043168693780899,
+      "seconds_per_application_median": 0.07043168693780899,
+      "n": 5,
+      "threads": 1,
+      "device": "cpu",
+      "batch": 1,
+      "applications_per_wafer": 1
+    }
+  },
+  "gpu_operator_rows_omitted": "the lease's GPUs were running this repo's training queue; a contended GPU latency row would not be a measurement",
+  "stepped_vs_single_overhead": {
+    "ratio": 2.526566477284313,
+    "note": "Timing the solver as n_steps separate processes rather than one process of the full duration inflates it by this factor, and would inflate any speedup quoted against it by the same. 'single' is used as the reference everywhere below."
+  },
+  "speedup": {
+    "cpu_1_thread_batch1": 119.12380964672103
+  },
+  "speedup_like_for_like_cpu1_vs_cpu1": 119.12380964672103,
+  "kpi_clause": {
+    "target": 1000.0,
+    "value": 119.12380964672103,
+    "basis": "operator CPU 1 thread batch 1 vs solver CPU 1 thread, single process",
+    "met": false,
+    "context_throughput_speedup": null,
+    "context_throughput_basis": "solver at its best parallel worker count vs operator batched on one H100 -- throughput against throughput, still different hardware",
+    "context_naive_best_cell": 119.12380964672103,
+    "context_naive_configuration": "cpu_1_thread_batch1",
+    "context_naive_basis": "largest cell in the grid: batched H100 against a single-threaded CPU solver. Reported for completeness, not used for the verdict.",
+    "stepped_vs_single_overhead": 2.526566477284313
+  }
+}

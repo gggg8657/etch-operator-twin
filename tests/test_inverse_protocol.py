@@ -89,3 +89,45 @@ if __name__ == "__main__":
             n += 1
             print(f"  ok  {k}")
     print(f"{n} passed")
+
+
+# --- the baseline's protocol, which was asymmetric until 2026-09-10 -----------
+# design.py's random-search arm evaluated and simulated every candidate at the
+# TARGET's own dt, including in the arm where the gradient method is handed no
+# duration at all. So the baseline the gradient method was compared against was
+# solving an easier problem -- it was given for free the degree of freedom that
+# sets etch depth. These two tests pin the fix: with --optimise-dt the random
+# arm samples dt the same way the gradient arm initialises it, and the flag that
+# restores the old behaviour has to be asked for by name.
+
+def _design_source():
+    return (ROOT / "scripts" / "design.py").read_text()
+
+
+def test_random_search_samples_dt_when_the_gradient_arm_searches_it():
+    src = _design_source()
+    assert "rand_dt_sampled = bool(a.optimise_dt and not a.random_fixed_dt)" in src, \
+        "the random baseline's dt policy is no longer derived from --optimise-dt"
+    # it must simulate at the dt it scored, not at the target's
+    assert "simulate_recipe(rs_rec, rs_dt, n_steps, grid_delta, n_grid)" in src, \
+        "the random baseline is verified at a duration it did not choose"
+    assert 'row["random_search"]["dt_sampled"] = rand_dt_sampled' in src
+    assert 'row["random_search"]["dt_true"] = dt' in src
+
+
+def test_the_old_leaky_baseline_is_reachable_only_by_an_explicit_flag():
+    src = _design_source()
+    assert '"--random-fixed-dt", action="store_true"' in src
+    # and the run records which of the two it was, so a JSON on disk can be told
+    # apart without its invocation
+    assert '"random_search_uses_true_etch_time": bool(not rand_dt_sampled)' in src
+
+
+def test_restart_draws_are_per_target_and_per_restart_so_prefixes_nest():
+    """A restart curve is only a curve if the first R restarts of a 12-restart
+    run are the first R of a 3-restart run. With one sequential rng the draws a
+    restart sees depend on how many restarts every earlier target ran."""
+    src = _design_source()
+    assert "r_rng = np.random.default_rng([a.seed, ti, r])" in src
+    assert "u = r_rng.uniform(0.15, 0.85, size=len(DESIGN_KEYS))" in src
+    assert "r_rng.uniform(np.log(dlo), np.log(dhi))" in src

@@ -136,6 +136,22 @@ def main():
                          "trained dt range; 'random' draws a fresh log-uniform "
                          "start per restart. Both of the latter are independent "
                          "of the target and are what the honest label requires.")
+    ap.add_argument("--restart-curve", default=None,
+                    help="comma-separated restart counts, e.g. 1,2,3,6,12. Runs "
+                         "max(R) restarts once, then for each R reports the "
+                         "design that the SAME surrogate-loss argmin would have "
+                         "picked from the first R of them, simulated in ViennaPS. "
+                         "Answers whether a clause that fails at R=3 fails "
+                         "because of the protocol or because of the multi-start "
+                         "budget, without re-running the earlier restarts.")
+    ap.add_argument("--random-fixed-dt", action="store_true",
+                    help="keep the published (leaky) random-search baseline, "
+                         "which evaluates and simulates candidates at the "
+                         "TARGET's own dt even when --optimise-dt makes the "
+                         "gradient arm search for it. Off by default now: with "
+                         "--optimise-dt the random baseline samples dt "
+                         "log-uniformly over the trained range like the gradient "
+                         "arm, or the two arms are not solving the same problem.")
     ap.add_argument("--optimise-dt", action="store_true",
                     help="Search total etch time alongside the recipe. Off (the "
                          "default) pins T = n_steps*dt to the target's own value, "
@@ -143,6 +159,9 @@ def main():
                          "of the true recipe's rate, so it hands over the degree of "
                          "freedom that sets depth. Both variants get reported.")
     a = ap.parse_args()
+    curve_R = [int(x) for x in a.restart_curve.split(",")] if a.restart_curve else []
+    if any(r < 1 for r in curve_R):
+        raise SystemExit("--restart-curve values must be >= 1")
 
     run = Path(a.run)
     # Two locks, because two design jobs on ONE model are redundant even when
@@ -171,6 +190,7 @@ def main():
     rng = np.random.default_rng(a.seed)
     idxs = rng.choice(len(ds), size=min(a.n_targets, len(ds)), replace=False)
     rows = []
+    rand_dt_sampled = bool(a.optimise_dt and not a.random_fixed_dt)
 
     for ti, idx in enumerate(idxs):
         idx = int(idx)
@@ -197,12 +217,23 @@ def main():
 
         # --- gradient descent through the operator, several restarts
         best = None
-        for r in range(a.restarts):
+        all_restarts = []
+        n_restarts = max([a.restarts] + curve_R)
+        for r in range(n_restarts):
+            # Per-(target, restart) stream, not one sequential stream. With a
+            # shared `rng` the draws a restart sees depend on how many restarts
+            # every earlier target ran, so the first R restarts of a 12-restart
+            # run would not be the first R of a 3-restart run and the restart
+            # curve would not be nested -- the R rows would be different
+            # samples rather than prefixes of one. Costs exact reproduction of
+            # the 3-restart runs published before 2026-09-10, which is why
+            # those keep their own JSONs and are not overwritten.
+            r_rng = np.random.default_rng([a.seed, ti, r])
             init = None
             if r > 0:
                 lo = np.array([S.RECIPE_BOX[k][0] for k in DESIGN_KEYS])
                 hi = np.array([S.RECIPE_BOX[k][1] for k in DESIGN_KEYS])
-                u = rng.uniform(0.15, 0.85, size=len(DESIGN_KEYS))
+                u = r_rng.uniform(0.15, 0.85, size=len(DESIGN_KEYS))
                 init = np.where([S.RECIPE_BOX[k][2] == "log" for k in DESIGN_KEYS],
                                 np.exp(np.log(np.maximum(lo, 1e-6)) + u * (np.log(hi) - np.log(np.maximum(lo, 1e-6)))),
                                 lo + u * (hi - lo))
@@ -211,12 +242,16 @@ def main():
                 dlo, dhi = norm["dt_lo"], norm["dt_hi"]
                 dt_init = (float(np.exp(0.5 * (np.log(dlo) + np.log(dhi))))
                            if a.dt_init == "mid" else
-                           float(np.exp(rng.uniform(np.log(dlo), np.log(dhi)))))
+                           float(np.exp(r_rng.uniform(np.log(dlo), np.log(dhi)))))
             d = design(model, tgt, phi0, geom, dt, norm, n_steps, init=init,
                        iters=a.iters, device=device, seed=a.seed + r,
                        optimise_dt=a.optimise_dt, dt_init=dt_init)
-            if best is None or d["best_surrogate_loss"] < best["best_surrogate_loss"]:
+            all_restarts.append(d)
+            if r < a.restarts and (
+                    best is None
+                    or d["best_surrogate_loss"] < best["best_surrogate_loss"]):
                 best = d
+        row["restart_losses"] = [d["best_surrogate_loss"] for d in all_restarts]
         row["operator_gd_surrogate"] = {
             "best_surrogate_loss": best["best_surrogate_loss"],
             "box_margin": best["box_margin"],
@@ -250,16 +285,63 @@ def main():
         row["operator_gd"]["sim_status"] = st
         row["operator_gd"]["sim_seconds"] = time.perf_counter() - t0
 
+        # --- restart curve: what the SAME oracle-free selector would have picked
+        # from the first R restarts. No new information enters -- the restarts are
+        # the ones already run, the selector is the same surrogate-loss argmin,
+        # and every R is simulated in ViennaPS. Identical prefix-bests are
+        # simulated once and shared, because the solver is deterministic to
+        # 0.0046 area error on a re-simulated true recipe and a second call would
+        # only cost 6 s to reproduce the first.
+        if curve_R:
+            sim_cache, curve = {}, {}
+            for R in sorted(set(curve_R)):
+                pref = all_restarts[:R]
+                b = min(pref, key=lambda d: d["best_surrogate_loss"])
+                key = (tuple(np.round(b["recipe_values"], 9)), round(b["dt"], 9))
+                if key not in sim_cache:
+                    t0 = time.perf_counter()
+                    f_, _, st_ = simulate_recipe(
+                        recipe_from_values(b["recipe_values"], geom), b["dt"],
+                        n_steps, grid_delta, n_grid)
+                    e = (shape_error(f_, tgt_np, phi0_np, gx, gy)
+                         if f_ is not None else dict(st_))
+                    e["sim_status"] = st_
+                    e["sim_seconds"] = time.perf_counter() - t0
+                    sim_cache[key] = e
+                curve[str(R)] = {
+                    **sim_cache[key],
+                    "best_surrogate_loss": b["best_surrogate_loss"],
+                    "dt_found": b["dt"], "dt_true": b["dt_given"],
+                    "dt_rel_err": abs(b["dt"] - b["dt_given"]) / max(b["dt_given"], 1e-12),
+                    "recipe": dict(zip(DESIGN_KEYS, b["recipe_values"])),
+                    "restart_index_selected": int(min(
+                        range(R), key=lambda i: pref[i]["best_surrogate_loss"])),
+                    # same convention as scripts/random_curve.py: a backward
+                    # pass costs ~2 forwards, so one GD iteration is 3.
+                    "forward_equivalents": int(R * a.iters * 3),
+                }
+            row["restart_curve"] = curve
+
         # --- random search over the same operator, matched budget
         cands = np.stack([
             np.array([getattr(S.sample_recipe(np.random.default_rng(a.seed + 10_000 * ti + j),
                                               vary_geometry=False), k) for k in DESIGN_KEYS])
             for j in range(a.random_budget)
         ])
+        # The gradient arm under --optimise-dt is handed no duration, so a random
+        # baseline evaluated at the TARGET's own dt is solving an easier problem
+        # -- it is given for free the degree of freedom that sets depth, and it
+        # was the arm GD was being compared against. Sample dt the same way the
+        # gradient arm initialises it: log-uniform over the trained range.
+        if rand_dt_sampled:
+            rdt = np.exp(np.random.default_rng(a.seed + 500_000 + ti).uniform(
+                np.log(norm["dt_lo"]), np.log(norm["dt_hi"]), size=len(cands)))
+        else:
+            rdt = np.full(len(cands), dt)
         cvec = cond_vector(
             np.concatenate([cands, np.tile([[geom["trench_width"], geom["mask_height"]]],
                                            (len(cands), 1))], axis=1),
-            np.full(len(cands), dt))
+            rdt)
         cstd = (cvec - np.array(norm["cond_mean"], np.float32)) / np.array(norm["cond_std"], np.float32)
         band = (tgt.abs() * scale < norm["band_um"]).float()
         losses = []
@@ -275,14 +357,18 @@ def main():
         losses = np.concatenate(losses)
         jbest = int(np.argmin(losses))
         rs_rec = recipe_from_values(cands[jbest], geom)
+        rs_dt = float(rdt[jbest])
         t0 = time.perf_counter()
-        rand_final, _, st = simulate_recipe(rs_rec, dt, n_steps, grid_delta, n_grid)
+        rand_final, _, st = simulate_recipe(rs_rec, rs_dt, n_steps, grid_delta, n_grid)
         row["random_search"] = (shape_error(rand_final, tgt_np, phi0_np, gx, gy)
                                 if rand_final is not None else dict(st))
         row["random_search"]["sim_status"] = st
         row["random_search"]["sim_seconds"] = time.perf_counter() - t0
         row["random_search"]["surrogate_loss"] = float(losses[jbest])
         row["random_search"]["budget"] = a.random_budget
+        row["random_search"]["dt_sampled"] = rand_dt_sampled
+        row["random_search"]["dt_used"] = rs_dt
+        row["random_search"]["dt_true"] = dt
         row["random_search"]["recipe"] = dict(zip(DESIGN_KEYS, cands[jbest].tolist()))
 
         rows.append(row)
@@ -365,7 +451,57 @@ def main():
         "surrogate_reality_gap": gd - summary["area_error_vs_removed"]["surrogate_opinion"]["mean"],
         "beats_random_search": bool(gd < summary["area_error_vs_removed"]["random_search"]["mean"]),
         "simulator_determinism_check": summary["area_error_vs_removed"]["true_resim"]["max"],
+        "random_search_uses_true_etch_time": bool(not rand_dt_sampled),
     }
+
+    # --- the restart curve, aggregated, plus the oracle-free screen
+    if curve_R and all("restart_curve" in r for r in rows):
+        Rs = sorted({str(R) for R in curve_R}, key=int)
+        cur = {}
+        for R in Rs:
+            e = np.array([r["restart_curve"][R]["area_error_vs_removed"] for r in rows], float)
+            L = np.array([r["restart_curve"][R]["best_surrogate_loss"] for r in rows], float)
+            dre = np.array([r["restart_curve"][R]["dt_rel_err"] for r in rows], float)
+            trunc = int(sum((r["restart_curve"][R].get("sim_status") or {}).get(
+                "steps_ok") is False for r in rows))
+            # The screen is the same surrogate loss the selector already uses, so
+            # it needs no label and no simulation. tau is NOT fitted to the
+            # simulated errors: it is fixed at 0.10 for every R and every arm,
+            # which is 3x the largest loss any design under 5% has posted and
+            # 19x smaller than the one failure's. The separation is reported so a
+            # reader can see whether that choice is load-bearing.
+            tau = 0.10
+            keep = L <= tau
+            cur[R] = {
+                "mean": float(e.mean()), "median": float(np.median(e)),
+                "p90": float(np.percentile(e, 90)), "max": float(e.max()),
+                "frac_under_5pct": float(np.mean(e <= 0.05)),
+                "met_mean": bool(e.mean() <= 0.05),
+                "met_every_target": bool(e.max() <= 0.05),
+                "n_truncated_simulation": trunc,
+                "dt_rel_err_median": float(np.median(dre)),
+                "forward_equivalents": rows[0]["restart_curve"][R]["forward_equivalents"],
+                "screen_tau": tau,
+                "n_accepted": int(keep.sum()),
+                "reject_rate": float(1 - keep.mean()),
+                "mean_accepted": float(e[keep].mean()) if keep.any() else None,
+                "max_accepted": float(e[keep].max()) if keep.any() else None,
+                "met_mean_accepted": bool(keep.any() and e[keep].mean() <= 0.05),
+                # the number that says whether the screen is free: a design the
+                # screen throws away whose simulated error was actually fine.
+                "n_rejected_but_under_5pct": int(((~keep) & (e <= 0.05)).sum()),
+                "max_loss_among_under_5pct": float(L[e <= 0.05].max()) if (e <= 0.05).any() else None,
+                "min_loss_among_over_5pct": float(L[e > 0.05].min()) if (e > 0.05).any() else None,
+            }
+        summary["restart_curve"] = {
+            "note": ("Same targets, same operator, same oracle-free selector "
+                     "(argmin surrogate loss over the first R restarts); every R "
+                     "simulated in ViennaPS. R is a compute knob, not a protocol "
+                     "change: the duration initialisation stays independent of "
+                     "the target at every R."),
+            "dt_init_mode": a.dt_init,
+            "R": cur,
+        }
     out = Path(a.out or (run / "design.json"))
     out.write_text(json.dumps({"summary": summary, "targets": rows}, indent=2))
     print(json.dumps(summary, indent=2))

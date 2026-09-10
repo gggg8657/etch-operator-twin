@@ -27,3 +27,9 @@ jobs:
         run: PYTHONPATH=. python tests/test_coverage_verdict.py
       - name: inverse-design protocol (which arm is warm-started, and where dt can go)
         run: PYTHONPATH=. python tests/test_inverse_protocol.py
+      # The K-step dataset and the K-curve's verdict machinery, added when the
+      # 2026-09-10 addendum reopened clause 1 and clause 2 on a horizon change.
+      - name: stride dataset (stride 1 reproduces the historical one-step arm)
+        run: PYTHONPATH=. python tests/test_stride.py
+      - name: K-curve verdict machinery (exact sign test, arm identification, nested restarts)
+        run: PYTHONPATH=. python tests/test_kcurve.py

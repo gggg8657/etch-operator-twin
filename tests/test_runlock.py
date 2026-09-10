@@ -121,6 +121,52 @@ def test_eval_newer_than_checkpoint_is_accepted():
     assert completed(d, cfg)[0]
 
 
+
+def test_reclaim_orphan_archives_rather_than_appends():
+    """A killed trainer's directory must be restartable, and its log must not be
+    appended to -- appending is what produced the interleaved log in the first
+    place."""
+    run = Path(tempfile.mkdtemp()) / "K2_nv_s4"
+    run.mkdir(parents=True)
+    (run / "log.jsonl").write_text('{"epoch": 1}\n{"epoch": 2}\n')
+    (run / "best.pt").write_text("weights")
+
+    dest = runlock.reclaim_orphan(run)
+
+    assert dest is not None
+    # the run directory is clear, so a fresh trainer can start
+    assert not (run / "log.jsonl").exists()
+    assert not (run / "best.pt").exists()
+    # nothing was destroyed
+    assert (dest / "log.jsonl").read_text() == '{"epoch": 1}\n{"epoch": 2}\n'
+    assert (dest / "best.pt").read_text() == "weights"
+    note = json.loads((dest / "orphaned.json").read_text())
+    assert note["epoch_lines"] == 2
+    assert note["original"] == str(run)
+
+
+def test_reclaim_orphan_refuses_a_finished_run():
+    """done.json means the run completed. Reclaiming it would silently discard a
+    scoreable result, which is worse than the restart failing."""
+    run = Path(tempfile.mkdtemp()) / "seed1"
+    run.mkdir(parents=True)
+    (run / "log.jsonl").write_text('{"epoch": 1}\n')
+    (run / "done.json").write_text("{}")
+    try:
+        runlock.reclaim_orphan(run)
+    except SystemExit:
+        pass
+    else:
+        raise AssertionError("a finished run must not be reclaimed")
+    assert (run / "log.jsonl").exists()
+
+
+def test_reclaim_orphan_is_a_noop_on_a_fresh_directory():
+    run = Path(tempfile.mkdtemp()) / "fresh"
+    run.mkdir(parents=True)
+    assert runlock.reclaim_orphan(run) is None
+
+
 if __name__ == "__main__":
     n = 0
     for k, v in sorted(globals().items()):

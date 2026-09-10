@@ -108,7 +108,11 @@ def main():
 
     ev = read(run / "test_eval.json")
     evx = read(run / "test_crossed_eval.json")
-    sp = read("runs/speed.json")
+    # runs/speed.json timed a cold solver against a warm operator and its
+    # like-for-like reading is withdrawn; runs/speed_symmetric.json pays the
+    # one-time cost on both sides or neither. Read only the latter, so a
+    # withdrawn number cannot reappear here if the newer run is missing.
+    sp = read("runs/speed_symmetric.json")
     # The honest protocol's output is the headline. Named explicitly, then the
     # legacy locations, so a renamed output does not silently blank the clause.
     dsn = (read(a.design) if a.design else None) or \
@@ -143,8 +147,10 @@ def main():
          "## Declared UNREACHABLE, 2026-09-10",
          "",
          (f"Two of three clauses met. The speedup clause is short by a factor of "
-          f"**{1000 / ks['value']:.0f}** — {ks['value']:.2f}× like-for-like against 1000× — "
-          f"and that is not a gap an implementation closes. Clause 1 holds in distribution "
+          f"**{ks['shortfall_factor']:.0f}** — {ks['best_value']:.2f}× at the best of four "
+          f"honest rows (`{ks['best_arm'].split('/')[-1]}`, {ks['best_reading']}) against "
+          f"1000× — and that is not a gap an implementation closes. At K=1 the operator is "
+          f"*slower* than the simulator like-for-like. Clause 1 holds in distribution "
           f"and nowhere else; clause 3 holds as profile targeting, not recipe identification. "
           f"Every clause verdict in `RESULTS.md` is derived from a run JSON by "
           f"`scripts/report.py`."
@@ -166,8 +172,9 @@ def main():
           f"| rel-L2 ≤ 0.05 | repo did not exist | **{f(k.get('value'))}** in-distribution "
           f"({'MET' if k.get('met') else 'NOT MET' if k else NM}) |"),
          f"| ≥1000× speedup | repo did not exist | "
-         f"**{f(ks.get('value'), 1) + '×' if ks else NM}** like-for-like "
-         f"({'MET' if ks.get('met') else 'NOT MET' if ks else NM}) |",
+         f"**{f(ks.get('best_value'), 1) + '×' if ks else NM}** like-for-like, CPU-seconds, "
+         f"one-time cost paid on both sides or neither "
+         f"({'MET' if ks and ks.get('met') else 'NOT MET' if ks else NM}) |",
          f"| shape error ≤ 5% | repo did not exist | "
          f"**{f(kd.get('value')) if kd else NM}** "
          f"({'MET' if kd.get('met') else 'NOT MET' if kd else NM}) |",
