@@ -115,3 +115,49 @@ def reclaim_orphan(run, what="train"):
     print(f"reclaimed orphan {run} ({epochs} epoch lines) -> {dest}",
           file=sys.stderr, flush=True)
     return dest
+
+
+# The GPU lease this track is bound to, from the brief: devices 0 and 1, never
+# 2 or 3. Overridable so the module is not a hard-coded fact about one box.
+GPU_LEASE_DEFAULT = "0,1"
+
+
+def assert_gpu_lease(device: str = "cuda", env=None):
+    """Refuse to run on a GPU outside this track's lease.
+
+    A `scripts/train.py` from this repository was observed running with
+    `CUDA_VISIBLE_DEVICES=2,3` on 2026-09-10, which is another track's lease. It
+    exited before any allocation appeared on those devices -- every compute app
+    on the box was on GPU 0 or 1 throughout -- so nothing is known to have been
+    disturbed, and this exists so the next one cannot be.
+
+    It was launched by the other loop sharing this working tree (D4), which is
+    why the check belongs in the code rather than in a launcher: whichever loop
+    starts a trainer, this fires. `CUDA_VISIBLE_DEVICES` is what the process can
+    actually reach, so it is the thing to check, not the `--device` flag, which
+    is an index *into* that set and is `cuda:0` in every one of this repo's
+    scripts regardless of which physical GPU that is.
+    """
+    env = os.environ if env is None else env
+    if not str(device).startswith("cuda"):
+        return None
+    vis = env.get("CUDA_VISIBLE_DEVICES")
+    if vis is None or vis.strip() == "":
+        # Unset means every GPU is visible, which includes devices outside the
+        # lease. Refuse rather than gamble on which one torch picks.
+        raise SystemExit(
+            "REFUSING to start on cuda with CUDA_VISIBLE_DEVICES unset: every "
+            f"GPU on the box would be reachable and this track's lease is "
+            f"{env.get('EOT_GPU_LEASE', GPU_LEASE_DEFAULT)}. Set it explicitly.")
+    lease = {d.strip() for d in env.get("EOT_GPU_LEASE", GPU_LEASE_DEFAULT).split(",")
+             if d.strip()}
+    asked = {d.strip() for d in vis.split(",") if d.strip()}
+    outside = sorted(asked - lease)
+    if outside:
+        raise SystemExit(
+            f"REFUSING to start: CUDA_VISIBLE_DEVICES={vis} includes "
+            f"{', '.join(outside)}, outside this track's GPU lease "
+            f"({sorted(lease)}). Those devices belong to another track and a job "
+            f"of this repo's was seen with them visible on 2026-09-10. Relaunch "
+            f"with a leased device, or set EOT_GPU_LEASE if the lease changed.")
+    return sorted(asked)

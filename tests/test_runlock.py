@@ -167,6 +167,43 @@ def test_reclaim_orphan_is_a_noop_on_a_fresh_directory():
     assert runlock.reclaim_orphan(run) is None
 
 
+def test_gpu_lease_refuses_a_device_outside_it():
+    """A scripts/train.py from this repo was seen with CUDA_VISIBLE_DEVICES=2,3
+    on 2026-09-10 -- another track's lease. It exited before any allocation
+    appeared there, so nothing is known to have been disturbed, and this makes
+    the next one impossible."""
+    for vis in ("2", "3", "0,2", "2,3", "1,3"):
+        try:
+            runlock.assert_gpu_lease("cuda:0", {"CUDA_VISIBLE_DEVICES": vis})
+        except SystemExit as e:
+            assert "outside this track's GPU lease" in str(e)
+        else:
+            raise AssertionError(f"CUDA_VISIBLE_DEVICES={vis} should be refused")
+
+
+def test_gpu_lease_allows_the_leased_devices():
+    for vis in ("0", "1", "0,1", "1,0"):
+        got = runlock.assert_gpu_lease("cuda:0", {"CUDA_VISIBLE_DEVICES": vis})
+        assert got, vis
+
+
+def test_gpu_lease_refuses_an_unset_variable():
+    """Unset means every GPU on the box is reachable, which includes the ones
+    this track must not touch. Refuse rather than gamble on torch's pick."""
+    try:
+        runlock.assert_gpu_lease("cuda:0", {})
+    except SystemExit as e:
+        assert "unset" in str(e)
+    else:
+        raise AssertionError("an unset CUDA_VISIBLE_DEVICES should be refused")
+
+
+def test_gpu_lease_ignores_cpu_runs_and_honours_an_override():
+    assert runlock.assert_gpu_lease("cpu", {"CUDA_VISIBLE_DEVICES": "2,3"}) is None
+    assert runlock.assert_gpu_lease(
+        "cuda:0", {"CUDA_VISIBLE_DEVICES": "2", "EOT_GPU_LEASE": "2,3"}) == ["2"]
+
+
 if __name__ == "__main__":
     n = 0
     for k, v in sorted(globals().items()):

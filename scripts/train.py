@@ -119,6 +119,8 @@ def main():
     np.random.seed(a.seed)
     run = Path(a.run)
     run.mkdir(parents=True, exist_ok=True)
+    # Before the lock, so a lease violation cannot even take a run directory.
+    runlock.assert_gpu_lease(a.device)
     runlock.acquire(run, what="train")
     # A run directory belongs to exactly one process. Two trainers once shared
     # runs/base -- a launch fired from a compound command I believed had aborted

@@ -9,6 +9,8 @@ nested.
 from __future__ import annotations
 
 import json
+import os
+import time
 import sys
 from math import comb
 from pathlib import Path
@@ -75,11 +77,30 @@ def test_arms_reads_the_variant_from_the_directory_and_checks_it(tmp=None):
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
         (root / "kcurve").mkdir()
-        def mk(name, **cfg):
+        def mk(name, complete=True, **cfg):
+            """A fixture arm. `complete=False` leaves off the completion
+            markers, which is what a killed or still-training run looks like.
+
+            `arms()` filters by `is_complete` since 2026-09-10 -- partial
+            checkpoints had been entering seed groups and always score worse --
+            so a fixture that writes only args.json and best.pt is now invisible
+            to it, and this test asserted against an empty dict for as long as
+            that mismatch stood. The completion markers are written in the order
+            `seed_spread.completed` requires: `test_eval.json` must not predate
+            `best.pt`, because an eval older than its checkpoint belongs to no
+            model on disk.
+            """
             d = root / "kcurve" / name if name.startswith("K") else root / name
             d.mkdir(parents=True, exist_ok=True)
             (d / "args.json").write_text(json.dumps(cfg))
             (d / "best.pt").write_bytes(b"")
+            if complete:
+                (d / "log.jsonl").write_text('{"epoch": 1}\n')
+                (d / "done.json").write_text(json.dumps({"finished": 1.0}))
+                (d / "test_eval.json").write_text(json.dumps({"ok": True}))
+                now = time.time()
+                os.utime(d / "best.pt", (now - 10, now - 10))
+                os.utime(d / "test_eval.json", (now, now))
             return d
         mk("seed1", stride=1, blind=False, seed=1)
         mk("seed2", stride=1, blind=False, seed=2)
@@ -92,6 +113,19 @@ def test_arms_reads_the_variant_from_the_directory_and_checks_it(tmp=None):
         # the anchor is the stride-1 conditioned runs, and the blind ablation is
         # not one of them -- pooling it would drag the anchor from 0.019 to 0.67
         assert [p.name for p in found[(1, "nv")]] == ["seed1", "seed2"]
+
+        # And an arm that has not finished must not appear at all. This is the
+        # guard whose absence contaminated every K-curve number the repo had
+        # produced: a partial checkpoint always scores worse than a finished
+        # one, so including it biases an arm downward by an amount that depends
+        # on queue order rather than on anything about the arm.
+        mk("K2_nv_s2", complete=False, stride=2, overlap_pairs=False, seed=2)
+        mk("K10_nv_s1", complete=False, stride=10, overlap_pairs=False, seed=1)
+        again = arms(root)
+        assert sorted(again) == sorted(found), (
+            "an unfinished arm changed the arm set")
+        assert [p.name for p in again[(2, "nv")]] == ["K2_nv_s1"], (
+            "an unfinished seed was pooled into a finished arm")
 
         # a directory whose name disagrees with its args.json is a mislabelled
         # arm, which is how a data-matched control gets reported as a horizon

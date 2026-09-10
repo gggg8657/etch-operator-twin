@@ -2819,3 +2819,30 @@ routes from `cost_floor.json` are the ones that keep the field output and shrink
 the *network* — a 3×3 convolution at width 8 emits a full field in 370 µs, which
 is **748×**, and H7's shrink sweep is queued to say what that costs in accuracy.
 That is where the next turn goes.
+
+### Infrastructure: a job of this repo's was seen outside the GPU lease
+
+`scripts/train.py` from this repository was running with
+`CUDA_VISIBLE_DEVICES=2,3` at 13:55 (pid 1456532). The α lease is devices 0 and
+1; 2 and 3 belong to other tracks. None of this track's tmux sessions can produce
+that — `kcurve.sh` and `shrink.sh` launch on GPU 0, `kcurve_sm.sh` on GPU 1, and
+all four launchers set the variable inline — so it came from the other loop
+sharing this working tree (D4, above).
+
+**What is and is not known.** The process had exited by the time I looked, and
+every compute application on the box was on GPU 0 or GPU 1 throughout
+(`nvidia-smi --query-compute-apps`, cross-referenced against the device UUIDs).
+So no allocation was ever observed on 2 or 3 and nothing is known to have been
+disturbed on another track. I am not claiming it consumed another track's GPU; I
+am recording that it could have.
+
+I did not kill it and would not have: it is not mine to kill, and it is in this
+repository, so the fix belongs in the code rather than in a launcher — whichever
+loop starts a trainer, the check fires. `runlock.assert_gpu_lease` refuses any
+`CUDA_VISIBLE_DEVICES` containing a device outside `EOT_GPU_LEASE` (default
+`0,1`, from the brief), and refuses an *unset* variable too, since unset means
+every GPU on the box is reachable and torch's choice is then a gamble. It checks
+`CUDA_VISIBLE_DEVICES` rather than `--device`, because `--device` is an index
+*into* that set and is `cuda:0` in every script here regardless of which physical
+GPU that is. Called before `acquire`, so a lease violation cannot even take a run
+directory. Four tests, and all four existing launchers verified to pass it.
