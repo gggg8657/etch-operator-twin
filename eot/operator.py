@@ -150,3 +150,72 @@ def band_rel_l2(pred, target, band_mask, reduce="mean"):
     den = ((target.flatten(1) ** 2) * m).sum(dim=1).sqrt().clamp_min(1e-8)
     err = num / den
     return err.mean() if reduce == "mean" else err
+
+
+class CompactCNN(nn.Module):
+    """A deliberately small conditioned operator that emits the same field.
+
+    **Why this exists.** `runs/cost_floor.json` priced a two-layer 3x3
+    convolution at **370 us / 748x**, within 1.34x of the 1000x clause, and that
+    row is the only architecture this repo has measured anywhere near it. But
+    that row is `Conv2d(1,8,3) -> GELU -> Conv2d(8,1,3)` on a bare field: **no
+    recipe embedding, no coordinate channels, no broadcast**. It cannot be a
+    surrogate for this task, because the task is to advance a surface *given a
+    recipe*, and its cost therefore understates any real model.
+
+    This class is the honest version of that row. It keeps every structural
+    element of `EtchOperator` that the conditioning needs -- the recipe MLP, the
+    broadcast to H x W, the two coordinate channels, the residual form -- and
+    replaces only the spectral blocks with 3x3 convolutions. So a cost
+    difference between this and `EtchOperator` at the same width is a difference
+    between spectral and local mixing, not between a surrogate and a toy.
+
+    The interface matches `EtchOperator` exactly (`residual`, `forward`,
+    `rollout`, `param_count`) so it drops into the existing rollout, training
+    and benchmarking machinery untouched.
+    """
+
+    def __init__(
+        self,
+        cond_dim: int = 7,
+        width: int = 8,
+        n_layers: int = 2,
+        cond_ch: int = 8,
+        kernel: int = 3,
+    ):
+        super().__init__()
+        self.width, self.n_layers, self.cond_ch = width, n_layers, cond_ch
+        self.kernel = kernel
+        self.cond = nn.Sequential(
+            nn.Linear(cond_dim, 32), nn.GELU(), nn.Linear(32, cond_ch)
+        )
+        self.lift = nn.Conv2d(1 + 2 + cond_ch, width, 1)
+        pad = kernel // 2
+        self.body = nn.ModuleList(
+            [nn.Conv2d(width, width, kernel, padding=pad) for _ in range(n_layers)]
+        )
+        self.proj = nn.Conv2d(width, 1, 1)
+
+    def residual(self, phi, cond):
+        B, _, H, W = phi.shape
+        c = self.cond(cond)[:, :, None, None].expand(-1, -1, H, W).to(phi.dtype)
+        x = torch.cat([phi, EtchOperator.coords(B, H, W, phi.device, phi.dtype), c],
+                      dim=1)
+        x = self.lift(x)
+        for conv in self.body:
+            x = torch.nn.functional.gelu(conv(x))
+        return self.proj(x)
+
+    def forward(self, phi, cond):
+        return phi + self.residual(phi, cond)
+
+    def rollout(self, phi0, cond, n_steps):
+        out = []
+        phi = phi0
+        for _ in range(n_steps):
+            phi = self.forward(phi, cond)
+            out.append(phi)
+        return torch.stack(out, dim=1)
+
+    def param_count(self):
+        return sum(p.numel() for p in self.parameters())

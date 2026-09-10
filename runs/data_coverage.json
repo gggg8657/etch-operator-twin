@@ -1,0 +1,113 @@
+{
+  "question": "mix_data.py asserts that adding independently-drawn timesteps widens the covered per-step-displacement interval. Does it, and by enough to cover the crossed split?",
+  "why_this_gates_a_run": "if the independent set's displacement range does not extend past the adaptive one, mixing cannot fix a coverage failure and the training arm is dead before it starts. No model here.",
+  "quantity": "per-trajectory mean per-step displacement (\u00b5m), the same quantity scripts/coverage_verdict.py defines its coverage rule on",
+  "coverage_rule": "train-split p1..p99, as in coverage_verdict.py",
+  "size_matched_mix": {
+    "n_per_source": 450,
+    "seed": 0,
+    "note": "same trajectory count as the anchor's train split, so a mixed arm built this way differs from the anchor ONLY in the dt-recipe coupling, not in data volume"
+  },
+  "distributions": {
+    "train": {
+      "n": 900,
+      "min": 0.060483749761065866,
+      "max": 0.32714388844812065,
+      "p1": 0.07555290407071312,
+      "p99": 0.2987453897955747,
+      "median": 0.1652502683128978
+    },
+    "train_indep": {
+      "n": 735,
+      "min": 0.006657265487974859,
+      "max": 0.40843580322441675,
+      "p1": 0.011685357335262197,
+      "p99": 0.3784135920281855,
+      "median": 0.10734511913999137
+    },
+    "test": {
+      "n": 250,
+      "min": 0.06174106924284932,
+      "max": 0.3118422390632573,
+      "p1": 0.07295417297855376,
+      "p99": 0.2959484393208677,
+      "median": 0.16995917281024675
+    },
+    "test_crossed": {
+      "n": 209,
+      "min": 0.012657531839294906,
+      "max": 0.4328478470943689,
+      "p1": 0.018547316239749843,
+      "p99": 0.35712703941540186,
+      "median": 0.10699988888313867
+    },
+    "mixed_all": {
+      "n": 1635,
+      "min": 0.006657265487974859,
+      "max": 0.40843580322441675,
+      "p1": 0.015064791165963905,
+      "p99": 0.3486941284238451,
+      "median": 0.14733430147181584
+    },
+    "mixed_matched": {
+      "n": 900,
+      "min": 0.006657265487974859,
+      "max": 0.40843580322441675,
+      "p1": 0.013009721542081553,
+      "p99": 0.36378420012986507,
+      "median": 0.14415611228719435
+    }
+  },
+  "dt_ranges": {
+    "train": {
+      "min": 0.05991246923804283,
+      "max": 1.0
+    },
+    "train_indep": {
+      "min": 0.06518673896789551,
+      "max": 0.9865236878395081
+    }
+  },
+  "rules": {
+    "train": {
+      "lo": 0.07555290407071312,
+      "hi": 0.2987453897955747,
+      "frac_crossed_inside": 0.5789473684210527,
+      "n_crossed_inside": 121,
+      "n_crossed_total": 209,
+      "frac_test_inside": 0.972
+    },
+    "train_indep": {
+      "lo": 0.011685357335262197,
+      "hi": 0.3784135920281855,
+      "frac_crossed_inside": 0.9952153110047847,
+      "n_crossed_inside": 208,
+      "n_crossed_total": 209,
+      "frac_test_inside": 1.0
+    },
+    "mixed_all": {
+      "lo": 0.015064791165963905,
+      "hi": 0.3486941284238451,
+      "frac_crossed_inside": 0.9760765550239234,
+      "n_crossed_inside": 204,
+      "n_crossed_total": 209,
+      "frac_test_inside": 1.0
+    },
+    "mixed_matched": {
+      "lo": 0.013009721542081553,
+      "hi": 0.36378420012986507,
+      "frac_crossed_inside": 0.9904306220095693,
+      "n_crossed_inside": 207,
+      "n_crossed_total": 209,
+      "frac_test_inside": 1.0
+    }
+  },
+  "verdict": {
+    "adaptive_covers_crossed": 0.5789473684210527,
+    "matched_mix_covers_crossed": 0.9904306220095693,
+    "all_mix_covers_crossed": 0.9760765550239234,
+    "gate_open": true,
+    "reading": "OPEN: a size-matched mix raises the fraction of crossed trajectories inside the trained displacement range from 0.579 to 0.990, so the coverage failure H2 named is addressable by the data already on disk and the training arm is worth running.",
+    "in_distribution_cost": "the matched mix still covers 1.000 of the in-distribution test split against the adaptive rule's 0.972 \u2014 widening the interval cannot lose in-distribution coverage, but it does spend half the training trajectories on a different regime, and whether THAT costs in-distribution accuracy is a question for the run, not for this file"
+  }
+}

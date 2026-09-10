@@ -9,3 +9,7 @@ logs/*.log
 *.lock
 .design.lock
 data_crossed/*.npz
+
+# Mixed training sets are regenerable from data/ by scripts/mix_data.py (792 MB
+# for the size-matched one), same rule data/ and data_crossed/ already have.
+data_mixed*/

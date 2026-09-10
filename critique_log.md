@@ -3368,3 +3368,143 @@ the enumeration, so the floor is `1/total`. Corrected to `1/total` unless
 the invariant the bug violated: perfect separation must land *exactly* on the
 reported floor. The p-values themselves were never wrong — only the resolution
 claimed beside them, which is what a reader needs to interpret a null.
+
+---
+
+## Turn 8, H13 — written before the run: "no difference detected" is worthless without an interval
+
+Last turn I reported `K2_sm` at seed-level `p = 0.1879` against an attainable
+floor of 0.0061 and called the null **informative** rather than underpowered.
+That inference is not sound, and the error is a conflation I should not have
+made.
+
+The p-floor is a statement about **resolution**: the smallest p-value the
+enumeration can return, i.e. whether *some* arrangement of these seeds could
+reject at all. It is not a statement about **power**: whether the test could
+detect a difference of the size actually at stake. Those come apart badly at
+small n. With 3 seeds against 8, a floor of 0.0061 says only that a perfect
+separation is available; it says nothing about whether a true difference of, say,
+0.004 band rel-L2 — comfortably larger than several effects this K-curve
+discusses — would have been caught. So "the test had the resolution to detect
+one" is not the licence I used it as.
+
+The fix is the standard one and it needs no new data: **invert the permutation
+test to get a confidence interval for the mean difference.** The 95% interval is
+the set of shifts δ such that subtracting δ from the arm's seeds leaves the test
+unrejected. That is assumption-free — no normality, no variance homogeneity — and
+it turns "no difference detected" into "no difference larger than *this*
+detected", which is the only form of a null a reader can use.
+
+**H13: the seed-level intervals at 2–3 seeds are wide enough to contain effects
+the K-curve treats as real, so several of last turn's readings — including my own
+`K2_sm` null and the "distinguishable" verdicts whose p sat exactly on the floor —
+are much weaker than their p-values suggest.**
+
+The distinguishing prediction. If H13 is right, `K2_sm`'s interval will cover a
+sizeable fraction of the K=1→K=5 gap (0.01890 → 0.02330, i.e. 0.0044), meaning
+the null cannot rule out an effect of the same order as the curve's own
+structure; and the `K5_sm`/`K10_sm` intervals, whose p-values sat exactly on
+their floors, will have lower bounds barely above zero. If H13 is wrong, the
+intervals will be tight relative to 0.0044 and last turn's readings stand as
+stated.
+
+Either way the interval, not the p-value, is what goes in the documents from now
+on. A p-value at n=3 answers a question nobody asked; the interval answers the
+one everybody does.
+
+---
+
+## Turn 6 — H13, written before the run: the crossed plateau is a training-distribution limit
+
+### What the rendered curve shows that I had not noticed
+
+`RESULTS.md`'s new Clause 1d table puts two arms side by side that reach the
+crossed split by different routes:
+
+| arm | starts | grad steps | crossed terminal |
+|---|---|---|---|
+| K2_nv | 5 | 11,280 | 0.05640 |
+| K2_ov | 9 | 20,320 | **0.05174** |
+| K2_sm | 5 | 22,560 | **0.05170** |
+
+`ov` buys input-state diversity, `sm` buys gradient steps, and **they land on the
+same number to four decimal places**. Two independent mechanisms plateauing
+together is not the signature of either mechanism being the binding constraint —
+it is the signature of a third thing that both leave untouched. So I am *not*
+running the missing `ov`+`sm` cell: on this evidence the two are substitutes and
+the combination would be predicted to reach ~0.0517 as well, which is not worth
+GPU. (Recording the arm I decided against, and why, because the decision is
+itself a claim.)
+
+Note also that the anchor's own crossed reading is 0.05433 — the clause fails
+there by a *small* margin, and `ov`/`sm` at K=2 are already better than the
+anchor. Nothing in this repo has ever met the crossed clause, and nothing has
+missed it by much at K ≤ 2.
+
+### The third thing, and it has been sitting in the repo unused
+
+Clause 1c localised the crossed failure to **displacement coverage**.
+`data/train_indep.npz` — 735 trajectories, `dt_mode: independent`, 400 MB of
+already-simulated ground truth — was generated for exactly that reason and
+**has never been trained on**; `grep -l indep runs/*/args.json` returns nothing.
+`scripts/mix_data.py` was written to combine it and never run.
+
+Measured before spending any GPU (`runs/coverage_gap.json`):
+
+| set | displacement p1–p99 | covers of crossed split |
+|---|---|---|
+| train (adaptive) | 0.0756–0.2987 | **57.9%** (121/209) |
+| train_indep | 0.0117–0.3784 | — |
+| mixed | 0.0151–0.3487 | **97.6%** (204/209) |
+| test_crossed itself | 0.0185–0.3571 | — |
+
+So the adaptive training set contains the displacements of barely more than half
+the crossed split, and mixing raises that to 97.6% — a gain of **39.7 points**.
+The mechanism is not a wider dt range: the marginals nearly coincide (adaptive
+0.0599–1.0000, independent 0.0652–0.9865). The adaptive protocol picks dt *as a
+function of the recipe*, so displacement ≈ rate(recipe) × dt is confined;
+drawing dt independently lets a fast recipe meet a long timestep.
+
+**H13: the crossed-split plateau at ~0.0517 is a training-distribution limit, not
+an optimisation or input-diversity limit. An operator trained on data whose
+displacement range covers the crossed split will beat the plateau.**
+
+Distinguishing predictions. If the plateau is distributional, the mixed arm's
+crossed error falls below 0.0517 while its in-distribution error holds. If the
+decoupled problem is simply harder to fit, the mixed arm will not beat 0.0517
+even though the displacements are now in its training set — and that would be a
+much stronger negative than anything measured so far, because it would rule out
+the coverage explanation that clause 1c established.
+
+### The protocol trap this experiment walks into, and the rule set before running
+
+The coverage rule is **derived from the training set**. A mixed-data arm has a
+wider rule, so its `crossed_in_coverage` would be computed over 97.6% of the
+split where every existing figure is computed over 57.9%. Reporting that as an
+improvement would be the same number measured on a different set — precisely the
+silent test-loosening the brief forbids. Fixed in advance
+(`scripts/coverage_gap.py` records the rule): every arm is reported on
+
+* the **adaptive-coverage subset** (121 trajectories), which is what
+  0.05433 / 0.05174 / 0.05170 refer to, so old and new arms are directly
+  comparable; and
+* the **whole crossed split** (209), protocol-free and comparable by
+  construction;
+
+with each arm's own coverage fraction as context and never as the verdict set.
+
+### And the confound the K-curve already taught me to control
+
+A mixed set built by concatenation is 1.8× the adaptive set, so an arm trained on
+it at the same epoch count would differ from the anchor in **three** ways at once
+— dt coupling, data volume and gradient-step count — and turn 5's lesson is that
+the step count alone can manufacture a monotone trend. So the primary arm is
+**size-matched**: `data_mixed_matched` holds 900 train trajectories (450 adaptive
++ 450 independent) and 150 val (75 + 75), giving the anchor's 9,000 pairs, 80
+epochs and ~22.5k steps exactly. Only the dt coupling of half the data differs.
+It still covers **97.6%** of the crossed split, so halving the mix costs nothing
+in coverage.
+
+Its own confound, stated rather than hidden: it carries half the adaptive data,
+so an in-distribution regression could be volume rather than coupling. The
+full-mix arm brackets that from the other side and is queued behind it.

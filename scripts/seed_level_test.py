@@ -108,6 +108,54 @@ def exact_two_sample(a: np.ndarray, b: np.ndarray, max_splits: int = 200_000,
             "smallest_attainable_two_sided_p": float(1 / (max_splits + 1))}
 
 
+def invert_to_interval(arm: np.ndarray, anc: np.ndarray, alpha: float = 0.05,
+                       n_grid: int = 801, span: float = 6.0) -> dict:
+    """95% CI for the arm-minus-anchor mean difference, by inverting the test.
+
+    **Why this exists.** A p-value at n=3 answers "could these seeds have been
+    shuffled to look this extreme", which is a statement about resolution. It
+    does not say what effect size the test could have detected, and I used a
+    p-floor below 0.05 as though it did. The interval is the object that answers
+    the question a null raises: the set of shifts delta for which subtracting
+    delta from the arm leaves the test unrejected.
+
+    Assumption-free -- no normality, no equal variances -- because it reuses the
+    same exact permutation enumeration. Reported as an interval over the mean
+    difference in band rel-L2, in the same units as every other number here.
+
+    `span` sets the search range as a multiple of the pooled spread, and the
+    result records whether the interval hit that range rather than closing, so a
+    truncated interval can never be read as a finite one.
+    """
+    arm = np.asarray(arm, float)
+    anc = np.asarray(anc, float)
+    obs = float(arm.mean() - anc.mean())
+    spread = float(max(arm.std(ddof=0) + anc.std(ddof=0), 1e-9))
+    lo_edge, hi_edge = obs - span * spread - abs(obs), obs + span * spread + abs(obs)
+    deltas = np.linspace(lo_edge, hi_edge, n_grid)
+    kept = []
+    for d in deltas:
+        t = exact_two_sample(arm - d, anc)
+        if t["p"] > alpha:
+            kept.append(float(d))
+    if not kept:
+        return {"alpha": alpha, "point": obs, "lo": None, "hi": None,
+                "empty": True,
+                "note": "no shift was left unrejected anywhere on the search "
+                        "range; with these seed counts the floor may exceed "
+                        "alpha, in which case NO interval exists at this level "
+                        "and the test cannot bound the effect at all"}
+    lo, hi = min(kept), max(kept)
+    return {"alpha": alpha, "point": obs, "lo": lo, "hi": hi,
+            "width": hi - lo, "empty": False,
+            "contains_zero": bool(lo <= 0.0 <= hi),
+            "truncated_at_search_edge": bool(
+                lo <= deltas[0] + 1e-12 or hi >= deltas[-1] - 1e-12),
+            "method": "inversion of the exact two-sample permutation test: the "
+                      "set of shifts delta with p(arm - delta, anchor) > alpha",
+            "n_grid": n_grid}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--kcurve", default="runs/kcurve.json")
@@ -159,17 +207,55 @@ def main():
             t["arm_mean"] = float(np.mean(arm_seeds))
             t["anchor_mean"] = float(np.mean(anc_seeds))
             # A null is only informative if the test could have rejected.
+            t["interval"] = invert_to_interval(np.asarray(arm_seeds),
+                                              np.asarray(anc_seeds))
             t["can_reject_at_0.05"] = bool(
                 t["smallest_attainable_two_sided_p"] <= 0.05)
-            t["reading"] = (
-                "distinguishable" if t["p"] <= 0.05 else
-                ("no difference detected, and the test HAD the resolution to "
-                 "detect one" if t["can_reject_at_0.05"] else
-                 "CANNOT TELL: with these seed counts the smallest attainable "
-                 "two-sided p is above 0.05, so no arrangement of these seeds "
-                 "could have produced a significant result"))
+            iv = t["interval"]
+            if not t["can_reject_at_0.05"]:
+                t["reading"] = (
+                    "CANNOT TELL: with these seed counts the smallest attainable "
+                    "two-sided p is above 0.05, so no arrangement of these seeds "
+                    "could have produced a significant result")
+            elif t["p"] <= 0.05:
+                t["reading"] = (
+                    f"distinguishable, and the difference is somewhere in "
+                    f"[{iv['lo']:.5f}, {iv['hi']:.5f}]" if not iv["empty"] else
+                    "distinguishable, but the interval is empty at this level")
+            else:
+                t["reading"] = (
+                    f"no difference detected; the 95% interval on the mean "
+                    f"difference is [{iv['lo']:.5f}, {iv['hi']:.5f}], so effects "
+                    f"up to {max(abs(iv['lo']), abs(iv['hi'])):.5f} are NOT ruled "
+                    f"out" if not iv["empty"] else
+                    "no difference detected and no interval exists at this level")
             row[split] = t
         res["arms"][name] = row
+
+    # A yardstick, so an interval width can be read against something the
+    # K-curve actually treats as a real effect rather than against zero. The
+    # K=1 -> K=5 step-matched gap is the smallest structure in the curve that
+    # this repo has called a difference.
+    try:
+        yard = abs(arms["K5_sm"]["in_distribution"]["terminal_step"]["point"]
+                   - arms[a.anchor]["in_distribution"]["terminal_step"]["point"])
+    except KeyError:
+        yard = None
+    res["yardstick"] = {
+        "value": yard,
+        "what": "|K5_sm - K1_nv| terminal-step in-distribution, the smallest gap "
+                "this repo has treated as a real effect in the K-curve",
+        "why": "an interval is only interpretable against an effect size that "
+               "matters; a null whose interval covers this yardstick has not "
+               "ruled out a difference of the same order as the curve's own "
+               "structure",
+    }
+    for name, row in res["arms"].items():
+        for split in ("in_distribution", "crossed_in_coverage"):
+            iv = row[split]["interval"]
+            row[split]["interval_covers_yardstick"] = bool(
+                yard is not None and not iv["empty"]
+                and iv["lo"] <= yard <= iv["hi"])
 
     # The claim this script was written to audit.
     k2sm = res["arms"].get("K2_sm", {}).get("in_distribution")
@@ -194,13 +280,19 @@ def main():
     }
     Path(a.out).write_text(json.dumps(res, indent=2))
     print(json.dumps({"audit": res["audit_of_the_K2_sm_claim"]}, indent=2))
+    print(f"\nyardstick |K5_sm - K1_nv| in-dist = "
+          f"{res['yardstick']['value']:.5f}" if res["yardstick"]["value"]
+          else "\nyardstick unavailable")
     for n, r in res["arms"].items():
         for split in ("in_distribution", "crossed_in_coverage"):
             t = r[split]
+            iv = t["interval"]
+            ivs = ("empty" if iv["empty"]
+                   else f"[{iv['lo']:+.5f},{iv['hi']:+.5f}] w={iv['width']:.5f}")
             print(f"{n:8} {split[:9]:9} n={t['n_a']}v{t['n_b']} "
-                  f"arm={t['arm_mean']:.5f} anc={t['anchor_mean']:.5f} "
-                  f"p={t['p']:.4f} min_p={t['smallest_attainable_two_sided_p']:.4f} "
-                  f"{t['reading'][:34]}")
+                  f"d={t['observed']:+.5f} p={t['p']:.4f} "
+                  f"floor={t['smallest_attainable_two_sided_p']:.4f} "
+                  f"CI={ivs} yard={t.get('interval_covers_yardstick')}")
 
 
 if __name__ == "__main__":

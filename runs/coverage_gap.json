@@ -1,0 +1,94 @@
+{
+  "question": "would training on the independent-dt data widen displacement coverage of the crossed split enough to matter? Measured before any GPU is spent, because if it would not, the route is dead.",
+  "protocol": {
+    "quantity": "mean absolute per-step displacement per trajectory (um), the quantity clause 1c localised the crossed failure to",
+    "dt_ranges_nearly_coincide": {
+      "note": "the independent set does NOT widen the marginal dt range; it decouples dt from the recipe, and displacement = rate(recipe) x dt is what widens",
+      "adaptive": [
+        0.05991246923804283,
+        1.0
+      ],
+      "independent": [
+        0.06518673896789551,
+        0.9865236878395081
+      ]
+    },
+    "comparability_rule": "the coverage rule is derived from the training set, so a mixed-data arm has a WIDER rule and would be scored on a larger subset of the crossed split. Every arm must be reported on (a) the adaptive-coverage subset, which is what every crossed figure in this repo currently refers to, and (b) the whole crossed split. An arm's own coverage is context, never the verdict set."
+  },
+  "displacement": {
+    "train": {
+      "n": 900,
+      "p1": 0.07555290407071312,
+      "p99": 0.2987453897955747,
+      "min": 0.060483749761065866,
+      "max": 0.32714388844812065,
+      "median": 0.1652502683128978
+    },
+    "train_indep": {
+      "n": 735,
+      "p1": 0.011685357335262197,
+      "p99": 0.3784135920281855,
+      "min": 0.006657265487974859,
+      "max": 0.40843580322441675,
+      "median": 0.10734511913999137
+    },
+    "test": {
+      "n": 250,
+      "p1": 0.07295417297855376,
+      "p99": 0.2959484393208677,
+      "min": 0.06174106924284932,
+      "max": 0.3118422390632573,
+      "median": 0.16995917281024675
+    },
+    "test_crossed": {
+      "n": 209,
+      "p1": 0.018547316239749843,
+      "p99": 0.35712703941540186,
+      "min": 0.012657531839294906,
+      "max": 0.4328478470943689,
+      "median": 0.10699988888313867
+    }
+  },
+  "displacement_mixed": {
+    "n": 1635,
+    "p1": 0.015064791165963905,
+    "p99": 0.3486941284238451,
+    "min": 0.006657265487974859,
+    "max": 0.40843580322441675,
+    "median": 0.14733430147181584
+  },
+  "coverage_of_crossed_split": {
+    "adaptive_p1_p99": {
+      "lo": 0.07555290407071312,
+      "hi": 0.2987453897955747,
+      "frac_crossed_inside": 0.5789473684210527,
+      "n_crossed_inside": 121,
+      "n_crossed_total": 209,
+      "frac_test_inside": 0.972
+    },
+    "independent_p1_p99": {
+      "lo": 0.011685357335262197,
+      "hi": 0.3784135920281855,
+      "frac_crossed_inside": 0.9952153110047847,
+      "n_crossed_inside": 208,
+      "n_crossed_total": 209,
+      "frac_test_inside": 1.0
+    },
+    "mixed_p1_p99": {
+      "lo": 0.015064791165963905,
+      "hi": 0.3486941284238451,
+      "frac_crossed_inside": 0.9760765550239234,
+      "n_crossed_inside": 204,
+      "n_crossed_total": 209,
+      "frac_test_inside": 1.0
+    }
+  },
+  "verdict": {
+    "frac_crossed_covered_by_adaptive": 0.5789473684210527,
+    "frac_crossed_covered_by_mixed": 0.9760765550239234,
+    "gain": 0.3971291866028708,
+    "route_is_worth_a_run": true,
+    "reading": "The adaptive training set covers 57.9% of the crossed split's displacements; mixing in the independent-dt set covers 97.6%. The crossed failure was localised to displacement coverage, so this is the direct attack on it and is worth the GPU.",
+    "what_it_does_not_show": "that wider coverage will translate into a lower crossed error. It shows only that the training distribution would contain the displacements the crossed split asks for. Whether the operator then learns them is the experiment."
+  }
+}
