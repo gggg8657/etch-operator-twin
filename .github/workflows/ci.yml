@@ -33,3 +33,8 @@ jobs:
         run: PYTHONPATH=. python tests/test_stride.py
       - name: K-curve verdict machinery (exact sign test, arm identification, nested restarts)
         run: PYTHONPATH=. python tests/test_kcurve.py
+      # The interface reconstruction the surface-representation floor is measured
+      # with. Five separate bugs in it produced five plausible floors; these are
+      # the round-trip cases whose answers are known in advance.
+      - name: surface-representation reconstruction round-trips
+        run: PYTHONPATH=. python tests/test_repr.py

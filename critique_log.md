@@ -2577,3 +2577,245 @@ mid-turn, and I should not do that to a process I cannot see the state of.
 
 What I have done instead is stop assuming I am the only writer: this entry, the
 duplicate removal, and a note in `WEEKEND.md`.
+
+---
+
+## Turn 5 — a fourth reconstruction bug, and the surface route's cost measured for the first time
+
+### The 0.0726 floor from last turn was inflated by a half-cell misalignment
+
+`rebuild_multi_fine` builds the phase on an `u`x grid, distance-transforms it,
+and samples back to the coarse grid. It sampled at fine index `u//2, 3u/2, ...`
+— cell *centres* — but every caller and the dataset itself define the coarse
+grid point `(j, x)` at `y = j*delta` (`ys = arange(H) * delta`), which is fine
+index `j*u`. So every sampled value was offset by half a coarse cell, 0.1 µm.
+
+Caught by a test written to assert something I believed anyway: a **flat**
+interface is represented *exactly* by a piecewise-constant-in-x reconstruction,
+so it must round-trip to ~0. It scored **0.131**. Now `<0.02`
+(`tests/test_repr.py::test_a_flat_front_reconstructs_almost_exactly`).
+
+This is the **fourth** bug in this one reconstruction, after the inverted sign
+convention, the hard-coded void top phase, and the ignored non-unit gradient.
+Every one of them produced a plausible-looking floor that was really my own
+error, which is the argument for the round-trip test rather than for more care.
+
+**The corrected floor is worse, and it now diverges under refinement.**
+`runs/repr_floor_aligned.json`, 25 trajectories whose window contains all the
+geometry: median **0.0761** (was 0.0726), and the convergence check reads
+u=4 → 0.0736, u=8 → **0.0785**, u=16 → **0.0831**, rising rather than settling.
+Before the fix it appeared converged at 0.0728/0.0729 — because the coarse EDT's
+own discretisation error was partly *cancelling* the horizontal quantisation
+error, and removing the misalignment removed the cancellation. So the previous
+"converged in the reconstruction grid" claim is withdrawn: the quantity was
+converging on the wrong value for the wrong reason, and the true
+piecewise-constant-in-x limit is above 0.083 and not yet bracketed.
+
+### The other loop closed the cheap variant; this is about the one it did not
+
+A concurrent instance measured `runs/surface_representable.json` and closed the
+**one-height-per-column** representation properly: a column carrying a trapped
+void (solid above *and* below) appears in **249 of 250** trajectories and
+**83.3%** of frames, the etch undercuts the mask, and the overhang grows
+monotonically with etch time (1.2% of frames at t=0 to 99.6% at t=10). That is
+correct and it kills `cost_floor.json`'s 5830× row, which was an
+`MLP(recipe) → 128 heights` — exactly the representation that cannot express an
+undercut. I accept it and am not re-deriving it.
+
+It does **not** touch the representation this script measures. `crossings_from_sdf`
+keeps *every* crossing per column, so a trapped void is exactly what its multiple
+crossings encode; `n_crossings_per_column` measures up to **6** on real data and
+`test_repr.py::test_multi_interface_columns_are_counted_not_collapsed` pins it.
+The multi-crossing form is still ~63 numbers per wafer against the field's
+16,384, a **260×** reduction, so it remains the live version of the route and the
+one worth deciding.
+
+### And its cost, measured here for the first time, is the binding constraint
+
+The floor argument has been the wrong one to spend turns on. `runs/repr_floor_aligned.json`'s
+cost block, CPU-seconds per call, 8 separate processes each (the interval
+protocol, because this box's between-process spread is 1.37×):
+
+| reconstruction | cost | vs the 277 µs budget | admissible? |
+|---|---|---|---|
+| `rebuild_vertical` (broadcast) | **36 µs** | 0.13× | **No** — signed *vertical* distance, not the Euclidean quantity clause 1 scores; and single-height, so undercuts kill it anyway |
+| `rebuild_edt` (coarse, single height) | **1,626 µs** | **5.9×** | **No** — single-height |
+| `rebuild_multi_fine` u=8 (expressive) | **155,130 µs** | **560×** | expressive, and 560× over |
+
+So the only reconstruction that can express the data costs **155 ms, which is
+56% of the solver's entire 277 ms warm cost per wafer.** The cheap one is
+inadmissible and the admissible one is 560× over budget. Clause 2's cheapest
+route is squeezed from both ends: the other loop's finding closes the
+representation that is cheap, and this closes the one that is expressive.
+
+**But 155 ms is my implementation, not the route.** It upsamples to 1024×1024,
+pads by 120 fine cells a side for the reflective boundary, and runs two Euclidean
+distance transforms over ~1.6 M cells. Declaring the route dead on that number
+would repeat precisely the error this repo has been correcting all weekend —
+attributing an implementation's limit to the task. It is not evidence about the
+representation until a reasonable implementation has been tried.
+
+### H9, written before the run
+
+**H9: an analytic distance-to-polyline reconstruction is both exact in x and
+cheap, so it simultaneously (a) removes the horizontal quantisation that makes
+the floor diverge and drops it below clause 1's 0.05, and (b) costs little
+enough that the surface route survives on cost.**
+
+One change answers both open questions, which is why it is preferred to the
+interpolation experiment I had queued. Distance from a grid point to a
+line-segment set is exact — no grid, no upsampling, no padding — so the
+reconstruction stops quantising the interface horizontally *and* stops paying for
+1.6 M cells.
+
+Connectivity is the one judgement call and it is stated rather than hidden: the
+i-th crossing of column *x* is joined to the i-th of column *x+1* **only when the
+two columns carry the same number of crossings**, and the polyline is broken
+otherwise. That is a heuristic, it is wrong at exactly the columns where an
+overhang begins or ends, and the count of broken joins is recorded in the output
+so the reader can see how often it fires.
+
+Distinguishing predictions:
+
+* If the floor drops below 0.05 **and** the cost lands under 277 µs, the surface
+  route is open on both counts and the previous three turns' "the route is
+  closed / squeezed" readings were all measurements of my rasteriser. I would
+  rather find this.
+* If the floor drops but the cost does not, the route dies on **cost**, and the
+  statement is about converting a compact representation back to a field metric
+  rather than about surfaces.
+* If the floor stays above 0.05 with an exact-in-x reconstruction, the loss is
+  genuine information loss at 0.2 µm column spacing, and the route dies on
+  **accuracy** — which would also mean the KPI's field metric is what closes it,
+  since the same surfaces satisfy clause 3's contour metric at 0.0061.
+
+---
+
+## Turn 4, second half — WITHDRAWN: "the undertraining alternative is refuted"
+
+The 8-seed grid advanced and the step-matched arms reached 3 seeds. The sign
+reversed.
+
+| arm | seeds | apps/wafer | in-dist terminal | range | crossed terminal | range |
+|---|---|---|---|---|---|---|
+| K1_nv (anchor) | 8 | 10 | 0.01890 | 0.00172 | 0.05433 | 0.03511 |
+| K2_nv | 8 | 5 | 0.03958 | 0.09859 | 0.07577 | 0.12007 |
+| **K2_sm** | 3 | 5 | **0.01942** | 0.00115 | **0.05170** | 0.00487 |
+| K5_nv | 7 | 2 | 0.03367 | 0.00553 | 0.07743 | 0.02302 |
+| **K5_sm** | 3 | 2 | **0.02482** | 0.00523 | 0.08225 | 0.01127 |
+| K10_nv | 7 | 1 | 0.04866 | 0.01069 | 0.10040 | 0.01850 |
+| **K10_sm** | 3 | 1 | **0.03927** | 0.03501 | 0.11848 | 0.03485 |
+
+**What I wrote last turn is wrong.** I reported that the step-matched control was
+*worse* than `nv` at K=2 and K=5 (0.09503 against 0.03075, 0.06842 against
+0.04429) and concluded "the undertraining alternative is refuted, not assumed".
+At three seeds the `sm` arms are **better** than `nv` at every K — 0.01942
+against 0.03958, 0.02482 against 0.03367, 0.03927 against 0.04866. The sign
+flipped. I labelled that table "screen, not verdict" at two seeds, which was
+right, and then drew a verdict-shaped conclusion from it in the commit message
+and the board entry, which was not. Both are withdrawn here and corrected there.
+
+This is the seed-count lesson doing exactly what `.overnight/RULES.md` says it
+does: two seeds got the *sign* wrong, not merely the size. It is the second time
+this weekend a two-or-three-seed screen in this repo has pointed the opposite way
+from its own eight-seed run.
+
+**And the correction changes the headline, not just a footnote.** Last turn's
+conclusion was "the K knob trades clause 1 for clause 2". At *matched gradient
+steps* it barely trades at all: K2_sm reaches 0.01942 in distribution against the
+anchor's 0.01890 — a gap of 0.0005, well inside the anchor's own 0.00172 seed
+range — while using **5 applications per wafer instead of 10**. So half the
+inference cost appears to be free, and the trade I reported was an artefact of
+giving the K arms K times fewer gradient steps.
+
+More striking: **K2_sm's crossed-in-coverage terminal reading is 0.05170**,
+against the anchor's 0.05433 and a clause threshold of 0.05. That is the closest
+anything in this repo has come to the crossed split, it is *better* than K=1, and
+its seed range is 0.00487 rather than the anchor's 0.03511. The crossed split is
+the reading clause 1 has failed under every coverage rule since it was first
+measured, and a K=2 arm trained to the anchor's step count is within 0.0017 of
+it.
+
+**Three seeds is a screen and this is not a verdict.** The 8-seed extension is
+queued (`e4-sm8`, seeds 4-8 behind the `sm` pane, GPU 1). Two things to watch
+when it lands, both of which could kill this:
+
+* K2_nv's seed range is **0.09859 against a point of 0.03958** — the range
+  exceeds twice the point estimate. If `sm`'s tight 0.00115 range is a
+  three-seed accident rather than a property, the comparison dissolves. The
+  ranges here are not yet trustworthy at either arm.
+* K2_sm at 8 seeds could land above 0.05 on the crossed split by more than
+  0.0017, which is a distance smaller than most of this repo's seed ranges.
+
+**H9, written before that run lands: at matched gradient steps the K-step
+horizon costs little or no accuracy, so clause 2's application-count win is
+nearly free, and last turn's trade was an artefact of the epoch budget.** The
+distinguishing prediction against "sm is a three-seed accident": at 8 seeds the
+`sm` arms stay below their `nv` counterparts at every K, and K2_sm's
+in-distribution gap to the anchor stays inside the anchor's seed range. If
+instead `sm` regresses toward `nv` as seeds accumulate, the horizon penalty is
+real and it was the `sm` screen that was noise.
+
+Nothing from this table has gone into `RESULTS.md`; the report reads
+`runs/kcurve.json` for the arms that are at eight seeds and labels the rest.
+
+### H9 answered: the cost half decisively, the accuracy half not at all
+
+`runs/repr_floor_aligned.json`, cost block, CPU-seconds per call as the median of
+8 separate processes. The last column is the one that matters: it is
+`solver_warm / reconstruction_cost`, i.e. **the largest speedup the surface route
+could reach even if the model itself were free**.
+
+| reconstruction | cost | vs 277 µs budget | speedup ceiling | admissible? |
+|---|---|---|---|---|
+| `rebuild_vertical` | **65.5 µs** | 0.2× | 4224× | **No**, twice over: signed *vertical* distance is not the Euclidean quantity clause 1 scores, and one height per column cannot express the undercut the other loop measured in 249/250 trajectories |
+| `rebuild_edt` (coarse, single height) | **1,170 µs** | 4.2× | **236×** | **No** — single height |
+| `rebuild_polyline` (exact in x, expressive) | **34,567 µs** | 125× | **8.01×** | yes |
+| `rebuild_multi_fine` u=8 (grid, expressive) | **133,364 µs** | 482× | **2.07×** | yes |
+
+**H9's cost prediction is falsified and the route dies on cost.** I expected an
+analytic reconstruction to be cheap; it is 4× cheaper than the grid one and still
+**125× over budget**. Two implementations that share no code — an upsampled
+distance transform over 1.6 M cells, and exact point-to-segment distance with no
+grid at all — land at ceilings of 2.07× and 8.01×. That the two agree within 4×
+while differing completely in method is what makes this a statement about the
+problem rather than about my code, which the single 155 ms figure was not
+entitled to be.
+
+And the ceiling holds even for the inadmissible cheap-ish row: `rebuild_edt` caps
+at **236×**, still short of 1000×. **The only reconstruction that clears 1000× on
+cost is `rebuild_vertical`, and it is the one that computes the wrong quantity
+for the metric *and* cannot represent an undercut.**
+
+So: **converting a compact interface representation back into a field that
+clause 1 can score costs more than the entire 1000× budget, by 125–482×.** The
+route is closed on cost, independently of the accuracy floor — which is
+fortunate, because the accuracy half is unresolved.
+
+**H9's accuracy prediction is also unsupported, and by my own implementation
+rather than by the representation.** The analytic reconstruction is exact in x —
+it round-trips a flat front to machine zero, where the grid version managed
+0.131 before the alignment fix — and it is nonetheless **worse** on real data:
+median **0.3197** against the grid version's 0.0761, with individual
+trajectories at 2.35 and 2.70. The cause is the connectivity heuristic I
+pre-registered as the weak point: joins break where crossing counts differ, 4–6
+times per trajectory, and each break leaves a gap with no nearby segment. So the
+floor is still bracketed only from above and I am not reporting a value for it.
+
+What this leaves genuinely open, and it is now a question about clause 1's metric
+rather than about clause 2: the same surfaces that reconstruct to 0.08–0.32 as a
+*field* satisfy clause 3's contour-based shape error at **0.0061**. The field
+metric is what makes the compact representation expensive, since it forces a
+rasterisation the contour metric never asks for. I am not touching the metric —
+clause 1 says rel-L2 and this repo scores it as band rel-L2 on the field, and
+rewriting that after seeing which representation it excludes is precisely the one
+thing the rules forbid. But it is the honest description of where the constraint
+lives, and it belongs in the paper's discussion rather than in a clause verdict.
+
+**Net effect on clause 2.** Rung 2 of the ladder is now exhausted for the output
+representation: the cheap representation cannot express the data (other loop),
+and the expressive one cannot be scored within budget (here). The surviving
+routes from `cost_floor.json` are the ones that keep the field output and shrink
+the *network* — a 3×3 convolution at width 8 emits a full field in 370 µs, which
+is **748×**, and H7's shrink sweep is queued to say what that costs in accuracy.
+That is where the next turn goes.

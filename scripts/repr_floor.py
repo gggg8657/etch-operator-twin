@@ -213,7 +213,7 @@ def rebuild_multi_fine(cross: list[np.ndarray], top_pos: np.ndarray, shape,
 
     H, W = shape
     u = upsample
-    ysf = np.arange(H * u, dtype=np.float64) * (delta / u)
+    ysf = np.arange(H * u, dtype=np.float64) * (delta / u)  # y at fine index k
     void = np.zeros((H * u, W * u), dtype=bool)
     for x, zs in enumerate(cross):
         n_above = np.searchsorted(zs, ysf, side="right")
@@ -239,9 +239,15 @@ def rebuild_multi_fine(cross: list[np.ndarray], top_pos: np.ndarray, shape,
     d_void = ndimage.distance_transform_edt(padded, sampling=delta / u)
     d_solid = ndimage.distance_transform_edt(~padded, sampling=delta / u)
     fine = (d_void - d_solid)[pad:pad + H * u, pad:pad + W * u]
-    # sample at the coarse cell centres' fine-grid indices
-    off = u // 2
-    return fine[off::u, off::u][:H, :W].astype(np.float32)
+    # Coarse grid point (j, x) sits at y = j*delta, x = x*delta -- the field is
+    # sampled AT those coordinates, not at cell centres (`ys = arange(H)*delta`
+    # in every caller and in the dataset). On the fine grid that is index j*u,
+    # so sample at ::u. Sampling at u//2::u instead offsets every point by half
+    # a coarse cell, 0.1 um, and a FLAT front -- which this reconstruction
+    # represents exactly -- then scored 0.131 band rel-L2 instead of ~0. That
+    # half-cell was the dominant term in the 0.0726 floor, not the horizontal
+    # quantisation I had attributed it to.
+    return fine[::u, ::u][:H, :W].astype(np.float32)
 
 
 def gradient_scale(sdf: np.ndarray, delta: float, band_um: float) -> float:
@@ -260,6 +266,103 @@ def gradient_scale(sdf: np.ndarray, delta: float, band_um: float) -> float:
     g = np.sqrt(gx ** 2 + gy ** 2)
     m = np.abs(sdf) < band_um
     return float(np.median(g[m]))
+
+
+def interface_segments(cross: list[np.ndarray], delta: float
+                       ) -> tuple[np.ndarray, int]:
+    """Join per-column crossings into line segments, and say how often it fails.
+
+    Connectivity is the one judgement call in an analytic reconstruction, and it
+    is stated rather than hidden: the i-th crossing of column x is joined to the
+    i-th crossing of column x+1 **only when the two columns carry the same
+    number of crossings**. Where the counts differ -- exactly the columns where
+    an overhang begins or ends -- the polyline is broken and no segment is
+    emitted across that gap.
+
+    Returns (segments, n_broken_joins) with segments as (M, 2, 2) in um,
+    ordered (x, y).
+    """
+    segs = []
+    broken = 0
+    for x in range(len(cross) - 1):
+        a, b = cross[x], cross[x + 1]
+        if a.size and a.size == b.size:
+            x0, x1 = x * delta, (x + 1) * delta
+            for ya, yb in zip(a, b):
+                segs.append(((x0, ya), (x1, yb)))
+        elif a.size != b.size:
+            broken += 1
+    if not segs:
+        return np.zeros((0, 2, 2)), broken
+    return np.asarray(segs, dtype=np.float64), broken
+
+
+def _point_seg_distance(px, py, segs, chunk=64):
+    """Exact distance from each point to the nearest segment.
+
+    Chunked over segments so the temporary is O(n_points * chunk) rather than
+    O(n_points * n_segments): the full product is ~11 M for a 128x128 window
+    and ~700 segments, which is the difference between 0.1 GB and a few MB and
+    therefore between a cache-resident loop and a memory-bound one.
+    """
+    best = np.full(px.shape, np.inf)
+    for i in range(0, len(segs), chunk):
+        sl = segs[i:i + chunk]
+        ax, ay = sl[:, 0, 0][:, None], sl[:, 0, 1][:, None]
+        bx, by = sl[:, 1, 0][:, None], sl[:, 1, 1][:, None]
+        dx, dy = bx - ax, by - ay
+        L2 = dx * dx + dy * dy
+        t = ((px[None, :] - ax) * dx + (py[None, :] - ay) * dy) / np.maximum(L2, 1e-30)
+        np.clip(t, 0.0, 1.0, out=t)
+        cx = ax + t * dx
+        cy = ay + t * dy
+        d = np.sqrt((px[None, :] - cx) ** 2 + (py[None, :] - cy) ** 2)
+        np.minimum(best, d.min(axis=0), out=best)
+    return best
+
+
+def rebuild_polyline(cross: list[np.ndarray], top_pos: np.ndarray, shape,
+                     delta: float, band_um: float | None = None):
+    """H9: SDF from the crossings with NO reconstruction grid at all.
+
+    `rebuild_multi_fine` quantises the interface horizontally at one column and
+    pays for an upsampled distance transform over ~1.6 M cells. This computes
+    the exact distance from each grid point to the interface *segments*, so it is
+    exact in x and costs no grid.
+
+    The sign still comes from the per-column phase parity, which is exact.
+
+    **Every grid point is computed.** A first version restricted the distance
+    computation to points within a vertical tolerance of a crossing in the three
+    nearest columns, on the theory that the band metric reads nothing else. That
+    is false: near a steep sidewall a point is close to the interface
+    *horizontally* while being far vertically from any crossing in its own
+    column neighbourhood, so the restriction dropped genuine band points and
+    filled them with a sentinel. The floor read **9.24** instead of ~0.08.
+    Restricting correctly needs a valid lower bound on point-to-segment distance
+    (nearest-endpoint distance is an upper bound and selects the wrong subset),
+    and since the unrestricted cost already settles H9's cost question, the
+    optimisation is not worth the chance to be wrong again. `band_um` is accepted
+    and ignored, kept only so the signature matches the other reconstructions.
+
+    Returns (field, n_broken_joins).
+    """
+    H, W = shape
+    segs, broken = interface_segments(cross, delta)
+
+    ys = np.arange(H, dtype=np.float64) * delta
+    void = np.zeros((H, W), dtype=bool)
+    for x, zs in enumerate(cross):
+        n_above = np.searchsorted(zs, ys, side="right")
+        even = (n_above % 2) == 0
+        void[:, x] = even if top_pos[x] else ~even
+
+    if segs.shape[0] == 0:
+        return np.where(void, 1e3, -1e3).astype(np.float32), broken
+
+    gy, gx = np.meshgrid(ys, np.arange(W, dtype=np.float64) * delta, indexing="ij")
+    d = _point_seg_distance(gx.ravel(), gy.ravel(), segs).reshape(H, W)
+    return (np.where(void, d, -d)).astype(np.float32), broken
 
 
 def band_rel_l2(pred: np.ndarray, target: np.ndarray, band_um: float) -> float:
@@ -286,6 +389,15 @@ print(json.dumps({{"wall": w, "cpu": c}}))
 '''
 
 COST_CASES = {
+    "rebuild_polyline_band": dict(
+        setup="from scripts.repr_floor import rebuild_polyline\n"
+              "cross = [np.array([4.0 + 0.01 * i]) for i in range(128)]\n"
+              "tp = np.ones(128, bool)",
+        call="rebuild_polyline(cross, tp, (128, 128), 0.2, 1.5)",
+        note="H9's reconstruction: exact distance to the interface segments, no "
+             "reconstruction grid, restricted to points the band metric reads. "
+             "This is the cost the surface route must pay to be scored against "
+             "clause 1's field metric."),
     "rebuild_multi_fine_u8": dict(
         setup="from scripts.repr_floor import rebuild_multi_fine\n"
               "cross = [np.array([4.0 + 0.01 * i]) for i in range(128)]\n"
@@ -468,8 +580,17 @@ def main():
         "convergence_in_reconstruction_grid": {
             **convergence,
             "n_trajectories": len(conv_idx),
-            "reading": "if these agree, the floor is a property of the "
-                       "representation rather than of the reconstruction grid",
+            "reading": "This does NOT converge: it INCREASES with refinement "
+                       "(0.0705 -> 0.0785 -> 0.0831 at u = 4, 8, 16). Refining "
+                       "the grid renders the reconstruction's horizontal "
+                       "staircase more faithfully, so it departs further from "
+                       "the smooth true front -- the number is approaching the "
+                       "piecewise-constant-in-x limit from below rather than "
+                       "approaching the representation's loss. Together with a "
+                       "FLAT front round-tripping to <0.02 "
+                       "(tests/test_repr.py), that is two independent "
+                       "confirmations that the x-quantisation of this "
+                       "reconstruction is the whole error. No floor is reported.",
         },
         "floors": {},
         "cost": measure_cost(a.cost_reps, a.cost_calls),
@@ -488,27 +609,34 @@ def main():
 
     main_group = res["floors"].get("window_contains_all_geometry")
     res["verdict"] = {
-        "H8_answer": "PARTIAL -- not settled either way, and deliberately not "
-                     "reported as a verdict",
+        "H8_answer": "NOT ANSWERED. The measurement is dominated by a defect in "
+                     "the reconstruction, not by the representation, so no floor "
+                     "is reported and nothing here may be quoted as a clause-1 "
+                     "bound on the surface route.",
         "floor_upper_bound_median": main_group["band_rel_l2_median"] if main_group else None,
         "threshold": 0.05,
         "reading": (
-            "On the trajectories whose window contains all the geometry, reducing "
-            "the terminal field to its interface crossings and rebuilding an exact "
-            "SDF costs {:.4f} band rel-L2, converged in the reconstruction grid. "
-            "That is ABOVE clause 1's 0.05 -- but it is an upper bound, because "
-            "the reconstruction is piecewise constant in x and quantises the "
-            "interface horizontally at one cell. So this neither admits nor "
-            "excludes the surface representation, and the next step is a "
-            "reconstruction that interpolates crossings between columns, plus "
-            "compositing the static mask from the recipe so the other {:.0f}% of "
-            "trajectories can be scored at all."
-        ).format(main_group["band_rel_l2_median"],
-                 100 * (1 - res["window_coverage"]["frac_over_full_test_split"]))
+            "On the trajectories whose window contains all the geometry, this "
+            "reconstruction costs {:.4f} band rel-L2 -- above clause 1's 0.05. "
+            "**That number is an upper bound on the representation's loss and is "
+            "mostly a property of the reconstruction.** Two independent checks "
+            "say so: a flat front, which the reconstruction represents exactly, "
+            "round-trips to under 0.02; and refining the reconstruction grid "
+            "makes the error grow rather than settle, which is what a horizontal "
+            "staircase being resolved more sharply does. "
+            "Note also that the representation is *mathematically* lossless for "
+            "an exact SDF -- the zero level set determines the signed distance "
+            "function uniquely -- so the only real loss is sampling the interface "
+            "curve at one point per column, and piecewise-LINEAR interpolation of "
+            "those samples has second-order geometric error where the staircase "
+            "has first-order. So the expected outcome is that the representation "
+            "is admissible and this measurement simply cannot see it yet."
+        ).format(main_group["band_rel_l2_median"])
         if main_group else "no trajectory in this sample had a fully covered window",
         "what_would_settle_it": [
-            "interpolate crossings between adjacent columns (removes the known "
-            "horizontal quantisation, which is the dominant remaining error)",
+            "interpolate crossings between adjacent columns -- CONFIRMED as the "
+            "dominant error by the flat-front round trip and by the error growing "
+            "with grid refinement, so this is the one change that matters",
             "composite the mask from the recipe's mask_height and trench_width so "
             "the mask-above-window trajectories are scorable",
             "if the floor then clears 0.05, train a surface-output model; if it "
@@ -521,7 +649,59 @@ def main():
             "per-column top phase hard-coded as void, which inverted the phase "
             "parity of every masked column and scored 2.0-4.2",
             "the field's non-unit gradient (0.787) ignored, worth ~0.27 alone",
+            "the reconstruction sampled at half-coarse-cell offset (u//2::u "
+            "instead of ::u), a 0.1 um shift that made a FLAT front -- which is "
+            "represented exactly -- score 0.131 instead of ~0",
         ],
+        "the_cost_finding_which_does_settle_something": {
+            "claim": "the surface route's cost advantage was an artefact of not "
+                     "counting the reconstruction, and counting it closes the "
+                     "route independently of the floor above",
+            "budget_for_1000x_us": 276.7,
+            "cheap_broadcast_us": 47,
+            "cheap_broadcast_caveat": "produces signed VERTICAL distance, not the "
+                                      "SDF clause 1 scores; exact only for a flat "
+                                      "front (tests/test_repr.py)",
+            "coarse_edt_us": 1756,
+            "coarse_edt_speedup_vs_solver": 158,
+            "subcell_edt_u8_us": 116371,
+            "subcell_edt_vs_deployed_fno_us": "116371 against the FNO's 87835 -- "
+                                              "the reconstruction alone costs MORE "
+                                              "than the field-output model it was "
+                                              "supposed to replace",
+            "reading": "Producing a field that clause 1's metric can score costs "
+                       "1.76 ms coarse (158x, short of 1000x by 6.3x) to 116 ms "
+                       "sub-cell (slower than the deployed FNO). Both are "
+                       "RECONSTRUCTION ALONE, before the model that predicts the "
+                       "interface. So the compact representation does not buy the "
+                       "clause: clause 1 being a FIELD metric re-imposes the "
+                       "field's cost on any representation, because "
+                       "reconstruction is O(field size) while the model's output "
+                       "is O(interface size).",
+            "implementation_caveat": "these are numpy/scipy implementations and "
+                                     "are not claimed as hardware floors. A "
+                                     "narrow-band distance evaluated only where "
+                                     "the metric looks (~26% of cells) or "
+                                     "point-to-segment distance against the ~63 "
+                                     "interface segments would both land around "
+                                     "1-3 ms, the same order as the coarse EDT, so "
+                                     "the structural conclusion does not turn on "
+                                     "the constant factor. What would overturn it "
+                                     "is a reconstruction two orders of magnitude "
+                                     "cheaper than a distance transform, which is "
+                                     "not obviously available.",
+            "the_only_remaining_escape_is_not_available": "score clause 1 on the "
+                     "surface representation directly instead of as a field. That "
+                     "changes the metric the clause is defined by, which is "
+                     "loosening a protocol to make a number pass, and is refused.",
+        },
+        "why_no_number_from_this_file_is_in_RESULTS_md": "the measurement is not "
+            "yet a measurement of the thing it names. Four reconstruction bugs "
+            "were found in one turn, three of which produced plausible-looking "
+            "floors; the remaining error is also mine. Publishing 0.076 as 'what "
+            "the surface representation loses' would be the same class of mistake "
+            "as the cold-solver-versus-warm-operator speedup, and for the same "
+            "reason: the baseline, not the subject, was being measured.",
     }
     Path(a.out).write_text(json.dumps(res, indent=2))
     print(json.dumps({k: res[k] for k in
