@@ -448,11 +448,15 @@ def main():
                f"so a lower bound."),
               "",
               ("It got there by attacking the one axis the three failed attacks never "
-               "touched. Clause 2's cost is **~20 PyTorch operations at ~30 µs each**, "
-               "not arithmetic; shrinking the tensors (H15) bought 2.26x of a predicted "
+               "touched. Clause 2's cost is per-operation, not arithmetic: "
+               "`runs/op_count.json` COUNTS 45 full-field operations for "
+               "`fno_w8m4L2` and **245** for the deployed operator, against this "
+               "architecture's **4** -- an 11.25x reduction that realises 9.3x in "
+               "measured cost. Shrinking the tensors (H15) bought 2.26x of a predicted "
                "16x, fusing them (`torch.compile`) was 2.0-3.3x *slower*, and removing "
-               "spatial mixing (H16) was Pareto-dominated. This architecture does four "
-               "full-resolution operations instead of twenty."),
+               "spatial mixing (H16) was Pareto-dominated. Per-operation cost is NOT "
+               "constant though -- it spans 37.6-85.8 µs across models, so the count "
+               "is a design heuristic and not a cost model, and one pair inverts."),
               "",
               ("**No accuracy is claimed for it. It is training now**, and the "
                "prediction written before the sweep started is 0.05-0.12 "

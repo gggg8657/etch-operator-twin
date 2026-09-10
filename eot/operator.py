@@ -456,7 +456,12 @@ class SpectralPropagator(nn.Module):
     this architecture. A concurrent instance caught it (commit 49bcc9a).
 
     The justification that survives is the operation count, which is measured:
-    ~20 operations at ~30 us each against a 511 us budget. If anything the
+    45 full-field operations for `fno_w8m4L2` against this architecture's 4,
+    an 11.25x reduction -- COUNTED, not asserted, by scripts/op_count.py; the
+    '~20 ops at ~30 us' figure this docstring first carried was arithmetic on
+    a guess and was wrong. Measured cost reduction is 9.3x, so the count
+    predicts cost to within ~50% and is a design heuristic, not a cost model.
+    If anything the
     accuracy prediction should move PESSIMISTICALLY on the corrected reading --
     a model merely linear in phi has 2.67x to make up, not 3%.
 

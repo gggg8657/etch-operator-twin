@@ -13,13 +13,22 @@ before anybody counted.
 So this counts them, with `TorchDispatchMode`, which sees every ATen call the
 model actually makes rather than every line of Python that looks like one.
 
-**The count is split by tensor size, because that is the claim.** An operation
-on a (1, 7) conditioning vector costs nothing per pixel and must not be pooled
-with one on a 128x128 field; the conditioning MLPs are deliberately grid-
-independent. So each op is bucketed by the number of elements in its largest
-output: `full` (>= 128*128 elements, i.e. touching a whole field or more),
-`coarse` (between the conditioning size and a full field -- where a downsampled
-body lives), and `tiny` (everything else, the recipe MLPs).
+**The count is split by tensor SHAPE, and an earlier version split it by
+element count, which was wrong.** An operation on a (1, 7) conditioning vector
+costs nothing per pixel and must not be pooled with one on a 128x128 field.
+Bucketing by `numel` seemed to do that, and `tests/test_specprop.py` caught it
+failing: `SpectralPropagator(modes_a=32)` has a conditioning head whose final
+weight is (4096, 64) = 262,144 elements, so the **transpose of that weight
+matrix** was counted as a full-field operation. Two of the six "full" ops
+attributed to `specprop_m8_ma32` were weight transposes inside a
+grid-independent MLP, and that -- not any real extra field work -- is why it
+appeared to dispatch more full ops than `modes_a=4` while measuring cheaper.
+
+So the bucket is now decided by shape: an output is field-shaped if its last two
+dimensions are (n_grid, n_grid) or (n_grid, n_grid // 2 + 1), the latter being
+the half-spectrum an `rfft2` returns. Everything else is `coarse` if it still has
+a spatial pair smaller than the grid, and `tiny` otherwise -- which is where a
+weight matrix of any size now lands, because a weight is not a field.
 
 `full_ops` is the number the H18 argument rests on, and it is the only one this
 file lets a document quote.
@@ -50,24 +59,38 @@ class Counted(TorchDispatchMode):
 
     def __init__(self, n_grid=128):
         self.calls = []
-        self.full_threshold = n_grid * n_grid
+        self.n_grid = n_grid
+
+    def _class_of(self, t):
+        """field / coarse / tiny, by SHAPE. A weight matrix is not a field."""
+        n = self.n_grid
+        if t.dim() >= 2:
+            h, w = t.shape[-2], t.shape[-1]
+            if h == n and w in (n, n // 2 + 1):
+                return "full"
+            # A spatial pair smaller than the grid: a downsampled body.
+            if 1 < h < n and 1 < w <= n // 2 + 1 and h == w or \
+               (1 < h < n and 1 < w < n and t.dim() >= 3):
+                return "coarse"
+        return "tiny"
 
     def __torch_dispatch__(self, func, types, args=(), kwargs=None):
         out = func(*args, **(kwargs or {}))
-        n = 0
+        rank = {"tiny": 0, "coarse": 1, "full": 2}
+        klass = "tiny"
         for t in (out if isinstance(out, (tuple, list)) else [out]):
             if isinstance(t, torch.Tensor):
-                n = max(n, t.numel())
-        self.calls.append((str(func), n))
+                c = self._class_of(t)
+                if rank[c] > rank[klass]:
+                    klass = c
+        self.calls.append((str(func), klass))
         return out
 
 
-def bucket(calls, full_threshold, tiny_threshold=4096):
+def bucket(calls, _unused=None):
     b = Counter()
     per_op = {"full": Counter(), "coarse": Counter(), "tiny": Counter()}
-    for name, n in calls:
-        k = "full" if n >= full_threshold else ("tiny" if n <= tiny_threshold
-                                                else "coarse")
+    for name, k in calls:
         b[k] += 1
         per_op[k][name.split(".")[-2] if "." in name else name] += 1
     return b, per_op
@@ -99,7 +122,7 @@ def count(build, n_grid=128):
     with torch.no_grad():
         with Counted(n_grid) as c:
             m(phi, cond)
-    b, per_op = bucket(c.calls, n_grid * n_grid)
+    b, per_op = bucket(c.calls)
     return {
         "params": sum(p.numel() for p in m.parameters()),
         "total_aten_calls": len(c.calls),
@@ -131,9 +154,18 @@ def main():
                           "forward pass, batch 1, inference_mode off but "
                           "no_grad on",
             "n_grid": a.n_grid,
-            "bucketing": "by the element count of the call's largest output: "
-                         f"full >= {a.n_grid * a.n_grid}, tiny <= 4096, coarse "
-                         "in between",
+            "bucketing": f"by SHAPE: full if an output's last two dims are "
+                         f"({a.n_grid},{a.n_grid}) or "
+                         f"({a.n_grid},{a.n_grid // 2 + 1}) -- the rfft2 "
+                         "half-spectrum -- coarse if it has a smaller spatial "
+                         "pair, tiny otherwise",
+            "why_not_numel": "bucketing by element count counted the TRANSPOSE "
+                             "OF A WEIGHT MATRIX as a full-field op: "
+                             "SpectralPropagator(modes_a=32) has a (4096, 64) "
+                             "head weight, 262,144 elements. That inflated its "
+                             "full_ops from 4 to 6 and manufactured an apparent "
+                             "op-count-versus-cost inversion. Caught by "
+                             "tests/test_specprop.py.",
             "why_bucketed": "an op on a (1,7) recipe vector has no per-pixel "
                             "cost and must not be pooled with one on a field. "
                             "full_ops is the quantity the H18 argument rests on.",

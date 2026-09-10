@@ -5035,3 +5035,70 @@ pointwise width, pointwise depth, parameter count *and* the presence of a body,
 and the multiscale one is worse. Nothing about the value of spatial mixing
 follows from it. The matched test would hold `wf` and `n_local` fixed and toggle
 `scale` between 0 and 4, and it has not been run.
+
+### The operation count, measured instead of asserted — and my "~20 ops at ~30 µs" was wrong
+
+H18's whole justification was that clause 2's cost is per-operation, and that
+`SpectralPropagator` does "four full-resolution operations instead of twenty".
+**That count was an assertion.** I got it by dividing 645 µs by a guessed ~30 µs
+per operation, and I wrote it into a docstring, a commit message, `WEEKEND.md`
+and the board before anybody counted. `scripts/op_count.py` counts them with
+`TorchDispatchMode`, which sees every ATen call the model actually makes, and
+buckets by the element count of each call's largest output so that an operation
+on a (1, 7) recipe vector is never pooled with one on a 128×128 field.
+
+| model | params | total ATen | **full-field ops** | coarse | tiny |
+|---|---|---|---|---|---|
+| `fno_w64m20L4` (deployed) | 26,248,025 | 262 | **245** | 0 | 17 |
+| `fno_w8m4L2` | 10,897 | 144 | **45** | 0 | 99 |
+| `multiscale_s4_wf8` | 9,914 | 165 | 15 | 37 | 113 |
+| `compactcnn_w8L2` | 1,793 | 26 | 13 | 0 | 13 |
+| `pointwise_wf8_n1` | 1,217 | 32 | 11 | 0 | 21 |
+| `specprop_m8_ma32` | 283,904 | 68 | **6** | 10 | 52 |
+| `specprop_m4_ma4` | 9,344 | 68 | **4** | 10 | 54 |
+
+**The architecture claim is exactly right and my baseline figure was exactly
+wrong.** `specprop_m4_ma4` really does dispatch **4** full-field operations. But
+`fno_w8m4L2` dispatches **45**, not ~20, and the deployed operator dispatches
+**245**. So the reduction is **11.25×**, not the ~5× "four versus twenty"
+implied, and the per-operation cost implied by 645 µs is ~14 µs rather than the
+30 µs I asserted. Every document that carried "~20 operations at ~30 µs each" is
+being corrected; the direction of my error made the argument look *weaker* than
+it is, which is the harmless direction, but it was still a number I did not
+measure.
+
+#### The mechanism test, which is the part worth having
+
+An operation count is not a cost, and a count that merely correlates with the
+outcome I wanted is decoration. The claim "cost is bound by the full-operation
+count" makes a checkable prediction: between two models measured in the *same*
+invocation, the cost ratio should track the full-op ratio.
+
+| model | full ops | µs/wafer | µs per full op | op ratio vs FNO | cost ratio | agreement |
+|---|---|---|---|---|---|---|
+| `specprop_m4_ma4` | 4 | 277 | 69.3 | 11.25× | 9.31× | **0.83** |
+| `specprop_m8_ma32` | 6 | 226 | 37.6 | 7.50× | 11.43× | **1.52** |
+| `pointwise_wf8_n1` | 11 | 944 | 85.8 | 4.09× | 2.73× | **0.67** |
+| `fno_w8m4L2` | 45 | 2,580 | 57.3 | — | — | — |
+
+**The mechanism is supported directionally and is not a law, and the honest
+statement is the second half of that sentence.** Agreement spans 0.67–1.52, and
+per-full-op cost spans **37.6–85.8 µs, a factor of 2.3**. So the operation count
+predicts cost to within roughly ±50%, which is enough to have chosen this
+architecture and not enough to call the cost "op-count-bound" without
+qualification.
+
+**One pair actively inverts, and it is recorded rather than smoothed.**
+`specprop_m8_ma32` dispatches **more** full-field operations than
+`specprop_m4_ma4` (6 vs 4) and is **cheaper** (226 vs 277 µs), with measurement
+ranges that barely overlap ([1879–2339×] vs [1697–1901×]). A strict op-count law
+forbids that. Two candidate explanations, neither measured: the two extra
+operations are spectrum slices on a small mode block while the two `rfft2`/
+`irfft2` calls dominate, so op *type* matters more than op count; or the load
+(281.9 at the time) moved the two rows differently. Distinguishing them needs a
+quiet box, which no measurement this weekend has had.
+
+So the corrected form of H18's rationale: **the cheapest architecture available
+is the one that touches the full field fewest times, the reduction is 11.25×, and
+the realised cost reduction is 9.3× — but per-operation cost is not constant
+across operation types and the count is a design heuristic, not a cost model.**
