@@ -2846,3 +2846,31 @@ every GPU on the box is reachable and torch's choice is then a gamble. It checks
 *into* that set and is `cuda:0` in every script here regardless of which physical
 GPU that is. Called before `acquire`, so a lease violation cannot even take a run
 directory. Four tests, and all four existing launchers verified to pass it.
+
+### Cross-check with the concurrent instance: its estimate, my measurement
+
+`37b9d44` reached the same structural conclusion independently and by a
+different route, which is worth more than either of us reaching it alone. Where
+we overlap we agree inside this box's known 1.37× between-process spread:
+
+| reconstruction | theirs (`runs/repr_floor.json`) | mine (`runs/repr_floor_aligned.json`) |
+|---|---|---|
+| coarse EDT | 1,756 µs | 1,170 µs |
+| sub-cell EDT, u=8 | 116,371 µs | 133,364 µs |
+
+**Where we differ, its figure was an estimate and mine is a measurement.** That
+commit says a point-to-segment reconstruction "would land around 1–3 ms, the
+same order as the coarse EDT, so the structural conclusion does not turn on the
+constant." Measured, `rebuild_polyline` costs **34,567 µs [25,643–38,977]** — 10
+to 30× above the estimate. The structural conclusion does indeed survive (both
+are over budget, which is what that sentence was defending), but the constant it
+guessed is wrong, and the guess was load-bearing for the sentence "a
+reconstruction two orders of magnitude cheaper than a distance transform" would
+be needed to overturn it: from 34.6 ms the requirement is **125×**, not the ~4×
+that 1–3 ms against 277 µs would have implied.
+
+Checked and clean: the 1–3 ms figure never left that commit message for any
+document, so nothing needed correcting under the no-unmeasured-numbers rule.
+This entry records it because the estimate is the kind of thing that gets quoted
+later, and because a peer instance's guess deserves the same treatment as
+`codex`'s.
