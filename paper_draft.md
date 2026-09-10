@@ -190,12 +190,15 @@ So a 3x3 convolution emits a full 128x128 field inside the budget's own order of
 
 | reconstruction | CPU-s / call | vs budget | ceiling with a free model |
 |---|---|---|---|
-| `rebuild_vertical` | 66 us | 0.2x | 4,223.59x |
-| `rebuild_edt` | 1,170 us | 4.2x | 236.43x |
-| `rebuild_polyline_band` | 34,567 us | 124.9x | 8.01x |
-| `rebuild_multi_fine_u8` | 133,364 us | 482.0x | 2.07x |
+| `rebuild_vertical` | 43 us | 0.2x | 6,410.80x |
+| `rebuild_edt` | 988 us | 3.6x | 279.97x |
+| `rebuild_kdtree` | 13,561 us | 49.0x | 20.40x |
+| `rebuild_polyline_band` | 27,068 us | 97.8x | 10.22x |
+| `rebuild_multi_fine_u8` | 105,385 us | 380.8x | 2.63x |
 
-Two of these share no code -- one rasterises onto an upsampled grid and distance-transforms it, the other computes exact point-to-segment distance with no grid at all -- and they agree within a factor of four. That is what entitles the conclusion to be about the problem rather than about our code. The only reconstruction cheap enough computes signed *vertical* distance, which is not the Euclidean quantity the metric compares against, and is single-height, so the undercut result closes it as well.
+These 5 algorithms share almost no code -- a broadcast, a coarse distance transform, an upsampled one, an exhaustive point-to-segment scan, and a k-d tree over interface samples -- and they span **2,442x** in cost. **Every one of them that computes a Euclidean signed distance caps the route below 1000x.** That the conclusion survives a range that wide is what entitles it to be about the problem rather than about our implementation, and it is worth saying that the fastest admissible algorithm here was not ours: an adversarial review proposed the tree, and it halved the exhaustive scan while agreeing with it to four decimal places in band rel-L2. It still lands 49x over budget.
+
+The only reconstruction cheap enough computes signed *vertical* distance, which is not the Euclidean quantity the metric compares against, and is single-height, so the undercut result closes it as well. The arithmetic underneath is not about algorithms: to clear 1000x the *entire* per-wafer cost must fall under the budget, so a reconstruction alone exceeding it leaves nothing for the model, whatever the model is.
 
 We report no value for how much the compact representation *loses* in accuracy. Our reconstruction of it was wrong five separate ways -- an inverted sign convention, a hard-coded phase at the window's top, an ignored non-unit field gradient, a half-cell sampling offset, and a band restriction that discarded genuine band points beside steep sidewalls -- and each error produced a plausible floor that was really our own. Four of the five were invisible in the output and appeared only against a case whose answer is known in advance, which is why the reconstruction is now pinned by round-trip tests and why the remaining figure is quoted as an upper bound rather than as a loss.
 

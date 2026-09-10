@@ -3156,7 +3156,13 @@ compact representations expensive. I am not touching that metric — rewriting i
 after seeing which representation it excludes is the one thing the rules forbid —
 but it is the honest location of the constraint and belongs in the discussion.
 
-### H10 — the corrected K-curve invalidates my own queued experiment, before it ran
+### H11 — the corrected K-curve invalidates my own queued experiment, before it ran
+
+*(Renumbered from H10 after the fact: the concurrent instance had already used
+H10, both in this log above and in `scripts/train.py`'s `--strides` flag, for a
+different hypothesis about reconstruction speed. Two hypotheses under one label
+in a shared document is how a citation goes wrong later, and their claim was
+written first.)*
 
 Commit `ec16fcd` excluded eight partial checkpoints from `runs/kcurve.json`, and
 the clean table says something none of the three readings this repo has published
@@ -3199,7 +3205,7 @@ pre-registered decision rule ("if width 8 / modes 4 already fails rel-L2 ≤ 0.0
 badly, the frontier is closed below 1000×") would have fired on a training
 artefact and closed the last surviving route to clause 2 for the wrong reason.
 
-**H10: the step-matched correction transfers to the shrunken architectures, so a
+**H11: the step-matched correction transfers to the shrunken architectures, so a
 compact network at stride 10 trained to matched gradient steps holds clause 1
 in-distribution where the same network at 80 epochs does not.** Fixed
 `shrink.sh` to `epochs = 80*stride` and recorded why in the script itself. The
@@ -3208,7 +3214,7 @@ stride-1 control arms are unaffected (80×1 = 80) so they stay comparable to
 the kcurve driver exits and `runs/shrink` is still empty, so the correction lands
 before the first arm rather than after the sweep.
 
-The distinguishing prediction, so this is falsifiable rather than a hedge: if H10
+The distinguishing prediction, so this is falsifiable rather than a hedge: if H11
 holds, the step-matched shrink arms will beat their 80-epoch equivalents by
 roughly the 1.83× seen at the deployed width, and the frontier decision will be
 made on capacity. If the shrunken arms show *no* step-matching benefit, then the
@@ -3221,3 +3227,61 @@ networks are 8–32 wide against the anchor's 64, so per-epoch cost is far lower
 but the sweep is now the long pole on GPU 0 rather than a quick screen. That is
 the right trade: a fast answer to the wrong question is what the last three turns
 kept producing.
+
+### H10, written before the run: is the crossed-split penalty at high K about input-state diversity?
+
+The corrected table splits cleanly by reading. In-distribution, the horizon is
+nearly free once the gradient-step budget is matched (0.01890 → 0.01942 →
+0.02330 → 0.02610 for K = 1/2/5/10 at ~22.5k steps). On the crossed split it is
+not, and worsens monotonically (0.05433 → 0.05170 → 0.08226 → 0.10440). So
+something the crossed split needs is *not* supplied by more gradient steps.
+
+**The coverage explanation fails before it is run, so it is not the hypothesis.**
+A K-step arm advances K× the per-step displacement per application, but its
+trained range in that quantity scales by K too, so the selection
+`lo ≤ disp ≤ hi` is scale-invariant and the crossed subset stays the same
+comparable set for every arm. Recording that here because it was my first guess
+and it is wrong for a reason worth keeping.
+
+What the arms already say points elsewhere. Distinct start offsets per
+trajectory are `T−K+1` for `ov` and `T/K` for `nv`/`sm`:
+
+| K | arm | starts | pairs | grad steps | crossed |
+|---|---|---|---|---|---|
+| 5 | ov | 6 | 5400 | 13520 | **0.07119** |
+| 5 | sm | 2 | 1800 | 22800 | 0.08226 |
+| 2 | ov | 9 | 8100 | 20320 | 0.05174 |
+| 2 | sm | 5 | 4500 | 22560 | 0.05170 |
+
+At K=5, `ov` beats `sm` on the crossed split by 0.011 **with 40% fewer gradient
+steps**; at K=2 they tie, where `sm` already has 5 starts. That is the signature
+of input-state diversity rather than optimisation budget, and it is a screen (6
+and 3 seeds), not a verdict.
+
+**And K=10 cannot be given start diversity at all**: on a T=10 trajectory,
+`T−K+1 = T/K = 1`, so `ov` and `nv` coincide by construction and every K=10 arm
+in this repo has seen exactly one input state per trajectory — the initial
+trench. A model that only ever sees initial trenches as inputs has memorised
+"trench + recipe → final profile" over the training recipes, which is precisely
+the thing that would generalise worst to unseen recipe/dt combinations.
+
+**H10: the crossed-split penalty at K=10 is caused by input-state narrowness, not
+by horizon length. Training ONE operator jointly on strides {1, 2, 5, 10} — the
+conditioning already carries log(K·dt), so a single network can serve every
+horizon — will improve the K=10 crossed reading over the stride-10-only arm at
+matched gradient steps.**
+
+Distinguishing prediction. If long horizons are intrinsically harder, the mixed
+arm will not improve K=10's crossed reading, and may worsen it by spending
+capacity on strides nobody asked for. If input narrowness is the cause, the mixed
+arm improves crossed at K=10 while keeping in-distribution comparable. The mixed
+dataset carries **16,200 pairs and all ten start offsets** against the
+stride-10 arm's 900 pairs and one, at the same architecture and a matched step
+budget (45 epochs × 506 steps ≈ 22.8k, against `K10_sm`'s 23,200).
+
+Two things this is not allowed to be read as. The mixed arm is evaluated at
+stride 10 — `args.json` records `eval_stride` and `eval.py` now prefers it, so
+the arm is scored at its deployment horizon and not at the `--stride` default it
+never used. And it is *not* a K-curve arm: it lives in `runs/mixed/` so
+`kcurve_report`'s glob cannot pick it up and misgroup it by `cfg["stride"]`,
+which would silently pollute the very table this turn just cleaned.

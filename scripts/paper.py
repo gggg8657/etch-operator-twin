@@ -451,7 +451,17 @@ def main():
     # lived only in critique_log.md. This section is generated from the run JSONs
     # of that work; nothing in it is typed.
     cf = rd("runs/cost_floor.json")
-    rf = rd("runs/repr_floor_aligned.json") or rd("runs/repr_floor.json")
+    # Prefer the file with the MOST reconstruction algorithms in it. A ceiling is
+    # a max over implementations, so quoting a run that lacks the fastest known
+    # one understates the route's best case -- i.e. it makes this section's
+    # negative conclusion look stronger than the evidence supports, which is the
+    # one direction an error here may not go. runs/repr_floor_kd.json adds a k-d
+    # tree reconstruction whose fully-admissible ceiling is 20.4x against the
+    # 8.01x of the file this section first cited.
+    rf = max((r for r in (rd("runs/repr_floor_kd.json"),
+                          rd("runs/repr_floor_aligned.json"),
+                          rd("runs/repr_floor.json")) if r),
+             key=lambda r: len(r.get("cost", {})), default=None)
     sr = rd("runs/surface_representable.json")
     spr = rd("runs/speed_spread.json")
     L += ["### 4.5 Why the speedup clause is not an implementation problem", ""]
@@ -546,15 +556,27 @@ def main():
                 vs = f"{cc / budget:.1f}x" if budget else NM
                 ceil = f"{solver_warm / cc:,.2f}x" if solver_warm else NM
                 L.append(f"| `{name}` | {cc * 1e6:,.0f} us | {vs} | {ceil} |")
+            costs = [c["cpu_s_per_call"]["median"] for c in rc.values()]
             L += ["",
-                  "Two of these share no code -- one rasterises onto an upsampled "
-                  "grid and distance-transforms it, the other computes exact "
-                  "point-to-segment distance with no grid at all -- and they agree "
-                  "within a factor of four. That is what entitles the conclusion to "
-                  "be about the problem rather than about our code. The only "
-                  "reconstruction cheap enough computes signed *vertical* distance, "
-                  "which is not the Euclidean quantity the metric compares against, "
-                  "and is single-height, so the undercut result closes it as well.", ""]
+                  f"These {len(rc)} algorithms share almost no code -- a broadcast, "
+                  f"a coarse distance transform, an upsampled one, an exhaustive "
+                  f"point-to-segment scan, and a k-d tree over interface samples "
+                  f"-- and they span **{max(costs) / min(costs):,.0f}x** in cost. "
+                  "**Every one of them that computes a Euclidean signed distance "
+                  "caps the route below 1000x.** That the conclusion survives a "
+                  "range that wide is what entitles it to be about the problem "
+                  "rather than about our implementation, and it is worth saying "
+                  "that the fastest admissible algorithm here was not ours: an "
+                  "adversarial review proposed the tree, and it halved the "
+                  "exhaustive scan while agreeing with it to four decimal places "
+                  "in band rel-L2. It still lands 49x over budget.", "",
+                  "The only reconstruction cheap enough computes signed *vertical* "
+                  "distance, which is not the Euclidean quantity the metric "
+                  "compares against, and is single-height, so the undercut result "
+                  "closes it as well. The arithmetic underneath is not about "
+                  "algorithms: to clear 1000x the *entire* per-wafer cost must fall "
+                  "under the budget, so a reconstruction alone exceeding it leaves "
+                  "nothing for the model, whatever the model is.", ""]
         L += ["We report no value for how much the compact representation *loses* "
               "in accuracy. Our reconstruction of it was wrong five separate ways "
               "-- an inverted sign convention, a hard-coded phase at the window's "
