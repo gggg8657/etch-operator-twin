@@ -4878,3 +4878,160 @@ pre-commit hook (added for this exact reason) unstaged 12 half-written
 `log.jsonl` files, three of which belong to the other instance's runs. Nothing
 in this repository can prevent two loops from pushing, and `WEEKEND.md`'s D4
 options stand unchanged.
+
+### An independent replication, a correction to the peer's prose, and an audit of its H18 cost numbers
+
+**Replication.** Both α instances independently built this same analysis this
+turn — `scripts/capacity_ood.py` → `runs/capacity_ood.json` (mine) and
+`scripts/capacity_test.py` → `runs/capacity_test.json` (the peer's). They agree
+to **8 decimal places on all ten reported quantities**: crossed point estimate,
+mean difference against the anchor, exact p, and both interval ends, for both
+arms. Verified rather than asserted.
+
+What replicated is the *data assembly* — arm selection, the
+displacement-coverage subset, per-seed extraction, the stride restriction — not
+the estimator, since both import `exact_two_sample` and `invert_to_interval`
+from `seed_level_test.py`. That is still worth having: the coverage subset
+definition is where this repo has previously had two incompatible rules printed
+side by side, and two independent assemblies landing on identical numbers rules
+that out here. Both files are kept and cross-referenced; deleting either would
+throw away the check.
+
+**A correction to the peer's `WEEKEND.md` prose, in the overclaiming
+direction.** Its line read: the interval *"excludes zero, and unlike every other
+crossed comparison in this repo it does not cover the 0.00440 yardstick, so it
+bounds something."* Both halves are wrong.
+
+* The yardstick is **0.00386** — `|K5_sm − K1_nv|` in-distribution at 8 seeds.
+  0.00440 is its **stale 3-seed value**, from `seed_level_test.json` before the
+  step-matched arms were extended. Quoting it is the same staleness that made
+  `runs/kcurve.json` wrong for three documents last turn.
+* The interval **does** contain the yardstick: [−0.02127, −0.00163] contains
+  −0.00386, and it contains −0.00440 too, so the claim fails under either
+  value. Checked arithmetically, not by eye.
+
+The *conclusion* survives, for a different reason than the one given: the
+interval bounds something because it **excludes zero**, which is the detection
+criterion. Covering the yardstick is a statement about resolution, and this
+interval has poor resolution — the magnitude spans a factor of 13. So the honest
+reading is "the direction is established, the size is not", which is what I
+wrote above independently, and the fix now says so in `WEEKEND.md` with the
+correction left visible rather than silently rewritten.
+
+**Audit of the peer's H18 cost claim, because it is the first clause-2 pass on
+cost in this repo and I did not measure it.** `runs/arch_cost_h18.json` reports
+three conditioned-Fourier-propagator variants **under** the 1000× budget:
+
+| model | params | µs/wafer | vs matched denominator |
+|---|---|---|---|
+| `specprop_m8_ma32_K10` | 283,904 | **226** | **2268×** |
+| `specprop_m4_ma4_K10` | 9,344 | 277 | 1848× |
+| `specprop_m4_ma16_K10` | 71,744 | 294 | 1742× |
+| `fno_w8m4L2_K10` (reference) | 10,897 | 2,580 | 198× |
+
+The provenance checks out against the protocol established last turn:
+`budget_provenance.paired` is true, `measured_in_this_invocation` is true, the
+denominator is `terminal_one_apply` at **511.9 ms** re-timed in the same
+invocation (against 511/508/515 ms in my three independent runs of
+`bench_workload.py`), and `loadavg_1min_at_start` is 281.9 and recorded. So this
+is not a stale-denominator artefact and the numbers are lower bounds under load,
+as the protocol requires. **The claim is sound as a cost claim, and no accuracy
+is claimed for any of these rows.**
+
+One thing in that table is worth flagging as *unresolved rather than
+surprising*: `specprop_m8_ma32` at 283,904 parameters is priced **cheaper** than
+`specprop_m4_ma4` at 9,344. That is what the operation-count hypothesis predicts
+— the parameters live in MLPs acting on a 7-vector, not on the field, so
+capacity is nearly free while the ~4 full-resolution operations dominate — but
+226 µs against 277 µs is a 1.23× gap at a load where between-invocation spread
+in this repo reaches 2×, so **the ordering within that table is not resolved**
+and only the fact that all three sit under budget is.
+
+**And the caveat that matters most for how H18 gets read:** clearing clause 2 on
+cost with unmeasured accuracy is exactly the position `runs/cost_floor.json` was
+in when it priced an identity map at 244,662×. The difference is that these are
+real conditioned surrogates rather than deliberately useless rows, and they are
+training now. If they miss clause 1 the frontier is pinned from both sides for
+the first time, which is a result; if they meet it, both clauses hold on one
+model and the verdict changes. Neither is claimed yet.
+
+### Turn 12, second measurement — the multiscale arms land, and my Nyquist argument is falsified with a mechanism
+
+The three coarse-body arms finished while I was updating the paper. All six
+ladder configs at seed 1 (`runs/ladder.json`); **one seed is a screen**, and
+seeds 2–3 are running behind them in the same driver.
+
+| config | params | in-dist terminal | 95% traj CI | meets ≤0.05 | crossed |
+|---|---|---|---|---|---|
+| `ms_s4_w8m4L2_wf16n2_relu` | 10,370 | **0.04231** | [0.04015, 0.04464] | **yes** | 0.06661 |
+| `ms_s8_w16m4L4_wf16n2_relu` | 69,466 | 0.04357 | [0.04213, 0.04514] | yes | 0.07104 |
+| `pw_wf32n3_gelu` | 3,881 | 0.05052 | [0.04780, 0.05378] | no | 0.06830 |
+| `pw_wf32n3_relu` | 3,881 | 0.05157 | [0.04840, 0.05517] | no | 0.07149 |
+| `ms_s8_w8m4L2_wf16n2_relu` | 10,370 | 0.05541 | [0.05333, 0.05765] | no | 0.07733 |
+| `pw_wf8n1_relu` | 1,217 | 0.26103 | [0.25571, 0.26639] | no | 0.32520 |
+
+Reference, 3 seeds: `fno_w8m4L2_K10`, 10,897 params, in-dist **0.04717**,
+crossed 0.07762.
+
+#### H15's Nyquist argument is falsified, and the falsifier is inside the sweep
+
+I justified the coarse body like this: the body truncates to `modes=4`, at
+128×128 there are 64 representable modes, so downsampling by s=4 leaves Nyquist
+at 16 — still 4× above the highest mode the body can carry — and therefore
+**removes no frequency band the body can represent.** Last turn that argument
+survived being wrong about *cost* (predicted 16× cheaper, measured 2.26×). This
+turn it dies on *accuracy*, and the sweep contains its own control.
+
+At s=8 the coarse grid is 16×16, Nyquist 8, still **twice** `modes=4`. The
+Nyquist argument therefore predicts s=8 is also representationally free, so
+`ms_s4` and `ms_s8` at identical width, depth, `width_full`, `n_local` and
+parameter count (10,370) should score the same. They do not: **0.04231 against
+0.05541**, a factor of **1.31**, and the two intervals — [0.04015, 0.04464] and
+[0.05333, 0.05765] — do not come close to overlapping. One crosses the clause
+and the other misses it.
+
+**The mechanism, which is the part worth keeping.** My argument was about what
+the body can *output*; the downsample acts on what the body can *see*.
+`avg_pool2d` destroys interface-local structure in the input field before the
+body reads it, and no mode-truncation bound on the output says anything about
+that. A spectral layer with 4 modes fed a 16×16 average of a sharp front is not
+the same operator as one fed a 32×32 average of it, however few modes either
+can emit. **A representational bound on the output is not a bound on the
+information available at the input**, and I conflated the two for two turns.
+
+#### What this does and does not buy
+
+*Does:* the best coarse-body arm is **more accurate than the full-resolution FNO
+of the same size** — 0.04231 against 0.04717, at 10,370 parameters against
+10,897 — and better on the crossed split too (0.06661 against 0.07762). At 1
+seed against 3 that is a screen, and the FNO's own 3-seed range is 0.00386
+against a gap of 0.00486, so the gap is just outside the reference arm's spread
+and nothing more. Seeds 2–3 will settle it.
+
+*Does not:* **help clause 2 at all**, and I want this stated plainly because the
+whole point of building the multiscale family was cost. Priced in the same
+invocation at load 396: FNO **2,758 µs** (186.9×, range 137–239×), `ms_s4`
+**2,926 µs** (176.2×, range 159–241×), `ms_s8` 2,935 µs, `ms_s8_w16L4`
+3,586 µs. The ranges overlap almost entirely, so the coarse-body arms are
+**cost-indistinguishable from the full-resolution FNO** — a 6% nominal
+difference inside a measured 1.5–1.7× per-row spread. The architecture I built
+to be cheaper is not measurably cheaper.
+
+So the ladder's verdict on its own premise is negative: **six architectures, and
+not one of them moves clause 2.** The family that does move it is the
+`specprop` one a concurrent instance measured at 226–277 µs, which I did not
+build and whose accuracy is unmeasured. What the ladder produced instead is an
+accuracy result I was not looking for, and a falsification of the argument that
+motivated it.
+
+#### One comparison I am explicitly not making
+
+I said last turn that the architecture-matched test of the locality question
+would be "the pointwise model against the same model with one coarse spectral
+block added". **These arms are not that test.** The pointwise arms are
+`wf32/n3`; the multiscale arms are `wf16/n2`. So `pw_wf32n3` (0.05052, 3,881
+params) against `ms_s8_w8L2_wf16n2` (0.05541, 10,370 params) differs in
+pointwise width, pointwise depth, parameter count *and* the presence of a body,
+and the multiscale one is worse. Nothing about the value of spatial mixing
+follows from it. The matched test would hold `wf` and `n_local` fixed and toggle
+`scale` between 0 and 4, and it has not been run.

@@ -1,0 +1,162 @@
+{
+  "question": "how many ATen operations does each architecture dispatch, and how many of them touch a full 128x128 field",
+  "protocol": {
+    "instrument": "torch.utils._python_dispatch.TorchDispatchMode, one forward pass, batch 1, inference_mode off but no_grad on",
+    "n_grid": 128,
+    "bucketing": "by the element count of the call's largest output: full >= 16384, tiny <= 4096, coarse in between",
+    "why_bucketed": "an op on a (1,7) recipe vector has no per-pixel cost and must not be pooled with one on a field. full_ops is the quantity the H18 argument rests on.",
+    "not_a_cost": "an operation count is not a cost. Costs are in runs/arch_cost.json, measured in CPU-seconds. This file exists because the count was being asserted."
+  },
+  "models": {
+    "fno_w64m20L4_DEPLOYED": {
+      "params": 26248025,
+      "total_aten_calls": 262,
+      "full_ops": 245,
+      "coarse_ops": 0,
+      "tiny_ops": 17,
+      "full_op_names": {
+        "expand": 4,
+        "stack": 1,
+        "cat": 1,
+        "convolution": 8,
+        "gelu": 6,
+        "_fft_r2c": 4,
+        "view_as_complex": 8,
+        "zeros": 4,
+        "slice": 80,
+        "unsqueeze": 16,
+        "permute": 40,
+        "clone": 8,
+        "_unsafe_view": 8,
+        "view": 24,
+        "bmm": 8,
+        "copy_": 8,
+        "_fft_c2r": 4,
+        "add": 9,
+        "native_group_norm": 4
+      },
+      "coarse_op_names": {}
+    },
+    "fno_w8m4L2": {
+      "params": 10897,
+      "total_aten_calls": 144,
+      "full_ops": 45,
+      "coarse_ops": 0,
+      "tiny_ops": 99,
+      "full_op_names": {
+        "expand": 4,
+        "stack": 1,
+        "cat": 1,
+        "convolution": 6,
+        "gelu": 4,
+        "_fft_r2c": 2,
+        "zeros": 2,
+        "slice": 16,
+        "_fft_c2r": 2,
+        "add": 5,
+        "native_group_norm": 2
+      },
+      "coarse_op_names": {}
+    },
+    "compactcnn_w8L2": {
+      "params": 1793,
+      "total_aten_calls": 26,
+      "full_ops": 13,
+      "coarse_ops": 0,
+      "tiny_ops": 13,
+      "full_op_names": {
+        "expand": 4,
+        "stack": 1,
+        "cat": 1,
+        "convolution": 4,
+        "gelu": 2,
+        "add": 1
+      },
+      "coarse_op_names": {}
+    },
+    "multiscale_s4_wf8": {
+      "params": 9914,
+      "total_aten_calls": 165,
+      "full_ops": 15,
+      "coarse_ops": 37,
+      "tiny_ops": 113,
+      "full_op_names": {
+        "expand": 3,
+        "stack": 1,
+        "cat": 1,
+        "convolution": 3,
+        "mul": 1,
+        "add": 3,
+        "gelu": 2,
+        "upsample_bilinear2d": 1
+      },
+      "coarse_op_names": {
+        "expand": 1,
+        "cat": 1,
+        "convolution": 4,
+        "gelu": 3,
+        "_fft_r2c": 2,
+        "zeros": 2,
+        "slice": 16,
+        "_fft_c2r": 2,
+        "add": 4,
+        "native_group_norm": 2
+      }
+    },
+    "pointwise_wf8_n1": {
+      "params": 1217,
+      "total_aten_calls": 32,
+      "full_ops": 11,
+      "coarse_ops": 0,
+      "tiny_ops": 21,
+      "full_op_names": {
+        "expand": 3,
+        "stack": 1,
+        "cat": 1,
+        "convolution": 2,
+        "mul": 1,
+        "add": 2,
+        "relu": 1
+      },
+      "coarse_op_names": {}
+    },
+    "specprop_m4_ma4": {
+      "params": 9344,
+      "total_aten_calls": 68,
+      "full_ops": 4,
+      "coarse_ops": 10,
+      "tiny_ops": 54,
+      "full_op_names": {
+        "squeeze": 1,
+        "_fft_c2r": 1,
+        "unsqueeze": 1,
+        "add": 1
+      },
+      "coarse_op_names": {
+        "_fft_r2c": 1,
+        "zeros_like": 1,
+        "slice": 8
+      }
+    },
+    "specprop_m8_ma32": {
+      "params": 283904,
+      "total_aten_calls": 68,
+      "full_ops": 6,
+      "coarse_ops": 10,
+      "tiny_ops": 52,
+      "full_op_names": {
+        "squeeze": 1,
+        "t": 2,
+        "_fft_c2r": 1,
+        "unsqueeze": 1,
+        "add": 1
+      },
+      "coarse_op_names": {
+        "_fft_r2c": 1,
+        "zeros_like": 1,
+        "slice": 8
+      }
+    }
+  },
+  "specprop_vs_fno_full_ops": 0.08888888888888889
+}

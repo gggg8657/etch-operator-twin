@@ -17,6 +17,183 @@
     "n_total": 209
   },
   "configs": {
+    "ms_s4_w8m4L2_wf16n2_relu_K10": {
+      "config": {
+        "arch": "multiscale",
+        "width": 8,
+        "modes": 4,
+        "layers": 2,
+        "stride": 10,
+        "width_full": 16,
+        "scale": 4,
+        "n_local": 2,
+        "act": "relu"
+      },
+      "params_trained": 10370,
+      "epochs": [
+        800
+      ],
+      "applications_per_wafer": 1,
+      "runs": [
+        "runs/ladder/ms_s4_w8L2_wf16_s1"
+      ],
+      "seeds": [
+        1
+      ],
+      "n_seeds": 1,
+      "verdict_strength": "screen",
+      "in_distribution": {
+        "terminal_step": {
+          "per_seed": [
+            0.0423113345131278
+          ],
+          "point": 0.0423113345131278,
+          "seed_range": null,
+          "lo": 0.04015388121157885,
+          "hi": 0.044638354914076625,
+          "n": 250,
+          "met_point": true,
+          "met_every_seed": true,
+          "met_upper_ci": true
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.0423113345131278
+      },
+      "crossed_in_coverage": {
+        "n_trajectories": 121,
+        "terminal_step": {
+          "per_seed": [
+            0.06661307223695369
+          ],
+          "point": 0.06661307223695369,
+          "seed_range": null,
+          "lo": 0.05721944016442934,
+          "hi": 0.07721134769722574,
+          "n": 121,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.06661307223695369
+      }
+    },
+    "ms_s8_w16m4L4_wf16n2_relu_K10": {
+      "config": {
+        "arch": "multiscale",
+        "width": 16,
+        "modes": 4,
+        "layers": 4,
+        "stride": 10,
+        "width_full": 16,
+        "scale": 8,
+        "n_local": 2,
+        "act": "relu"
+      },
+      "params_trained": 69466,
+      "epochs": [
+        800
+      ],
+      "applications_per_wafer": 1,
+      "runs": [
+        "runs/ladder/ms_s8_w16L4_wf16_s1"
+      ],
+      "seeds": [
+        1
+      ],
+      "n_seeds": 1,
+      "verdict_strength": "screen",
+      "in_distribution": {
+        "terminal_step": {
+          "per_seed": [
+            0.04356926315277815
+          ],
+          "point": 0.04356926315277815,
+          "seed_range": null,
+          "lo": 0.0421262844344601,
+          "hi": 0.045137744768895205,
+          "n": 250,
+          "met_point": true,
+          "met_every_seed": true,
+          "met_upper_ci": true
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.04356926315277815
+      },
+      "crossed_in_coverage": {
+        "n_trajectories": 121,
+        "terminal_step": {
+          "per_seed": [
+            0.07103925573924356
+          ],
+          "point": 0.07103925573924356,
+          "seed_range": null,
+          "lo": 0.05918152370482437,
+          "hi": 0.0851249960859206,
+          "n": 121,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.07103925573924356
+      }
+    },
+    "ms_s8_w8m4L2_wf16n2_relu_K10": {
+      "config": {
+        "arch": "multiscale",
+        "width": 8,
+        "modes": 4,
+        "layers": 2,
+        "stride": 10,
+        "width_full": 16,
+        "scale": 8,
+        "n_local": 2,
+        "act": "relu"
+      },
+      "params_trained": 10370,
+      "epochs": [
+        800
+      ],
+      "applications_per_wafer": 1,
+      "runs": [
+        "runs/ladder/ms_s8_w8L2_wf16_s1"
+      ],
+      "seeds": [
+        1
+      ],
+      "n_seeds": 1,
+      "verdict_strength": "screen",
+      "in_distribution": {
+        "terminal_step": {
+          "per_seed": [
+            0.05541280673444271
+          ],
+          "point": 0.05541280673444271,
+          "seed_range": null,
+          "lo": 0.05332855649329722,
+          "hi": 0.05764973470941186,
+          "n": 250,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.05541280673444271
+      },
+      "crossed_in_coverage": {
+        "n_trajectories": 121,
+        "terminal_step": {
+          "per_seed": [
+            0.07732789289237053
+          ],
+          "point": 0.07732789289237053,
+          "seed_range": null,
+          "lo": 0.06798809690108476,
+          "hi": 0.08793549294360288,
+          "n": 121,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.07732789289237053
+      }
+    },
     "pw_wf32n3_gelu_K10": {
       "config": {
         "arch": "multiscale",
@@ -197,20 +374,20 @@
   },
   "incomplete": [
     {
-      "run": "runs/ladder/ms_s4_w8L2_wf16_s1",
-      "epoch_lines": 214,
+      "run": "runs/ladder/pw_wf32_n3_gelu_s2",
+      "epoch_lines": 74,
       "epochs_requested": 800,
       "has_checkpoint": true
     },
     {
-      "run": "runs/ladder/ms_s8_w16L4_wf16_s1",
-      "epoch_lines": 149,
+      "run": "runs/ladder/pw_wf32_n3_relu_s2",
+      "epoch_lines": 159,
       "epochs_requested": 800,
       "has_checkpoint": true
     },
     {
-      "run": "runs/ladder/ms_s8_w8L2_wf16_s1",
-      "epoch_lines": 264,
+      "run": "runs/ladder/pw_wf8_n1_relu_s2",
+      "epoch_lines": 219,
       "epochs_requested": 800,
       "has_checkpoint": true
     }

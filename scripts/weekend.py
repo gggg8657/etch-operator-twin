@@ -196,7 +196,18 @@ def main():
     genx = read("data/gen_report_crossed.json", {})
 
     wl = read("runs/bench_workload.json") or {}
-    cap = read("runs/capacity_ood.json") or {}
+    # Two instances of this loop independently built the same analysis --
+    # scripts/capacity_ood.py -> runs/capacity_ood.json and
+    # scripts/capacity_test.py -> runs/capacity_test.json. They agree to 8
+    # decimal places on all 10 reported quantities (verified: crossed point,
+    # mean difference, exact p, and both interval ends, for both arms). The
+    # statistics are shared code, imported from seed_level_test.py by both, so
+    # what replicated is the data assembly -- arm selection, the
+    # displacement-coverage subset, per-seed extraction -- not the estimator.
+    # `cap_repl` is kept only so the replication is visible here rather than
+    # being an accident of which file a reader opens; the prose below reads
+    # capacity_test.json.
+    cap_repl = read("runs/capacity_ood.json") or {}
     kc = read("runs/kcurve.json") or {}
     shr = read("runs/shrink.json") or {}
     ac = read("runs/arch_cost.json") or {}
@@ -388,9 +399,20 @@ def main():
               (f"Against the deployed anchor the improvement is **{t['mean_diff_vs_anchor']:+.5f}**, "
                f"exact seed-level permutation test **p = {t['seed_level_exact']['p']:.4f}**, "
                f"95% interval **[{t['interval_95']['lo']:+.5f}, {t['interval_95']['hi']:+.5f}]** "
-               f"— it excludes zero, and unlike every other crossed comparison in this "
-               f"repo it does not cover the 0.00440 yardstick, so it bounds something. "
-               f"This one also survived the seed extension that reversed two other "
+               f"— and **it excludes zero**, which no other crossed comparison in "
+               f"this repo has managed. "
+               + (f"**Correction to an earlier version of this line**, which "
+                  f"claimed the interval \"does not cover the 0.00440 "
+                  f"yardstick\": both halves were wrong. The yardstick is "
+                  f"{cap_repl['yardstick']['value']:.5f} at 8 seeds (0.00440 was "
+                  f"its stale 3-seed value), and the interval **does** contain it "
+                  f"— so the effect's *magnitude* is pinned no better than "
+                  f"yardstick resolution, spanning a factor of "
+                  f"{abs(t['interval_95']['lo'] / t['interval_95']['hi']):.0f}. "
+                  f"What makes this bound something is excluding zero, not "
+                  f"clearing the yardstick. "
+                  if cap_repl.get("yardstick", {}).get("value") else "")
+               + f"This one also survived the seed extension that reversed two other "
                f"3-seed crossed readings this weekend, including one in the same turn."),
               "",
               (f"**It is still not a pass, and that has to be said plainly.** "
