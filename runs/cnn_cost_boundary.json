@@ -1,0 +1,174 @@
+{
+  "question": "does a compact operator clear the 1000x clause once it actually takes a recipe? cost_floor.json's 748x row does not condition on one.",
+  "protocol": {
+    "estimator": "median CPU-seconds per application over timed calls inside a process, then the spread of that median across separate processes",
+    "reps_processes": 16,
+    "calls_per_process": 30,
+    "why_repeats": "this box's between-process spread is 1.37x (runs/speed_spread.json), so one draw is not a measurement -- the same mistake cost_floor.json's 47us/33us surface rows made",
+    "applications_per_wafer": 1,
+    "budget_source": "runs/speed_symmetric.json, solver CPU-seconds / 1000",
+    "budget": {
+      "marginal_warm": 0.0002767124970000001,
+      "cold_single_wafer": 0.0007389038889999999
+    },
+    "no_accuracy_claimed": "every row is a price. Whether a model this small reaches rel-L2 <= 0.05 is not measured here and may not be inferred from here.",
+    "what_differs_from_cost_floor": "cost_floor.json's conv rows are Conv2d(1,8,3)->Conv2d(8,1,3) on a bare field: no recipe embedding, no broadcast, no coordinate channels. CompactCNN keeps all three and the residual form, so it is priceable as a surrogate."
+  },
+  "models": {
+    "cond_only_w4_c4_L0": {
+      "config": {
+        "width": 4,
+        "n_layers": 0,
+        "cond_ch": 4
+      },
+      "params": 425,
+      "marginal_warm": {
+        "cpu_s_per_application": {
+          "median": 0.00010077125000002018,
+          "min": 9.504949999999956e-05,
+          "max": 0.0001819179999998921,
+          "max_over_min": 1.9139290580160122,
+          "n": 16,
+          "per_process": [
+            0.00010195449999994555,
+            0.00014876550000009203,
+            9.504949999999956e-05,
+            0.00010004150000003653,
+            9.769799999997941e-05,
+            9.88720000000276e-05,
+            0.0001819179999998921,
+            0.00010490850000000052,
+            0.00010104599999993802,
+            0.0001004024999999853,
+            9.88089999999775e-05,
+            0.0001026004999999941,
+            0.00010360850000001864,
+            0.0001009010000000421,
+            9.83444999999028e-05,
+            0.00010064149999999827
+          ]
+        },
+        "budget_s": 0.0002767124970000001,
+        "over_budget_factor": 0.3641731078015611,
+        "under_budget": true,
+        "speedup_vs_solver": 2745.9468548811756
+      },
+      "cold_single_wafer": {
+        "cpu_s_per_application": {
+          "median": 0.0014306614999999856,
+          "min": 0.0013829659999999855,
+          "max": 0.0016167320000000096,
+          "max_over_min": 1.1690323550976862,
+          "n": 16,
+          "per_process": [
+            0.0015308599999999117,
+            0.0014134019999999525,
+            0.001510836999999987,
+            0.0016167320000000096,
+            0.0014626620000000035,
+            0.0013917469999999987,
+            0.0014181589999999744,
+            0.0014160779999999873,
+            0.0014290649999999516,
+            0.0014217220000000141,
+            0.0013829659999999855,
+            0.0014683600000000574,
+            0.0014946740000000291,
+            0.0014528759999999918,
+            0.001420756000000023,
+            0.0014322580000000196
+          ]
+        },
+        "budget_s": 0.0007389038889999999,
+        "over_budget_factor": 1.9361943025312536,
+        "under_budget": false,
+        "speedup_vs_solver": 516.4770904927598
+      }
+    },
+    "cnn_w4_L1_c4": {
+      "config": {
+        "width": 4,
+        "n_layers": 1,
+        "cond_ch": 4
+      },
+      "params": 573,
+      "marginal_warm": {
+        "cpu_s_per_application": {
+          "median": 0.00030969450000001286,
+          "min": 0.00029557050000006413,
+          "max": 0.0003932745000000404,
+          "max_over_min": 1.330560729165986,
+          "n": 16,
+          "per_process": [
+            0.0003504230000000441,
+            0.0003087245000000238,
+            0.0003005919999999884,
+            0.0003045999999999327,
+            0.0003109310000000143,
+            0.0003932745000000404,
+            0.00030867449999999463,
+            0.00029818400000003464,
+            0.00031205149999996573,
+            0.00029557050000006413,
+            0.0003106645000000019,
+            0.00029801100000015346,
+            0.00030714650000002175,
+            0.0003586345000000102,
+            0.00031474150000004864,
+            0.00031550699999993714
+          ]
+        },
+        "budget_s": 0.0002767124970000001,
+        "over_budget_factor": 1.1191923146138671,
+        "under_budget": false,
+        "speedup_vs_solver": 893.5014893709401
+      },
+      "cold_single_wafer": {
+        "cpu_s_per_application": {
+          "median": 0.002899621999999935,
+          "min": 0.002790381000000064,
+          "max": 0.0031333009999998662,
+          "max_over_min": 1.1228936120192168,
+          "n": 16,
+          "per_process": [
+            0.0028864589999999524,
+            0.002790381000000064,
+            0.0028962980000000194,
+            0.002902945999999851,
+            0.002992049000000163,
+            0.0029975529999999306,
+            0.0029911539999999404,
+            0.002934240000000088,
+            0.002922064999999918,
+            0.002861895000000003,
+            0.002807006999999917,
+            0.0028177419999999564,
+            0.002820119000000121,
+            0.0029609460000001864,
+            0.0031333009999998662,
+            0.0028658509999999193
+          ]
+        },
+        "budget_s": 0.0007389038889999999,
+        "over_budget_factor": 3.924220785905128,
+        "under_budget": false,
+        "speedup_vs_solver": 254.8276599501647
+      }
+    }
+  },
+  "verdict": {
+    "configs_under_budget_warm": [
+      "cond_only_w4_c4_L0"
+    ],
+    "configs_under_budget_cold": [],
+    "best_warm": {
+      "config": "cond_only_w4_c4_L0",
+      "speedup": 2745.9468548811756
+    },
+    "best_cold": {
+      "config": "cond_only_w4_c4_L0",
+      "speedup": 516.4770904927598
+    },
+    "clause_reachable_on_cost": true
+  }
+}
