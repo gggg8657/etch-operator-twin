@@ -146,6 +146,40 @@ def test_no_test_is_defined_after_its_files_main_block():
         "these tests are defined after their file's __main__ block and can "
         f"never run: {bad}. Move the __main__ block to the end of the file.")
 
+def test_reentrancy_criterion_is_trapped_void_not_sign_count():
+    """A trapped void reads solid-void-solid, which is TWO sign changes when the
+    column starts solid at the domain top and THREE when it starts void. So no
+    threshold on sign-change count detects re-entrancy, and an earlier version of
+    scripts/surface_representable.py used `>= 3` and missed the dominant case in
+    this dataset (mask reaching the top of the domain).
+
+    Builds both columns explicitly and pins that the trapped-void detector finds
+    each while the sign counter disagrees with itself across them.
+    """
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from scripts.surface_representable import column_sign_changes, trapped_void_runs
+
+    # column starting VOID at the top: void, solid slab, cavity, solid -> 3 changes
+    starts_void = np.array([[+1.], [+1.], [-1.], [-1.], [+1.], [+1.], [+1.], [-1.], [-1.]])
+    # column starting SOLID at the top: solid slab, cavity, solid -> 2 changes
+    starts_solid = np.array([[-1.], [-1.], [+1.], [+1.], [+1.], [-1.], [-1.], [-1.], [-1.]])
+
+    assert column_sign_changes(starts_void)[0] == 3
+    assert column_sign_changes(starts_solid)[0] == 2, (
+        "this is the case a >=3 threshold silently misses")
+
+    # the criterion that actually works finds the cavity in BOTH
+    assert trapped_void_runs(starts_void) == {0: [3]}
+    assert trapped_void_runs(starts_solid) == {0: [3]}
+
+    # and a plain single interface is re-entrant under neither
+    single = np.array([[+1.], [+1.], [+1.], [-1.], [-1.], [-1.]])
+    assert column_sign_changes(single)[0] == 1
+    assert trapped_void_runs(single) == {}
+
 
 if __name__ == "__main__":
     n = 0

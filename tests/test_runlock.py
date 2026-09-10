@@ -166,6 +166,36 @@ def test_reclaim_orphan_is_a_noop_on_a_fresh_directory():
     run.mkdir(parents=True)
     assert runlock.reclaim_orphan(run) is None
 
+def test_no_test_file_defines_a_test_the_runner_cannot_reach():
+    """Every test file runs itself by walking globals() under __main__, so a
+    test function appended BELOW that block is defined, collected by nothing and
+    silently never executed -- while CI still reports the file green.
+
+    I introduced exactly that twice on 2026-09-10 by appending new tests to the
+    end of two files. This compares each file's top-level `def test_*` against
+    the position of its runner, so the next append cannot go unnoticed.
+    """
+    import ast
+
+    tests_dir = Path(__file__).resolve().parent
+    offenders = []
+    for f in sorted(tests_dir.glob("test_*.py")):
+        src = f.read_text()
+        tree = ast.parse(src)
+        runner = [n for n in tree.body
+                  if isinstance(n, ast.If) and "__main__" in ast.dump(n.test)]
+        if not runner:
+            continue  # a file with no self-runner is not covered by this rule
+        cut = runner[0].lineno
+        late = [n.name for n in tree.body
+                if isinstance(n, ast.FunctionDef)
+                and n.name.startswith("test_") and n.lineno > cut]
+        if late:
+            offenders.append(f"{f.name}: {', '.join(late)}")
+    assert not offenders, (
+        "test functions defined below the __main__ runner, so they never run:\n  "
+        + "\n  ".join(offenders))
+
 
 if __name__ == "__main__":
     n = 0

@@ -2285,3 +2285,223 @@ eval here).
 
 `test_metrics.py::test_no_test_is_defined_after_its_files_main_block` now fails
 if any file regrows the defect. 73 tests, all passing.
+
+---
+
+## Turn 4 — two defects in my own cost-floor table, and H8 on the escape route
+
+`runs/cost_floor.json` falsified H6 and opened the surface-output route by
+measuring it at **5830×** warm (8375× "including rasterisation"). Two things
+about that table are wrong, and both are mistakes I had just finished correcting
+elsewhere in this repo.
+
+**1. Its small rows are point estimates inside my own measured noise band.** Each
+model is timed in its own subprocess, and I measured the between-invocation
+spread of exactly that at **1.37×** (`runs/speed_spread.json`) — which is why
+`RESULTS.md` now carries an interval for clause 2. The surface rows read 47 µs
+and 33 µs, a ratio of **1.42×**, sitting squarely inside that band. So the
+"+raster" row came out *cheaper than the model it adds work to*, which is not a
+measurement of rasterisation; it is a draw from the harness. I corrected this
+mistake for the speed clause on the previous turn and then made it again in the
+new experiment on the same turn.
+
+**2. The surface-output row is not a model of this task.** It is
+`MLP(recipe) → 128 heights`: it never sees the input surface. An operator maps
+(current surface, recipe) → next surface, and a recipe-only map solves a
+different and easier problem — final profile from recipe, with no state. Its cost
+is therefore not the cost of the escape route, and quoting 5830× for it
+overstates what the route buys. The rows were all labelled
+`is_a_real_surrogate: false`, so nothing false was written down, but the
+*conclusion* I drew leaned on that row and the label does not carry the
+conclusion.
+
+**3. And the rasterisation it prices is not the quantity clause 1 scores.** The
+row computes `ys - h`, a signed *vertical* distance. Clause 1's headline is band
+rel-L2 against ViennaPS's **signed distance function**, and vertical distance
+equals Euclidean distance only where the surface is horizontal. So that 33 µs
+buys a field the metric would compare against a different quantity.
+
+### H8, written before the run: does the surface representation admit clause 1 at all?
+
+This is the question that decides the escape route, and it can be answered
+**without training anything**, which is why it comes before any model code.
+
+**H8: the etch fronts in this dataset are single-valued in x, and reconstructing
+an SDF from 128 surface heights loses less than clause 1's 0.05 threshold — so
+the surface representation is admissible and the route is open.**
+
+The measurement: take the true final SDF of every test trajectory, extract the
+zero crossing per column to get 128 heights, then rebuild a field two ways and
+score each against the true SDF under the *same* band mask the KPI uses —
+
+* `vertical` — `ys - h`, the cheap broadcast my cost row actually timed;
+* `edt` — an exact Euclidean distance transform of the sign mask, the honest
+  reconstruction.
+
+This is an **information floor**: it is the best band rel-L2 any surface-output
+model could reach *even with perfect heights*, because it measures only what the
+representation throws away. The distinguishing predictions:
+
+* If the `edt` floor is **above 0.05**, the surface route cannot satisfy clause 1
+  however well it is trained, and the route is closed for a reason about the
+  output representation rather than about optimisation. That would be a decisive
+  negative obtained for the price of a distance transform.
+* If the `edt` floor is far below 0.05 but `vertical` is not, then the route is
+  open but its cost must include the distance transform, and my 33 µs row is
+  replaced by whatever the EDT costs — which is the number that decides whether
+  1000× survives the change of representation.
+
+Also recorded, because it is a hard limit rather than an error: the fraction of
+test surfaces that are **not single-valued** in x. A re-entrant or undercut
+profile has no representation as 128 heights at all, and any such trajectory
+bounds the route independently of the floor above.
+
+The cost side is re-measured under the interval protocol at the same time, so no
+row in the new table is a single draw.
+
+---
+
+## Turn 4 (reopened) — H8: the cheap output representation cannot express the data
+
+H6's falsification put a surface-output model at **5830×** warm (8375× including
+rasterisation) against the deployed field FNO's 3.2× and a 1000× clause, making a
+change of output representation the cheapest route to clause 2. Before building
+it, H8 asked whether a height field can represent these fronts at all. **It
+cannot, and the route is closed.**
+
+`runs/surface_representable.json`, all 250 test trajectories × 11 emitted
+timesteps = 2750 frames, no model involved:
+
+| quantity | value |
+|---|---|
+| columns carrying a trapped void (solid above *and* below) | **7,338 of 223,636** = 3.28% |
+| frames with at least one | **2,291 of 2,750** = 83.3% |
+| trajectories with at least one | **249 of 250** = 99.6% |
+| worst trapped void a height field would have to fill in | **16.8 µm = 84 grid cells** |
+| median thickness of the real ones | 20 cells = 4.0 µm |
+| growth with etch time | **t=0: 1.2% → t=10: 99.6%** |
+
+The mechanism is unambiguous. `traj 17, t=10, col 44` reads, top to bottom,
+void(4) → **solid(8)** → void(73) → solid(43): a mask slab with 14.6 µm of
+cavity beneath it, at symmetric column pairs 43/44 and 83/84 — the two mask
+edges. **The etch undercuts the mask**, and the overhang deepens monotonically
+with etch time, from 1.2% of frames before any etching to 99.6% at the final
+step. That is exactly the signature I pre-registered as refuting H8, at the
+location I pre-registered.
+
+**So the 5830× is a speedup at predicting something this dataset does not
+contain.** A height output would silently fill in every cavity — a median of 4 µm
+and a worst case of 16.8 µm of invented solid, against a clause-3 threshold of 5%
+shape error and a grid cell of 0.2 µm. The route is dead on representability,
+before any question of what a network could learn, and the negative result is
+worth more than the training run it saves: it also retro-justifies the level-set
+field this repo already chose, since a level set represents overhangs natively
+and that is *why* it costs 128×128.
+
+### Two errors of mine on the way, both caught by running the thing
+
+**First measurement, discarded.** I binned zero-contour points by column and
+flagged any column whose points spanned more than a grid cell vertically. It
+flagged **100% of frames including t=0**, before any etch physics, with a worst
+span of 17.0 µm. Cause: the initial trench's *vertical sidewall* puts a whole
+column of contour points at one x, but a vertical wall is a transition *between*
+adjacent columns and each of those columns is still a single solid interval —
+perfectly height-representable. The metric conflated the wall with the undercut
+it existed to detect. Numbers discarded, not reinterpreted.
+
+**Second criterion, corrected.** I then counted sign changes down each column and
+called ≥3 re-entrant. That misses the dominant case: a column whose mask reaches
+the top of the domain reads solid-void-solid, which is **two** changes, not
+three. The contradiction surfaced in the JSON itself — `max_sign_changes: 2`
+printed beside an 84-cell trapped void in the same column — and it is only
+visible because the file records the worst case's column and its sign count
+rather than a summary statistic. The verdict now rests on trapped-void runs,
+which do not depend on whether a column starts solid or void; sign changes are
+kept and labelled diagnostic. The verdict was `false` under both criteria, so
+nothing published changes, but its stated basis was wrong and a reader checking
+the criterion would have found it did not mean what it said.
+
+**One exclusion, declared.** Trapped voids of ≤2 cells are a level-set
+discretisation artefact at the trench corner, not undercuts: they sit at the
+symmetric sidewall pairs (49/50, 77/78) as a 2-row sliver of the wrong sign where
+the vertical wall meets the floor, and they are present at t=0 before any etch
+runs. Excluding them takes t=0 from 27.5% of frames to 1.2%, which is what makes
+the growth curve legible. They are **26.4% of all 10,441 trapped-void runs** and
+the count is in the JSON, so the exclusion is auditable rather than asserted. It
+is identified by mechanism and by its t=0 presence, not chosen because it
+improved a number — and it makes the verdict *harder* to reach, not easier.
+
+### What this leaves for clause 2
+
+The frontier for an output the physics needs — a field — is bounded by
+`runs/cost_floor.json`: a 1×1 convolution reaches 26,667× with no capacity, a
+two-layer width-8 3×3 stack reaches **748×**, just under the clause. So a
+field-output model *can* in principle clear 1000×, but with less capacity than
+that stack. Whether anything that small reaches rel-L2 ≤ 0.05 is H7's question,
+running now. H8 has removed the one route that looked cheap, and what remains is
+a genuine accuracy-versus-cost frontier rather than a representational trick.
+
+---
+
+## Turn 4, part 2 — WITHDRAWING two claims I made last turn. The seed count did it again.
+
+The K-grid reached 7–8 seeds on the `nv`/`ov` arms and 3 on `sm`, and both of
+last turn's headline readings do not survive.
+
+| arm | seeds | apps | in-dist terminal | seed range | crossed terminal | seed range |
+|---|---|---|---|---|---|---|
+| K1_nv (anchor) | 8 | 10 | 0.01890 | 0.00172 | 0.05433 | 0.03511 |
+| K2_nv | 8 | 5 | 0.03958 | **0.09859** | 0.07577 | 0.12007 |
+| K5_nv | 7 | 2 | 0.03367 | 0.00553 | 0.07743 | 0.02302 |
+| K10_nv | 7 | 1 | 0.04866 | 0.01069 | 0.10040 | 0.01850 |
+| **K2_sm** | 3 | 5 | **0.01942** | 0.00115 | **0.05170** | 0.00487 |
+| K5_sm | 3 | 2 | 0.02482 | 0.00523 | 0.08225 | 0.01127 |
+| K10_sm | 3 | 1 | 0.03927 | 0.03501 | 0.11848 | 0.03485 |
+
+**Withdrawal 1: "terminal-step rel-L2 rises monotonically in K on both splits."**
+It does not. At 7–8 seeds, K5_nv (0.03367) is *better* than K2_nv (0.03958)
+in distribution. The monotonicity was a 5-seed artefact, and K2_nv is the arm
+that moved — 0.03075 at 5 seeds to 0.03958 at 8, with a **seed range of 0.09859,
+2.5× its own point estimate.** I put that monotonic sequence in a commit message,
+a board row and the portfolio log as the headline of the turn. It was four
+numbers, three of which are noise-dominated, arranged into a trend.
+
+**Withdrawal 2: "the undertraining alternative is refuted, not assumed."** The
+opposite, at K=2. `K2_sm` — identical pairs, identical input distribution,
+epochs = 80K so the gradient-step count matches the anchor's ~22.5k — is
+**statistically indistinguishable from the K=1 anchor**: in-distribution
+mean_diff **+0.00052**, 132 of 250 trajectories better, exact sign test
+**p = 0.411**, 100k sign-flip **p = 0.1032**, and the gap is *smaller than the
+anchor's own seed range*. On the crossed split it is **better** than the anchor
+(mean_diff −0.00263, flip p = 0.00858). So at K=2 the entire horizon penalty was
+my epoch budget, which is precisely the alternative `kcurve_sm.sh` was written to
+kill and which last turn's 2-seed screen appeared to confirm — on a point
+estimate of 0.09503 with a seed range of 0.15001, larger than the estimate
+itself. I did label the `sm` arms "screen, not verdict"; I then wrote the
+conclusion into three documents anyway. The label is worthless if the claim
+travels regardless.
+
+**What survives.** The horizon penalty is real at K=5 and K=10 *after* matching
+gradient steps — K5_sm +0.00592 (sign p = 1.4e-25), K10_sm +0.02036
+(p = 1.8e-67) — but it is smaller than the `nv` arms implied (K10_sm 0.03927
+against K10_nv 0.04866). So the honest statement is: **step-matching removes the
+K=2 penalty entirely and roughly a third of the K=10 penalty; what remains at
+K≥5 is a horizon effect.** Every `nv` arm remains worse than the anchor at
+p ≤ 1e-25, so "a K-step map trained on K× fewer steps is worse" holds; "a K-step
+map is intrinsically worse" is only established for K ≥ 5.
+
+### This is now the live route to clause 2, and it points the compute
+
+`K10_sm` sits at **0.03927 in-distribution terminal, under the 0.05 threshold**,
+at one application per wafer — the configuration whose speedup is 10.55×. Its
+seed range is 0.03501 on 3 seeds, so the margin (0.011) is inside its own noise
+and this is a screen. But if it holds at 8 seeds, clause 1 is met
+in-distribution at K=10, and clause 2's remaining gap is capacity alone, which is
+H7's question. That makes the `sm` arms the highest-value compute in this repo
+right now, and seeds 4–8 are queued behind the running `sm` queue rather than
+alongside it.
+
+Note what this does to last turn's framing of the addendum's route. I wrote that
+the K knob "trades clause 1 for clause 2". At K=2 it does not trade at all once
+the training budget is honest. Whether it trades at K=10 is not yet decided, and
+I should not have decided it on three seeds twice in a row.
