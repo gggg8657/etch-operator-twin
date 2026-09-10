@@ -31,7 +31,7 @@ from torch.utils.data import DataLoader
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from eot import solver as S  # noqa: E402
-from eot.data import TrajDataset, band_mask  # noqa: E402
+from eot.data import norm_path, TrajDataset, band_mask  # noqa: E402
 from eot.metrics import shape_error  # noqa: E402
 from eot import runlock
 from eot.operator import build_from_cfg, EtchOperator, band_rel_l2, rel_l2  # noqa: E402
@@ -78,7 +78,12 @@ def main():
     run = Path(a.run)
     runlock.acquire(run / f"{a.split}_eval{a.tag or ''}.json", what="eval")
     cfg = json.loads((run / "args.json").read_text())
-    norm = json.loads((Path(a.data) / "norm.json").read_text())
+    # Resolve the norm the RUN was trained under, not the default one: a
+    # depth-conditioned checkpoint scored against dt constants would be fed a
+    # standardised log(dt) in the channel it learned as micron of depth, and
+    # would produce plausible-looking nonsense rather than an error.
+    _cfg = json.loads((Path(a.run) / "args.json").read_text())
+    norm = json.loads(norm_path(a.data, _cfg.get("cond", "dt")).read_text())
     scale, band_um = norm["sdf_scale_um"], norm["band_um"]
     device = torch.device(a.device)
 

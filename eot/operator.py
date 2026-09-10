@@ -407,6 +407,9 @@ def build_from_cfg(cfg: dict, cond_dim: int):
             n_layers=cfg["layers"], width_full=cfg["width_full"],
             scale=cfg["scale"], n_local=cfg.get("n_local", 1),
             act=cfg.get("act", "gelu"))
+    if arch == "specprop":
+        return SpectralPropagator(cond_dim=cond_dim, modes=cfg["modes"],
+                                  modes_a=cfg.get("modes_a", 16))
     raise ValueError(f"unknown arch {arch!r} in args.json")
 
 
@@ -499,7 +502,12 @@ class SpectralPropagator(nn.Module):
         spectrum) and `m` on the second (which is already half).
         """
         B = cond.shape[0]
-        raw = head(cond).view(B, 2, 2 * m, m)
+        # `.float()` is required, not defensive: the trainer runs under
+        # torch.autocast(bfloat16), so the head emits bfloat16 and
+        # torch.complex accepts only Half/Float/Double. The transforms are
+        # float32 anyway -- torch.fft has no bfloat16 kernel -- so the whole
+        # spectral path is deliberately outside the autocast dtype.
+        raw = head(cond).float().view(B, 2, 2 * m, m)
         return torch.complex(raw[:, 0], raw[:, 1])
 
     def residual(self, phi, cond):

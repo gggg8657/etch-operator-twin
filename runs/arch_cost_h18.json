@@ -1,0 +1,275 @@
+{
+  "question": "which candidate surrogate architectures fit the clause-2 budget, measured before any of them is trained",
+  "protocol": {
+    "estimator": "CPU-seconds per wafer on one verified thread, fresh subprocess per config",
+    "rounds": 16,
+    "warm_rollouts_untimed": 3,
+    "budget_warm_s": 0.0005119049060000003,
+    "budget_cold_s": 0.0007389038889999999,
+    "solver_warm_cpu_s": 0.5119049060000003,
+    "solver_cold_cpu_s": 0.7389038889999999,
+    "speedup_target": 1000.0,
+    "budget_provenance": {
+      "paired": true,
+      "measured_in_this_invocation": true,
+      "solver_wafers": 8,
+      "split": "test",
+      "same_wafers_as_accuracy": "the recipes and dt values of the split the operator's accuracy is scored on",
+      "denominators_cpu_s": {
+        "terminal_one_apply": 0.5119049060000003,
+        "all_frames_ten_applies_excl_raster": 0.9975779415000012,
+        "fixed_duration": 0.5640681525
+      },
+      "all_frames_raster_excluded_cpu_s": 2.7200840785000007,
+      "stored_warm_median_cpu_s": 0.2767124970000001,
+      "drift_vs_stored": 2.0384628761454158,
+      "loadavg_1min_at_start": 281.9,
+      "matched_denominator_for_one_application": "terminal_one_apply",
+      "why": "a stride-10 operator emits the terminal state in one application, so the terminal one-apply column is the like-for-like denominator for it. All three are reported per row so the choice is visible rather than adopted."
+    },
+    "no_accuracy_claimed": "cost only. Accuracy for these rows is in runs/shrink.json and runs/multiscale.json."
+  },
+  "models": {
+    "fno_w8m4L2_K10": {
+      "note": "the accuracy-admissible FNO from runs/shrink.json (0.04717 in-distribution terminal at 3 seeds). Reference row: this is the cost the multiscale architecture has to beat by 6.4x.",
+      "params": 10897,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 279.37,
+        "after": 279.37
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0025803669999998613,
+        "per_wafer_cpu_s": 0.0025803669999998613,
+        "min_cpu_s": 0.0018392919999998814,
+        "max_cpu_s": 0.0036809589999999837,
+        "spread_factor": 2.0012912577232007,
+        "over_budget_factor": 5.0407155113294815,
+        "under_budget": false,
+        "speedup_vs_solver": 198.38453444801758,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 198.38453444801758,
+          "all_frames_ten_applies_excl_raster": 386.6031233154256,
+          "fixed_duration": 218.59997143818313
+        },
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          139.06835311124155,
+          278.31627930749073
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.007887410000000039,
+        "per_wafer_cpu_s": 0.007887410000000039,
+        "min_cpu_s": 0.007395078000000055,
+        "max_cpu_s": 0.008379742000000023,
+        "spread_factor": 1.1331512662881935,
+        "over_budget_factor": 10.674473524120321,
+        "under_budget": false,
+        "speedup_vs_solver": 93.68143522398306,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          88.17740319451337,
+          99.91833608786742
+        ],
+        "n": 2
+      }
+    },
+    "pw_wf8_n1_relu_K10": {
+      "note": "pointwise per-pixel MLP, width 8, 1 hidden layer(s), relu. NO spatial mixing at any resolution.",
+      "params": 1217,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 279.37,
+        "after": 287.11
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0009440025000000407,
+        "per_wafer_cpu_s": 0.0009440025000000407,
+        "min_cpu_s": 0.0007556430000001946,
+        "max_cpu_s": 0.0011277480000000395,
+        "spread_factor": 1.4924349196641127,
+        "over_budget_factor": 1.844097387884851,
+        "under_budget": false,
+        "speedup_vs_solver": 542.2707100881388,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 542.2707100881388,
+          "all_frames_ten_applies_excl_raster": 1056.753495356165,
+          "fixed_duration": 597.5282401264569
+        },
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          453.91781319938707,
+          677.4427950763369
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.002811414499999998,
+        "per_wafer_cpu_s": 0.002811414499999998,
+        "min_cpu_s": 0.002701762000000052,
+        "max_cpu_s": 0.002921066999999944,
+        "spread_factor": 1.0811711024138646,
+        "over_budget_factor": 3.8048446379201537,
+        "under_budget": false,
+        "speedup_vs_solver": 262.82282068332523,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          252.95684385192607,
+          273.48962973051874
+        ],
+        "n": 2
+      }
+    },
+    "specprop_m4_ma4_K10": {
+      "note": "conditioned linear Fourier propagator, modes=4, modes_a=4. Four full-resolution operations (rfft2, masked multiply-add, irfft2, add) against the FNO's ~20, and the transforms act on one channel not eight. Accuracy UNMEASURED at the time this row was priced.",
+      "params": 9344,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 287.11,
+        "after": 299.43
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.000277051500000125,
+        "per_wafer_cpu_s": 0.000277051500000125,
+        "min_cpu_s": 0.0002692600000000489,
+        "max_cpu_s": 0.0003016350000000223,
+        "spread_factor": 1.1202369457029173,
+        "over_budget_factor": 0.5412167313749575,
+        "under_budget": true,
+        "speedup_vs_solver": 1847.6886282866878,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 1847.6886282866878,
+          "all_frames_ten_applies_excl_raster": 3600.694966457684,
+          "fixed_duration": 2035.9685924809844
+        },
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          1697.1004890014833,
+          1901.1546683499491
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.0018447055000000434,
+        "per_wafer_cpu_s": 0.0018447055000000434,
+        "min_cpu_s": 0.0016553050000001068,
+        "max_cpu_s": 0.00203410599999998,
+        "spread_factor": 1.2288406064138324,
+        "over_budget_factor": 2.496543227694453,
+        "under_budget": false,
+        "speedup_vs_solver": 400.55384938136876,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          363.2573174652684,
+          446.3853422782824
+        ],
+        "n": 2
+      }
+    },
+    "specprop_m4_ma16_K10": {
+      "note": "conditioned linear Fourier propagator, modes=4, modes_a=16. Four full-resolution operations (rfft2, masked multiply-add, irfft2, add) against the FNO's ~20, and the transforms act on one channel not eight. Accuracy UNMEASURED at the time this row was priced.",
+      "params": 71744,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 299.43,
+        "after": 304.52
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0002938135000000175,
+        "per_wafer_cpu_s": 0.0002938135000000175,
+        "min_cpu_s": 0.0002831629999999752,
+        "max_cpu_s": 0.00032448799999995614,
+        "spread_factor": 1.1459406772776972,
+        "over_budget_factor": 0.5739610942506133,
+        "under_budget": true,
+        "speedup_vs_solver": 1742.278370462793,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 1742.278370462793,
+          "all_frames_ten_applies_excl_raster": 3395.2760560693837,
+          "fixed_duration": 1919.8170012608896
+        },
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          1577.5773094846943,
+          1807.8100104888179
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.0021576449999999303,
+        "per_wafer_cpu_s": 0.0021576449999999303,
+        "min_cpu_s": 0.0017643809999998705,
+        "max_cpu_s": 0.00255090899999999,
+        "spread_factor": 1.4457812683316003,
+        "over_budget_factor": 2.9200617727428564,
+        "under_budget": false,
+        "speedup_vs_solver": 342.45850869815183,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          289.66297464943,
+          418.78930287735704
+        ],
+        "n": 2
+      }
+    },
+    "specprop_m8_ma32_K10": {
+      "note": "conditioned linear Fourier propagator, modes=8, modes_a=32. Four full-resolution operations (rfft2, masked multiply-add, irfft2, add) against the FNO's ~20, and the transforms act on one channel not eight. Accuracy UNMEASURED at the time this row was priced.",
+      "params": 283904,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 304.52,
+        "after": 301.28
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.00022571449999997384,
+        "per_wafer_cpu_s": 0.00022571449999997384,
+        "min_cpu_s": 0.00021882900000003147,
+        "max_cpu_s": 0.0002723679999999673,
+        "spread_factor": 1.2446613565840365,
+        "over_budget_factor": 0.4409305270459231,
+        "under_budget": true,
+        "speedup_vs_solver": 2267.9309747493385,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 2267.9309747493385,
+          "all_frames_ten_applies_excl_raster": 4419.644912046488,
+          "fixed_duration": 2499.0337461707836
+        },
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          1879.4605313401785,
+          2339.2918945840206
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.00202194049999993,
+        "per_wafer_cpu_s": 0.00202194049999993,
+        "min_cpu_s": 0.0016975389999998036,
+        "max_cpu_s": 0.0023463420000000568,
+        "spread_factor": 1.3822021173005912,
+        "over_budget_factor": 2.736405275571544,
+        "under_budget": false,
+        "speedup_vs_solver": 365.44294404312365,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          314.9173858712762,
+          435.2794775260453
+        ],
+        "n": 2
+      }
+    }
+  },
+  "components": {}
+}

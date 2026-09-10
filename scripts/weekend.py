@@ -199,6 +199,8 @@ def main():
     kc = read("runs/kcurve.json") or {}
     shr = read("runs/shrink.json") or {}
     ac = read("runs/arch_cost.json") or {}
+    cap = read("runs/capacity_test.json") or {}
+    h18 = read("runs/arch_cost_h18.json") or {}
     cheap, best_ok = cheapest_rows(ac, shr)
     k = (ev or {}).get("kpi_clause_rel_l2", {})
     kx = (evx or {}).get("kpi_clause_rel_l2", {})
@@ -367,6 +369,79 @@ def main():
               "discretisation, not the physics. That is why the next experiment is the "
               "crossed split, not a bigger model.", ""]
 
+    if cap.get("capacity_curve"):
+        best = cap["best_crossed"]
+        anc = next(c for c in cap["capacity_curve"]
+                   if c["name"] == "anchor_w64m20L4")
+        t = cap["tests_vs_anchor"][best["name"]]["crossed_in_coverage"]
+        e = cap["arms"][best["name"]]["crossed_in_coverage"]
+        L += ["## The first thing that moved the crossed split: capacity, not data",
+              "",
+              (f"Out-of-distribution error is **non-monotone in capacity, with an "
+               f"interior optimum**, and the model that generalises best is "
+               f"**{anc['params'] // best['params']}x smaller** than the deployed one. "
+               f"Crossed-in-coverage terminal band rel-L2, stride 1, 8 seeds each: "
+               + " → ".join(f"{c['params']:,} params **{c['crossed_in_coverage']:.5f}**"
+                            for c in cap["capacity_curve"]) + "."),
+              "",
+              (f"Against the deployed anchor the improvement is **{t['mean_diff_vs_anchor']:+.5f}**, "
+               f"exact seed-level permutation test **p = {t['seed_level_exact']['p']:.4f}**, "
+               f"95% interval **[{t['interval_95']['lo']:+.5f}, {t['interval_95']['hi']:+.5f}]** "
+               f"— it excludes zero, and unlike every other crossed comparison in this "
+               f"repo it does not cover the 0.00440 yardstick, so it bounds something. "
+               f"This one also survived the seed extension that reversed two other "
+               f"3-seed crossed readings this weekend, including one in the same turn."),
+              "",
+              (f"**It is still not a pass, and that has to be said plainly.** "
+               f"Point estimate {e['point']:.5f} MET, every one of 8 seeds MET, "
+               f"trajectory-bootstrap upper bound **{e['hi']:.5f} — NOT MET**. "
+               f"Clause 1 requires the strict reading everywhere else in this repo "
+               f"and it fails here. What changed is that the crossed split moved at "
+               f"all: every previous explanation put the failure in the data "
+               f"(displacement coverage, the adaptive-dt protocol, the horizon), and "
+               f"this is the first one that located part of it in the model and came "
+               f"with an intervention that worked."),
+              "",
+              ("Confound, stated because it bounds the claim: the three arms differ "
+               "in width, modes *and* depth together, so this is one axis through a "
+               "three-dimensional space. That establishes non-monotonicity; it does "
+               "not attribute the effect to any one of the three, and no attribution "
+               "is made."),
+              ""]
+    if h18.get("models"):
+        sp = {k: v for k, v in h18["models"].items() if k.startswith("specprop")}
+        under = [v for v in sp.values() if v["warm"]["under_budget"]]
+        best_sp = min(sp.items(), key=lambda kv: kv[1]["warm"]["per_wafer_cpu_s"])
+        L += ["## Clause 2 has been cleared on cost, by an architecture whose accuracy is not yet known",
+              "",
+              (f"**{len(under)} of {len(sp)}** priced variants of a conditioned linear "
+               f"Fourier propagator come in **under** the workload-matched 1000x budget "
+               f"— the first architectures in this repo to do so. Best: "
+               f"`{best_sp[0]}`, {best_sp[1]['params']:,} params, "
+               f"**{best_sp[1]['warm']['per_wafer_cpu_s']*1e6:.0f} µs/wafer = "
+               f"{best_sp[1]['warm']['speedup_vs_solver']:.0f}x** "
+               f"(`runs/arch_cost_h18.json`), measured at load "
+               f"{h18['protocol']['budget_provenance'].get('loadavg_1min_at_start', 0):.0f} "
+               f"so a lower bound."),
+              "",
+              ("It got there by attacking the one axis the three failed attacks never "
+               "touched. Clause 2's cost is **~20 PyTorch operations at ~30 µs each**, "
+               "not arithmetic; shrinking the tensors (H15) bought 2.26x of a predicted "
+               "16x, fusing them (`torch.compile`) was 2.0-3.3x *slower*, and removing "
+               "spatial mixing (H16) was Pareto-dominated. This architecture does four "
+               "full-resolution operations instead of twenty."),
+              "",
+              ("**No accuracy is claimed for it. It is training now**, and the "
+               "prediction written before the sweep started is 0.05-0.12 "
+               "in-distribution terminal — i.e. that it clears clause 2 and misses "
+               "clause 1. If that is what happens, the frontier is pinned from both "
+               "sides for the first time: a measured point under 1000x that is too "
+               "inaccurate, and a measured point at 0.04717 that is too slow. The "
+               "expected failure mode is stated in advance: a propagator linear in phi "
+               "cannot represent an advance that depends nonlinearly on phi, which is "
+               "what an undercut is, and an undercut appears in 249 of 250 "
+               "trajectories."),
+              ""]
     L += ["## What was tried that did not work, and what it rules out", "",
           "1. **90-way parallel dataset generation.** Throughput *peaks at 8 workers and "
           "falls at 90* (`runs/worker_scaling.json`) — ViennaPS's flux solver is a "

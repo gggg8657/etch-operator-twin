@@ -1,0 +1,91 @@
+{
+  "definition": "depth(t) = y_deepest(frame 0) - y_deepest(frame t), y_deepest = most negative zero crossing of the SDF over all columns, linearly interpolated between vertically adjacent samples (sub-cell; row grid is 0.1575 um)",
+  "why_derived_not_read": "the stored target_depth is the depth REQUESTED of choose_dt, not achieved, and it is NaN for every test_crossed trajectory",
+  "splits": {
+    "train": {
+      "n_trajectories": 900,
+      "n_frames": 11,
+      "n_nan": 0,
+      "final_depth_um": {
+        "min": 2.207116560907814,
+        "max": 9.944837224765086,
+        "median": 6.7106088925534335,
+        "p25": 5.381286084417282,
+        "p75": 7.919954487423258
+      },
+      "monotone_fraction": 1.0,
+      "file": "data/depth_train.npy",
+      "vs_stored_target_depth": {
+        "n_comparable": 900,
+        "pearson_r": 0.964931248992329,
+        "median_residual_um": -0.17416155901480845,
+        "median_abs_residual_um": 0.17416155901480845,
+        "achieved_over_requested_median": 0.9745137333516884,
+        "reading": "achieved should track requested but sit BELOW it: choose_dt sizes dt from the rate on the initial flat geometry, and the rate falls as the trench deepens, so the etch under-delivers. A weak correlation would mean the extraction is wrong, not that the physics is interesting."
+      }
+    },
+    "val": {
+      "n_trajectories": 150,
+      "n_frames": 11,
+      "n_nan": 0,
+      "final_depth_um": {
+        "min": 3.9562809185718923,
+        "max": 9.815555393226504,
+        "median": 6.714974608946972,
+        "p25": 5.569928956078732,
+        "p75": 8.17401990010293
+      },
+      "monotone_fraction": 1.0,
+      "file": "data/depth_val.npy",
+      "vs_stored_target_depth": {
+        "n_comparable": 150,
+        "pearson_r": 0.9624761578345914,
+        "median_residual_um": -0.17805145387574584,
+        "median_abs_residual_um": 0.17805145387574584,
+        "achieved_over_requested_median": 0.9742418946787098,
+        "reading": "achieved should track requested but sit BELOW it: choose_dt sizes dt from the rate on the initial flat geometry, and the rate falls as the trench deepens, so the etch under-delivers. A weak correlation would mean the extraction is wrong, not that the physics is interesting."
+      }
+    },
+    "test": {
+      "n_trajectories": 250,
+      "n_frames": 11,
+      "n_nan": 0,
+      "final_depth_um": {
+        "min": 3.3781389035577845,
+        "max": 9.685103888586749,
+        "median": 6.647266759647158,
+        "p25": 5.253446603149879,
+        "p75": 8.263249445383941
+      },
+      "monotone_fraction": 1.0,
+      "file": "data/depth_test.npy",
+      "vs_stored_target_depth": {
+        "n_comparable": 250,
+        "pearson_r": 0.951719429722604,
+        "median_residual_um": -0.1579980484143959,
+        "median_abs_residual_um": 0.1579980484143959,
+        "achieved_over_requested_median": 0.977210436149374,
+        "reading": "achieved should track requested but sit BELOW it: choose_dt sizes dt from the rate on the initial flat geometry, and the rate falls as the trench deepens, so the etch under-delivers. A weak correlation would mean the extraction is wrong, not that the physics is interesting."
+      }
+    },
+    "test_crossed": {
+      "n_trajectories": 209,
+      "n_frames": 11,
+      "n_nan": 0,
+      "final_depth_um": {
+        "min": 0.5223518469202237,
+        "max": 13.345624241303273,
+        "median": 4.077148620537885,
+        "p25": 2.21963048919918,
+        "p75": 7.243865815203959
+      },
+      "monotone_fraction": 1.0,
+      "file": "data/depth_test_crossed.npy",
+      "vs_stored_target_depth": {
+        "n_comparable": 0,
+        "note": "stored target_depth is all NaN on this split (independent-dt generation), which is why depth is derived rather than read"
+      }
+    }
+  },
+  "norm_written": "data/norm_depth.json"
+}

@@ -23,9 +23,11 @@ from torch.utils.data import ConcatDataset, DataLoader
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from eot.data import PairDataset, TrajDataset, band_mask, fit_norm  # noqa: E402
+from eot.data import (PairDataset, TrajDataset, band_mask,  # noqa: E402
+                      fit_norm, norm_path)
 from eot import runlock  # noqa: E402
-from eot.operator import EtchOperator, MultiScaleOperator, band_rel_l2, rel_l2  # noqa: E402
+from eot.operator import (EtchOperator, MultiScaleOperator,  # noqa: E402
+                          SpectralPropagator, band_rel_l2, rel_l2)  # noqa: E402
 
 
 def evaluate(model, loader, device, scale, band_um, rollout=True, blind=False):
@@ -89,7 +91,29 @@ def main():
     # pointwise path plus an optional spectral body on a coarser grid, added
     # because runs/arch_cost.json prices the full-resolution spectral body 6-10x
     # over the clause-2 budget while the pointwise path alone fits inside it.
-    ap.add_argument("--arch", choices=("fno", "multiscale"), default="fno")
+    ap.add_argument("--arch", choices=("fno", "multiscale", "specprop"),
+                    default="fno")
+    # H19. The operator needs its horizon channel supplied before it can be
+    # queried at all. In `dt` mode that channel is log(K*dt), and a caller whose
+    # query is a target DEPTH must run eot.solver.probe_rate to obtain it -- a
+    # real solver call, measured at 39.9 ms -- which caps the speedup clause at
+    # solver/probe = 12.8x for EVERY architecture, including the specprop rows
+    # that clear 1000x on cost (runs/bench_workload.json,
+    # runs/arch_cost_h18.json). In `depth` mode the channel is the depth the
+    # application must advance, which IS the query, so no probe is needed and
+    # the ceiling does not apply.
+    #
+    # Only well-posed at one application per wafer: the etch rate falls as the
+    # trench deepens, so no single depth describes a multi-application rollout.
+    # eot.data._cond_for raises rather than approximating.
+    ap.add_argument("--cond", choices=("dt", "depth"), default="dt",
+                    help="horizon conditioning channel: log(K*dt), or the "
+                         "achieved etch depth from scripts/derive_depth.py")
+    ap.add_argument("--modes-a", type=int, default=16,
+                    help="specprop only: modes for the ADDITIVE spectral term. "
+                         "May exceed --modes at no inference cost, because the "
+                         "irfft2 costs the same whatever fraction of the "
+                         "spectrum is non-zero.")
     ap.add_argument("--scale", type=int, default=4,
                     help="multiscale only: spatial downsample of the spectral "
                          "body. 0 removes the body, leaving a purely pointwise "
@@ -175,9 +199,10 @@ def main():
         runlock.reclaim_orphan(run, what="train")
     data = Path(a.data)
 
-    norm_p = data / "norm.json"
+    norm_p = norm_path(data, a.cond)
     if not norm_p.exists():
-        norm_p.write_text(json.dumps(fit_norm(data / "train.npz"), indent=2))
+        norm_p.write_text(json.dumps(fit_norm(data / "train.npz",
+                                              cond_mode=a.cond), indent=2))
     norm = json.loads(norm_p.read_text())
     scale, band_um = norm["sdf_scale_um"], norm["band_um"]
 
@@ -196,6 +221,9 @@ def main():
     if a.arch == "fno":
         model = EtchOperator(cond_dim=len(norm["cond_keys"]), width=a.width,
                              modes=a.modes, n_layers=a.layers).to(device)
+    elif a.arch == "specprop":
+        model = SpectralPropagator(cond_dim=len(norm["cond_keys"]),
+                                   modes=a.modes, modes_a=a.modes_a).to(device)
     else:
         model = MultiScaleOperator(
             cond_dim=len(norm["cond_keys"]), width=a.width, modes=a.modes,

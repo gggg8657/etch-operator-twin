@@ -1,0 +1,351 @@
+{
+  "hypothesis": "H17: the deployed operator's crossed-split failure is partly overfitting, so reducing capacity improves out-of-distribution error. Guessed monotone; the point estimates are not.",
+  "protocol": {
+    "metric": "terminal-step band rel-L2, coverage_verdict.per_traj_both_readings, stride 1 for every arm",
+    "crossed_rule": {
+      "disp_lo_um": 0.07555290407071312,
+      "disp_hi_um": 0.2987453897955747,
+      "n_in_coverage": 121,
+      "n_total": 209
+    },
+    "yardstick": 0.0044,
+    "yardstick_source": "|K5_sm - K1_nv| in-distribution, the smallest gap runs/kcurve.json treats as a real effect",
+    "unit_of_replication": "seed, for the exact test; trajectory, for the paired sign test. Both reported because they answer different questions.",
+    "confound": "the arms differ in width, modes AND layers together, so this is one axis through a three-dimensional space. Non-monotonicity does not need them disentangled; attribution would, and none is claimed.",
+    "interval_rule": "a p-value at these seed counts measures resolution. The interval is what bounds an effect, so interval_covers_yardstick is on every row."
+  },
+  "arms": {
+    "w8m4L2": {
+      "params": 10897,
+      "n_seeds": 8,
+      "runs": [
+        "runs/shrink/w8m4L2_K1_s1",
+        "runs/shrink/w8m4L2_K1_s2",
+        "runs/shrink/w8m4L2_K1_s3",
+        "runs/shrink/w8m4L2_K1_s4",
+        "runs/shrink/w8m4L2_K1_s5",
+        "runs/shrink/w8m4L2_K1_s6",
+        "runs/shrink/w8m4L2_K1_s7",
+        "runs/shrink/w8m4L2_K1_s8"
+      ],
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "verdict_strength": "verdict",
+      "in_distribution": {
+        "per_seed": [
+          0.06587516009807587,
+          0.05023132007569075,
+          0.04855236364156008,
+          0.0600136234536767,
+          0.05225282496213913,
+          0.051648817211389544,
+          0.0656984611749649,
+          0.0669845000654459
+        ],
+        "point": 0.05765713383536786,
+        "seed_range": 0.018432136423885824,
+        "lo": 0.05411089420183562,
+        "hi": 0.06179332599428017,
+        "n": 250,
+        "met_point": false,
+        "met_every_seed": false,
+        "met_upper_ci": false
+      },
+      "crossed_in_coverage": {
+        "per_seed": [
+          0.09493191623367554,
+          0.07218511411843222,
+          0.07148705025719217,
+          0.08711034276576574,
+          0.07044349806306284,
+          0.0811812981101107,
+          0.09004233198717607,
+          0.0896235585890033
+        ],
+        "point": 0.08212563876555232,
+        "seed_range": 0.024488418170612702,
+        "lo": 0.07194123049911251,
+        "hi": 0.09391466292291918,
+        "n": 121,
+        "met_point": false,
+        "met_every_seed": false,
+        "met_upper_ci": false
+      }
+    },
+    "w16m8L4": {
+      "params": 266729,
+      "n_seeds": 8,
+      "runs": [
+        "runs/shrink/w16m8L4_K1_s1",
+        "runs/shrink/w16m8L4_K1_s2",
+        "runs/shrink/w16m8L4_K1_s3",
+        "runs/shrink/w16m8L4_K1_s4",
+        "runs/shrink/w16m8L4_K1_s5",
+        "runs/shrink/w16m8L4_K1_s6",
+        "runs/shrink/w16m8L4_K1_s7",
+        "runs/shrink/w16m8L4_K1_s8"
+      ],
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "verdict_strength": "verdict",
+      "in_distribution": {
+        "per_seed": [
+          0.024917721055448056,
+          0.026407344076782465,
+          0.026757577791810035,
+          0.02555493751913309,
+          0.027235081549733878,
+          0.025697227869182826,
+          0.023768540441989897,
+          0.025006381701678036
+        ],
+        "point": 0.025668101500719787,
+        "seed_range": 0.0034665411077439805,
+        "lo": 0.024084140605444553,
+        "hi": 0.027423268942069264,
+        "n": 250,
+        "met_point": true,
+        "met_every_seed": true,
+        "met_upper_ci": true
+      },
+      "crossed_in_coverage": {
+        "per_seed": [
+          0.04217762182936195,
+          0.04290608897774426,
+          0.04475605009077502,
+          0.04977163099799274,
+          0.041799930732481734,
+          0.042451233356760064,
+          0.03955020109761106,
+          0.039675436813907686
+        ],
+        "point": 0.042886024237079316,
+        "seed_range": 0.010221429900381683,
+        "lo": 0.034426608693296244,
+        "hi": 0.05295115603944132,
+        "n": 121,
+        "met_point": true,
+        "met_every_seed": true,
+        "met_upper_ci": false
+      }
+    },
+    "anchor_w64m20L4": {
+      "params": 26248025,
+      "n_seeds": 8,
+      "runs": [
+        "runs/seed1",
+        "runs/seed2",
+        "runs/seed3",
+        "runs/seed4",
+        "runs/seed5",
+        "runs/seed6",
+        "runs/seed7",
+        "runs/seed8"
+      ],
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "verdict_strength": "verdict",
+      "in_distribution": {
+        "per_seed": [
+          0.019352013520896435,
+          0.018051594631746413,
+          0.0183573831692338,
+          0.019254365239292383,
+          0.019768870061263443,
+          0.018949094800278544,
+          0.018788799880072475,
+          0.018700777634978294
+        ],
+        "point": 0.018902862367220222,
+        "seed_range": 0.0017172754295170303,
+        "lo": 0.017529986936127534,
+        "hi": 0.02044093855682877,
+        "n": 250,
+        "met_point": true,
+        "met_every_seed": true,
+        "met_upper_ci": true
+      },
+      "crossed_in_coverage": {
+        "per_seed": [
+          0.07029722317714583,
+          0.04165912236371809,
+          0.03549717906631591,
+          0.05579200604053076,
+          0.04790182951222027,
+          0.05240086620011605,
+          0.07060257989666925,
+          0.06051727047975152
+        ],
+        "point": 0.05433350959205846,
+        "seed_range": 0.035105400830353344,
+        "lo": 0.03469859516223573,
+        "hi": 0.07869597529316096,
+        "n": 121,
+        "met_point": false,
+        "met_every_seed": false,
+        "met_upper_ci": false
+      }
+    }
+  },
+  "tests_vs_anchor": {
+    "w8m4L2": {
+      "in_distribution": {
+        "mean_diff_vs_anchor": 0.03875427146814764,
+        "seed_level_exact": {
+          "statistic": "difference of per-seed arm means",
+          "observed": 0.03875427146814764,
+          "n_a": 8,
+          "n_b": 8,
+          "n_splits": 12870,
+          "exact": true,
+          "p": 0.0001554001554001554,
+          "smallest_attainable_two_sided_p": 0.0001554001554001554
+        },
+        "interval_95": {
+          "lo": 0.03210799106545529,
+          "hi": 0.04518615572881766
+        },
+        "interval_width": 0.013078164663362368,
+        "interval_covers_yardstick": false,
+        "trajectory_paired_sign_test": {
+          "n": 250,
+          "n_arm_better": 0,
+          "p": 1.105429575052089e-75
+        },
+        "n_trajectories": 250
+      },
+      "crossed_in_coverage": {
+        "mean_diff_vs_anchor": 0.027792129173493857,
+        "seed_level_exact": {
+          "statistic": "difference of per-seed arm means",
+          "observed": 0.027792129173493857,
+          "n_a": 8,
+          "n_b": 8,
+          "n_splits": 12870,
+          "exact": true,
+          "p": 0.0003108003108003108,
+          "smallest_attainable_two_sided_p": 0.0001554001554001554
+        },
+        "interval_95": {
+          "lo": 0.015920930721970344,
+          "hi": 0.03966332762501737
+        },
+        "interval_width": 0.023742396903047025,
+        "interval_covers_yardstick": false,
+        "trajectory_paired_sign_test": {
+          "n": 121,
+          "n_arm_better": 7,
+          "p": 5.0549056627657954e-26
+        },
+        "n_trajectories": 121
+      }
+    },
+    "w16m8L4": {
+      "in_distribution": {
+        "mean_diff_vs_anchor": 0.006765239133499561,
+        "seed_level_exact": {
+          "statistic": "difference of per-seed arm means",
+          "observed": 0.006765239133499561,
+          "n_a": 8,
+          "n_b": 8,
+          "n_splits": 12870,
+          "exact": true,
+          "p": 0.0001554001554001554,
+          "smallest_attainable_two_sided_p": 0.0001554001554001554
+        },
+        "interval_95": {
+          "lo": 0.00583516114265855,
+          "hi": 0.0076953171243405675
+        },
+        "interval_width": 0.0018601559816820174,
+        "interval_covers_yardstick": false,
+        "trajectory_paired_sign_test": {
+          "n": 250,
+          "n_arm_better": 3,
+          "p": 2.878954254955859e-69
+        },
+        "n_trajectories": 250
+      },
+      "crossed_in_coverage": {
+        "mean_diff_vs_anchor": -0.011447485354979144,
+        "seed_level_exact": {
+          "statistic": "difference of per-seed arm means",
+          "observed": -0.011447485354979144,
+          "n_a": 8,
+          "n_b": 8,
+          "n_splits": 12870,
+          "exact": true,
+          "p": 0.025485625485625486,
+          "smallest_attainable_two_sided_p": 0.0001554001554001554
+        },
+        "interval_95": {
+          "lo": -0.021268573105677008,
+          "hi": -0.0016263976042812656
+        },
+        "interval_width": 0.019642175501395742,
+        "interval_covers_yardstick": false,
+        "trajectory_paired_sign_test": {
+          "n": 121,
+          "n_arm_better": 17,
+          "p": 1.978617798661459e-16
+        },
+        "n_trajectories": 121
+      }
+    }
+  },
+  "capacity_curve": [
+    {
+      "name": "w8m4L2",
+      "params": 10897,
+      "n_seeds": 8,
+      "in_distribution": 0.05765713383536786,
+      "crossed_in_coverage": 0.08212563876555232
+    },
+    {
+      "name": "w16m8L4",
+      "params": 266729,
+      "n_seeds": 8,
+      "in_distribution": 0.025668101500719787,
+      "crossed_in_coverage": 0.042886024237079316
+    },
+    {
+      "name": "anchor_w64m20L4",
+      "params": 26248025,
+      "n_seeds": 8,
+      "in_distribution": 0.018902862367220222,
+      "crossed_in_coverage": 0.05433350959205846
+    }
+  ],
+  "crossed_non_monotone_in_capacity": true,
+  "best_crossed": {
+    "name": "w16m8L4",
+    "params": 266729,
+    "n_seeds": 8,
+    "in_distribution": 0.025668101500719787,
+    "crossed_in_coverage": 0.042886024237079316
+  }
+}

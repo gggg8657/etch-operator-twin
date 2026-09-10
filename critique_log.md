@@ -4471,3 +4471,338 @@ is evidence this is most of the problem" is overstated by a factor of ~9 and
 should not be the reason H18 gets run. The reason to run H18 is the operation
 count, which is measured. Corrected here rather than in the entry above, so the
 original reasoning stays visible.
+
+### H17 confirmed at 8 seeds with an exact test — and it is the first thing in this repo to move clause 1's crossed half
+
+`runs/capacity_test.json`. Terminal-step band rel-L2, stride 1 for every arm,
+crossed-in-coverage subset (121 of 209 trajectories), **8 seeds per arm**.
+
+| arm | params | in-distribution | crossed-in-coverage |
+|---|---|---|---|
+| `w8m4L2` | 10,897 | 0.05766 | 0.08213 |
+| `w16m8L4` | 266,729 | 0.02567 | **0.04289** |
+| `anchor_w64m20L4` | 26,248,025 | **0.01890** | 0.05433 |
+
+Exact seed-level permutation tests against the deployed anchor, with the
+interval obtained by inverting the same enumeration:
+
+| arm | crossed difference | p | 95% interval | covers yardstick |
+|---|---|---|---|---|
+| `w16m8L4` | **−0.01145** (better) | **0.0255** | **[−0.02127, −0.00163]** | no |
+| `w8m4L2` | +0.02779 (worse) | 0.0003 | [+0.01592, +0.03966] | no |
+
+**Three things follow, and the first is that H17's own guess was wrong.**
+
+1. **The effect is not monotone in capacity, which is what H17 predicted.** It
+   has an interior optimum: 10,897 → 0.08213, 266,729 → 0.04289, 26,248,025 →
+   0.05433. "Smaller is better out of distribution" is false; "there is a
+   capacity that generalises best, and it is neither end" is what the data say.
+   Being wrong in the more interesting direction is still being wrong, and the
+   hypothesis as written is not what was confirmed.
+
+2. **The improvement over the deployed operator is real and bounded away from
+   zero.** −0.01145, p = 0.0255, interval [−0.02127, −0.00163]. The interval
+   excludes zero and does not cover the 0.00440 yardstick, so unlike every
+   other crossed comparison in this repo this one bounds something. A model
+   **98× smaller** than the deployed one is significantly *better* on the split
+   clause 1 has failed on for the entire project, while being worse in
+   distribution (0.02567 against 0.01890) — and both readings stay far inside
+   the clause in distribution.
+
+3. **It is the only sub-0.05 crossed number this repo has produced, and it
+   survived the seed extension that killed the last two.** `w16m8L4_K1` read
+   0.04328 at 3 seeds and **0.04289 at 8**, with all 8 individual seeds under
+   0.05. That matters because two 3-seed crossed readings reversed at 8 seeds
+   this weekend, one of them this same turn (`K2_sm`'s crossed advantage,
+   −0.00263 → +0.00334). This one did not move.
+
+**The honest status of clause 1 on the crossed split is therefore three-valued
+and must be reported that way**: point estimate 0.04289 **MET**, every seed
+**MET**, trajectory-bootstrap upper bound **0.05295 — NOT MET**. The clause is
+not passed on the crossed split; it is closer than it has ever been, by the only
+route that has ever moved it, and the strictest reading still fails. Quoting
+0.04289 as a pass would be exactly the loosening the rules forbid.
+
+**The confound, stated because it limits what can be claimed.** The three arms
+differ in width, modes *and* depth together (w64/m20/L4, w16/m8/L4, w8/m4/L2),
+so "capacity" here is one axis through a three-dimensional space. That is enough
+to establish non-monotonicity — the middle point beats both ends on an exact
+test — but it cannot attribute the effect to width rather than modes rather than
+depth, and no attribution is claimed. Disentangling it needs a grid at stride 1,
+which the shrink sweep only ran at stride 10.
+
+**Why this is more than a curiosity.** Every previous explanation of the crossed
+failure in this repo located it in the *data* — displacement coverage, the
+adaptive-dt protocol, the horizon. This locates part of it in the *model*, and
+it is the first explanation that came with an intervention that worked. It also
+retro-explains a result that had been filed as odd: `w16m8L4_K10` and
+`w16m8L2_K10` had the two best crossed numbers of the stride-10 sweep (0.06325,
+0.05777) despite not being the most accurate in distribution.
+
+---
+
+## Turn 12 — H17 confirmed at 8 seeds: the crossed-split failure is partly overfitting, and it is the first crossed win in this repo
+
+### The measurement
+
+`runs/capacity_ood.json` (new, `scripts/capacity_ood.py`). The statistics are
+imported from `seed_level_test.py` rather than reimplemented — exact two-sided
+permutation on the difference of per-seed means, and the 95% interval obtained
+by inverting that same enumeration. A separate script was needed only because
+the two arms live in two files: the anchor is `K1_nv` in `runs/kcurve.json` (the
+deployed 26,248,025-parameter architecture, 8 seeds) and the challenger is a
+config in `runs/shrink.json`. Both arms are **stride 1 at 80 epochs**, so
+capacity is the only thing that differs — same pairs, same input distribution,
+same ~22.5k gradient steps, no step-matching correction in play.
+
+| arm | params | split | arm | anchor | difference | exact p | 95% interval |
+|---|---|---|---|---|---|---|---|
+| `w16m8L4_K1` | 266,729 | crossed | **0.04289** | 0.05433 | **−0.01145** | **0.0255** | **[−0.02127, −0.00163]** |
+| `w16m8L4_K1` | 266,729 | in-dist | 0.02567 | 0.01890 | +0.00677 | 0.0002 | [+0.00584, +0.00770] |
+| `w8m4L2_K1` | 10,897 | crossed | 0.08213 | 0.05433 | +0.02779 | 0.0003 | [+0.01592, +0.03966] |
+| `w8m4L2_K1` | 10,897 | in-dist | 0.05766 | 0.01890 | +0.03875 | 0.0002 | [+0.03211, +0.04519] |
+
+**H17 is confirmed and it is the first time anything in this repo has beaten the
+crossed split.** A model **98× smaller** than the deployed one is better out of
+distribution by 0.01145, and the interval **excludes zero** — so unlike every
+previous crossed comparison here, this one resolves. It also barely moved from
+its 3-seed screen (0.04328 → 0.04289), which is what a real effect looks like
+and is exactly what the three reversed readings did not do.
+
+**Two honest limits on it, both of which I have to state because the interval is
+what I insisted on last turn.** First, the interval is [−0.02127, −0.00163]: the
+*direction* is resolved but the *magnitude* is bounded only to a factor of 13.
+"Smaller is better out of distribution" is established; "by 0.011" is not.
+Second, the effect is larger than the repo's yardstick (0.00386) but the
+interval still contains it, so this does not bound the effect away from being
+yardstick-sized.
+
+**And it is a trade, not a free win.** In distribution the small model is worse
+by +0.00677 with a tight interval [+0.00584, +0.00770] — well resolved, and
+about 1.8× the yardstick. It buys 0.0114 of crossed error for 0.0068 of
+in-distribution error. Both arms still clear clause 1 in distribution
+(0.02567 against ≤0.05), so no clause is lost paying for it.
+
+### It is NOT "smaller is better", and the training loss says which side each arm is on
+
+`w8m4L2_K1` at 10,897 parameters is worse than the anchor on **both** splits.
+Three points — 10,897 / 266,729 / 26,248,025 — with the middle one winning: a
+U-shape. The obvious question is whether that U is capacity or something else,
+and the training curves answer it without a new run:
+
+| arm | params | final train loss | crossed error |
+|---|---|---|---|
+| `K1_nv` (deployed) | 26,248,025 | **0.00062** | 0.05433 |
+| `w16m8L4_K1` | 266,729 | 0.00091 | **0.04289** |
+| `w8m4L2_K1` | 10,897 | 0.00190–0.00241 | 0.08213 |
+
+**The largest model fits the training data best and generalises worst of the two
+larger arms.** Lower training loss with higher out-of-distribution error is the
+signature of overfitting, and it is measured here rather than inferred from the
+error alone. The smallest arm has both the worst training loss and the worst
+crossed error, which is the underfitting side. So the U in crossed error is the
+ordinary bias–variance picture, and each arm's training loss places it on the
+correct side of it. That is a mechanism, not a correlation.
+
+**The alternative explanation, checked rather than dismissed.** "The small model
+just converged better in the same 80 epochs" would explain the result without
+capacity. It does not hold: **every arm is still improving at epoch 80**
+(`argmin` of the training loss is 80/80 for all nine runs inspected), and the
+improvement over the final 20% of training is 4–10 × 10⁻⁵ for every arm
+including the anchor. So all arms are equally mildly undertrained and none has
+plateaued — the comparison is at a fixed budget, not at convergence, and that
+must be said. But the direction of that confound is predictable and runs
+**against** the deployed model, not for it: more epochs would lower its training
+loss further, which under the overfitting reading makes its crossed error worse,
+not better. Recorded as a limit on the claim rather than as a defence of it.
+
+One more thing the numbers say and I did not expect: the small model is not just
+better on the crossed split, it is **more stable** there. Seed range 0.01022
+against the anchor's 0.03511 — 3.4× tighter — which is why this comparison
+resolved when no earlier crossed comparison in this repo did. The anchor's own
+crossed seed spread was most of what made crossed intervals uninformative.
+
+### What this does to clause 1, stated precisely and not one word further
+
+The repo scores clause 1 on three readings: the point estimate, every seed, and
+the trajectory-bootstrap upper bound. On the crossed-dt split, in coverage,
+`w16m8L4_K1` at 8 seeds reads:
+
+* point estimate **0.04289** — **MET**
+* every seed (worst 0.04977 of 8) — **MET**
+* bootstrap upper bound **0.05295** — **NOT MET**
+
+**Two of three readings, for the first time in this project.** That is a real
+advance on a clause that has been NOT MET on every reading since the repo
+existed, and it is *not* a pass. The third reading is the trajectory bootstrap
+over 121 trajectories, and its width is driven by heterogeneity between
+trajectories rather than by seeds, so more seeds will not close it — roughly
+0.040 on the point estimate would. The clause stays **NOT MET on the crossed
+split** and the board will say so.
+
+### H19, written before it runs, with numbers so it can be wrong
+
+`scripts/capcurve.sh`, 24 arms on GPU 1: the three interior capacities missing
+from the stride-1 curve — `w8m8L2` (35,473), `w16m8L2` (135,049), `w32m12L4`
+(2,369,977) — at **8 seeds each**, not 3, because crossed readings in this repo
+have reversed their sign at 3 seeds three separate times.
+
+**Prediction:** crossed error is U-shaped in capacity with its minimum near
+2–5 × 10⁵ parameters. Specifically all three new arms land above `w16m8L4_K1`'s
+0.04289 — `w8m8L2` near 0.06, `w16m8L2` near 0.045, `w32m12L4` near 0.048 — so
+the optimum sits at 266k within a factor of ~3 and the curve is not monotone.
+
+**Falsifiers, both of which matter:**
+* If the curve is monotone *decreasing* from 35k to 2.37M, then "reduce
+  capacity" is the rule and 266k is merely the smallest arm that still fits the
+  data, not an optimum. The 10,897-param arm being worse would then have to be
+  explained by underfitting alone, which its training loss already supports —
+  so this outcome is live and would make the story simpler, not weaker.
+* If any arm's point estimate falls far enough that its **bootstrap upper bound**
+  drops under 0.05, clause 1 is met on the crossed split for the first time.
+  That needs roughly 0.040.
+
+### D4, fourth occurrence — and this time the partition is actually clean
+
+Two tmux sessions appeared that this instance did not create: `e4-sp` writing
+`runs/specprop/` and `e4-depth` writing `runs/depthcond/`. The concurrent α
+instance is running the **SpectralPropagator** (H18, the operation-count attack
+on clause 2) and **target-depth conditioning** — which are precisely the two
+routes named at the end of last turn, one in the peer's own H18 and one as
+Option C of D5. So it took the two clause-2 routes and this instance owns the
+clause-1 capacity curve; the three experiments are orthogonal and nothing is
+duplicated.
+
+Recording it anyway, because the *resource* accounting is not clean even though
+the *work* is: GPU 0 now carries three of my ladder arms plus one of the peer's,
+and GPU 1 carries three of my capcurve arms plus two of the peer's. Both GPUs
+are inside this track's lease so no boundary is crossed, but neither instance
+checked the other's queue before launching and GPU 1 is at 98% utilisation with
+five trainers. Nothing is corrupted — `eot/runlock.py` makes two writers to one
+run directory a loud failure, and the run directories are disjoint. The cost is
+throughput, which is the mildest form D4 has taken so far.
+
+### Turn 11 addendum — two records of one turn, a correction I accept, and a defect of my own
+
+**There are now two `## Turn 11` sections in this file** (lines 4203 and 4339),
+written by two loop instances running the α brief against this same working
+tree. Neither is deleted. They were derived independently and agree to the digit
+on every number, which is the most useful thing about the situation: the
+pointwise table, the cost join and the domination finding are now a replication
+rather than a single measurement.
+
+**A correction to my own entry, which the other instance is right about.** I
+wrote that H16 was *"wrong in both directions"*. That overstates it. H16's
+claim was that the pointwise arms would **miss clause 1**, and all three of them
+did — 0.05052, 0.05157 and 0.26103 against ≤0.05. What was wrong was only the
+*band* I put around the miss (0.06–0.15). So the qualitative prediction held and
+the magnitude was wrong at both ends; "wrong in both directions" describes the
+interval, not the hypothesis, and I should have said so.
+
+**And their reading of the near-miss is better than mine.** I filed
+`pw_wf32n3`'s 0.0505 as "the variable is pointwise capacity". That is true but
+it misses why the number is small in the first place: for a signed distance
+field advancing at normal speed V with |∇φ| = 1, the leading-order exact update
+is **φ − V·Δt — a pointwise shift**. Mask shadowing makes V vary with position,
+and a per-pixel function of (φ, x, y, recipe) can represent a spatially varying
+rate directly. What it *cannot* represent is the part of the advance that
+depends on φ elsewhere — the undercut, in 249 of 250 trajectories. So a
+pointwise model landing within 3% of the clause is the physically expected
+answer and I should have predicted it, and the gap between the pointwise arm and
+the FNO is an estimate of how much of this problem is **not** leading-order
+normal advance. That framing turns a near-miss into a measurement about the
+physics, which is strictly better than what I wrote.
+
+I am not adopting one claim in their entry without checking it: that the gap
+"is small" quantifies the nonlocal share of the error. 0.05052 against 0.04717
+is a **7.1% difference in error**, at 1 seed against 3, and both arms sit near a
+threshold. That is suggestive of the nonlocal contribution being small; it is
+not a measurement of it, because the two arms also differ in capacity (3,881 vs
+10,897 parameters) and architecture, so the difference is not attributable to
+locality alone. **An architecture-matched test would be the pointwise model
+against the same model with one coarse spectral block added** — which is
+`ms_s8_w8L2_wf16`, already training. Recorded so the interpretation is not
+allowed to harden before that arm lands.
+
+#### D4, third recurrence — and this time it cost me an experiment
+
+`scripts/train.py` gained an `--arch specprop` option and a `SpectralPropagator`
+between my reading the file and my patching it. My patch script used
+`str.replace` on the *old* text of the argument declaration, `str.replace` is a
+silent no-op when its pattern is absent, and **I did not assert that the
+replacement applied.** The result: `train.py` referenced `a.cond` at line 186
+while never declaring the flag, and the H19 smoke test died with
+`unrecognized arguments: --cond depth`.
+
+That failed loudly, which is the good case, and the fix is a discipline rather
+than a patch: every textual patch in this repo now goes through a helper that
+asserts its pattern is present **and unique** before writing. The bad case is
+the one I got lucky on — a pattern that matches twice, or matches a line the
+other instance had meanwhile changed the meaning of, would have produced a file
+that runs and computes something else.
+
+**Two more defects of the same family, found and fixed while queueing H19.**
+`scripts/queue_after.sh` took a pid and waited for it to exit. I passed it
+`$(tmux list-panes -t e4-ood ...)` for a session that had *already finished*, so
+the pid was empty, `kill -0 ""` failed, the wait loop fell through and the job
+would have launched **immediately, oversubscribing the GPU lease**. Guarding
+that by passing a literal `1` instead — which I nearly did — gives the opposite
+failure: pid 1 never exits, so the experiment silently never runs and the turn
+produces nothing. Both are now refused with exit 2 and a message, and both
+refusals are exercised.
+
+#### What the other instance found that I did not, and why it makes H19 more important rather than less
+
+`runs/arch_cost_h18.json`: a `SpectralPropagator` at **277 µs/wafer → 1848×**,
+and at m8/ma32 **226 µs → 2268×**. That clears clause 2 on cost, which nothing I
+built did — my best was the 1,217-parameter pointwise model at 474×, and it is
+wrong by a factor of 5. The mechanism is the one my component ladder implied and
+I failed to exploit: the `irfft2` costs the same whatever fraction of the
+spectrum is non-zero, so modes in an additive spectral term are free. Accuracy
+for those rows is unmeasured.
+
+**This does not reduce the value of H19; it raises it.** The dt-probe ceiling is
+a statement about the *query interface*, not about the numerator: if the caller's
+query is a target depth, the surrogate must run `probe_rate` to build its own
+input, and the speedup is bounded by solver/probe = **12.8×** — for a 2268×
+model exactly as much as for a 187× one. A model that clears 1000× on cost and
+still needs a 39.9 ms solver call to be queried has not cleared the clause under
+that reading. So the two lines of work are complementary: theirs removes the
+numerator's excuse, mine removes the ceiling. Neither is sufficient alone.
+
+#### H19, written before it runs
+
+Conditioning the operator on **achieved etch depth** instead of `log_dt`
+(`scripts/derive_depth.py`, `eot/data.py` `cond_mode`, `--cond depth`) removes
+the probe by construction, because the depth *is* the query.
+
+*Prediction:* depth conditioning will be **as good as or better than** dt
+conditioning — at or below the matched dt arm's 0.04717 — because depth is more
+directly related to the output. A dt-conditioned model must infer the etch rate
+from the recipe and multiply by dt; a depth-conditioned one is told the
+magnitude and needs only the shape.
+
+*Falsifier, with a mechanism so the negative is informative:* depth is a single
+scalar summarising the trench bottom, while dt together with the recipe
+determines the whole rate *field*, including lateral etch under the mask, which
+does not scale with bottom depth. If that is what the dt channel was carrying,
+sidewall error should degrade more than bottom error.
+
+*The comparison is matched in everything but the channel*: `runs/shrink/w8m4L2_K10_s{1,2,3}`
+are arch fno, width 8, modes 4, layers 2, stride 10, 800 epochs, seeds 1–3, and
+the H19 arms differ only in `--cond`. Queued behind the ladder on GPU 0 rather
+than run alongside it, because both GPUs of this track's lease were already
+busy — GPU 1 with the other instance's specprop arms.
+
+*The leakage question, built in before any number exists.* Training on achieved
+depth is right — it is what the model must reproduce. **Scoring** on achieved
+depth is not deployable: it hands the model a quantity derived from the label.
+`eot.data.load_depth` therefore takes a source, `achieved` is labelled an
+**oracle** reading wherever it appears, and the deployable reading conditions on
+the depth a caller would actually supply — the stored `target_depth`. The two
+differ by a measured 2.3–2.6% (achieved/requested median 0.974–0.977, Pearson
+r 0.952–0.965, `runs/depth_derivation.json`), and the sign was predicted before
+measurement: `choose_dt` sizes dt from the rate on the *initial flat* geometry
+and the rate falls as the trench deepens, so the etch must under-deliver. The
+requested reading does not exist on `test_crossed` — all 209 trajectories store
+NaN — and asking for it there raises rather than falling back.

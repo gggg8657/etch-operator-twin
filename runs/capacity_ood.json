@@ -1,0 +1,179 @@
+{
+  "hypothesis": "H17: the deployed operator's crossed-dt (out-of-distribution) failure is partly overfitting, so reducing capacity improves crossed generalisation. Falsified if the added seeds pull the small model's crossed mean above the anchor's, which is what happened to the last three 3-seed crossed readings in this repo.",
+  "protocol": {
+    "anchor": "K1_nv",
+    "anchor_arch": "EtchOperator width=64 modes=20 layers=4 (deployed)",
+    "anchor_params": 26248025,
+    "unit_of_replication": "seed; per-seed arm means over the same trajectories",
+    "test": "exact two-sided permutation on the difference of per-seed means, imported from seed_level_test.py",
+    "interval": "95% CI on the mean difference by inverting that test",
+    "sign_convention": "mean_diff_arm_minus_anchor < 0 means the SMALLER model is better",
+    "stride_restriction": "stride-1 arms only, so capacity is the only thing that differs from the anchor",
+    "target": 0.05,
+    "why_interval_not_p": "runs/seed_level_test.json measures every crossed interval 0.022-0.042 wide at every seed count including 8, so a crossed p-value can bound nothing"
+  },
+  "yardstick": {
+    "value": 0.003864523067139091,
+    "what": "|K5_sm - K1_nv| in-distribution, the smallest gap this repo treats as a real effect"
+  },
+  "arms": {
+    "w16m8L4_K1": {
+      "params": 266729,
+      "params_ratio_vs_anchor": 98.40709109245714,
+      "n_seeds_arm": 8,
+      "n_seeds_anchor": 8,
+      "verdict_strength": "verdict",
+      "in_distribution": {
+        "arm_point": 0.025668101500719784,
+        "anchor_point": 0.018902862367220222,
+        "arm_seed_range": 0.0034665411077439805,
+        "anchor_seed_range": 0.0017172754295170303,
+        "mean_diff_arm_minus_anchor": 0.006765239133499561,
+        "exact_test": {
+          "statistic": "difference of per-seed arm means",
+          "observed": 0.006765239133499561,
+          "n_a": 8,
+          "n_b": 8,
+          "n_splits": 12870,
+          "exact": true,
+          "p": 0.0001554001554001554,
+          "smallest_attainable_two_sided_p": 0.0001554001554001554
+        },
+        "interval": {
+          "alpha": 0.05,
+          "point": 0.006765239133499561,
+          "lo": 0.00583516114265855,
+          "hi": 0.0076953171243405675,
+          "width": 0.0018601559816820174,
+          "empty": false,
+          "contains_zero": false,
+          "truncated_at_search_edge": false,
+          "method": "inversion of the exact two-sample permutation test: the set of shifts delta with p(arm - delta, anchor) > alpha",
+          "n_grid": 801
+        },
+        "arm_met_point": true,
+        "arm_met_every_seed": true,
+        "arm_met_bootstrap_upper": true,
+        "anchor_met_point": true,
+        "bootstrap_upper_arm": 0.027423268942069264,
+        "bootstrap_upper_anchor": 0.02044093855682877,
+        "interval_covers_yardstick": false
+      },
+      "crossed_in_coverage": {
+        "arm_point": 0.042886024237079316,
+        "anchor_point": 0.05433350959205846,
+        "arm_seed_range": 0.010221429900381683,
+        "anchor_seed_range": 0.035105400830353344,
+        "mean_diff_arm_minus_anchor": -0.011447485354979144,
+        "exact_test": {
+          "statistic": "difference of per-seed arm means",
+          "observed": -0.011447485354979144,
+          "n_a": 8,
+          "n_b": 8,
+          "n_splits": 12870,
+          "exact": true,
+          "p": 0.025485625485625486,
+          "smallest_attainable_two_sided_p": 0.0001554001554001554
+        },
+        "interval": {
+          "alpha": 0.05,
+          "point": -0.011447485354979144,
+          "lo": -0.021268573105677008,
+          "hi": -0.0016263976042812656,
+          "width": 0.019642175501395742,
+          "empty": false,
+          "contains_zero": false,
+          "truncated_at_search_edge": false,
+          "method": "inversion of the exact two-sample permutation test: the set of shifts delta with p(arm - delta, anchor) > alpha",
+          "n_grid": 801
+        },
+        "arm_met_point": true,
+        "arm_met_every_seed": true,
+        "arm_met_bootstrap_upper": false,
+        "anchor_met_point": false,
+        "bootstrap_upper_arm": 0.05295115603944132,
+        "bootstrap_upper_anchor": 0.07869597529316096,
+        "interval_covers_yardstick": true
+      }
+    },
+    "w8m4L2_K1": {
+      "params": 10897,
+      "params_ratio_vs_anchor": 2408.7386436633938,
+      "n_seeds_arm": 8,
+      "n_seeds_anchor": 8,
+      "verdict_strength": "verdict",
+      "in_distribution": {
+        "arm_point": 0.05765713383536786,
+        "anchor_point": 0.018902862367220222,
+        "arm_seed_range": 0.018432136423885824,
+        "anchor_seed_range": 0.0017172754295170303,
+        "mean_diff_arm_minus_anchor": 0.03875427146814764,
+        "exact_test": {
+          "statistic": "difference of per-seed arm means",
+          "observed": 0.03875427146814764,
+          "n_a": 8,
+          "n_b": 8,
+          "n_splits": 12870,
+          "exact": true,
+          "p": 0.0001554001554001554,
+          "smallest_attainable_two_sided_p": 0.0001554001554001554
+        },
+        "interval": {
+          "alpha": 0.05,
+          "point": 0.03875427146814764,
+          "lo": 0.03210799106545529,
+          "hi": 0.04518615572881766,
+          "width": 0.013078164663362368,
+          "empty": false,
+          "contains_zero": false,
+          "truncated_at_search_edge": false,
+          "method": "inversion of the exact two-sample permutation test: the set of shifts delta with p(arm - delta, anchor) > alpha",
+          "n_grid": 801
+        },
+        "arm_met_point": false,
+        "arm_met_every_seed": false,
+        "arm_met_bootstrap_upper": false,
+        "anchor_met_point": true,
+        "bootstrap_upper_arm": 0.06179332599428017,
+        "bootstrap_upper_anchor": 0.02044093855682877,
+        "interval_covers_yardstick": false
+      },
+      "crossed_in_coverage": {
+        "arm_point": 0.08212563876555232,
+        "anchor_point": 0.05433350959205846,
+        "arm_seed_range": 0.024488418170612702,
+        "anchor_seed_range": 0.035105400830353344,
+        "mean_diff_arm_minus_anchor": 0.027792129173493857,
+        "exact_test": {
+          "statistic": "difference of per-seed arm means",
+          "observed": 0.027792129173493857,
+          "n_a": 8,
+          "n_b": 8,
+          "n_splits": 12870,
+          "exact": true,
+          "p": 0.0003108003108003108,
+          "smallest_attainable_two_sided_p": 0.0001554001554001554
+        },
+        "interval": {
+          "alpha": 0.05,
+          "point": 0.027792129173493857,
+          "lo": 0.015920930721970344,
+          "hi": 0.03966332762501737,
+          "width": 0.023742396903047025,
+          "empty": false,
+          "contains_zero": false,
+          "truncated_at_search_edge": false,
+          "method": "inversion of the exact two-sample permutation test: the set of shifts delta with p(arm - delta, anchor) > alpha",
+          "n_grid": 801
+        },
+        "arm_met_point": false,
+        "arm_met_every_seed": false,
+        "arm_met_bootstrap_upper": false,
+        "anchor_met_point": false,
+        "bootstrap_upper_arm": 0.09391466292291918,
+        "bootstrap_upper_anchor": 0.07869597529316096,
+        "interval_covers_yardstick": false
+      }
+    }
+  }
+}
