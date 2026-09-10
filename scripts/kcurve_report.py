@@ -49,17 +49,48 @@ from scripts.analyse_confound import per_step_displacement  # noqa: E402
 from scripts.coverage_verdict import boot_ci, per_traj_both_readings  # noqa: E402
 
 
+def is_complete(p: Path) -> bool:
+    """Has this arm finished training?
+
+    **This guard was missing until 2026-09-10 and it contaminated every K-curve
+    number this repo produced.** `arms()` required only `args.json` and
+    `best.pt`, and this script scores `best.pt` itself rather than reading a
+    committed `test_eval.json` -- so an arm that was still training, or that had
+    been killed mid-training, was scored at whatever partial checkpoint happened
+    to be on disk and entered the seed group as if it were a finished run.
+
+    Two concrete instances in `runs/kcurve.json` as generated at 13:26:
+    `K2_nv_s5`, killed by a process-group kill at epoch 24, scored 0.06705; and
+    `K2_nv_s8`, four minutes into an 80-epoch run, scored 0.11902. The other six
+    completed K2_nv seeds all sit between 0.02043 and 0.02291. Those two
+    partial checkpoints moved the arm's mean from 0.0217 to 0.03958 and its seed
+    range from 0.0025 to 0.09859, and they are the whole of the "bimodal seed
+    distribution" I was about to write up as a training-instability finding.
+
+    The bias does not cancel: a partial checkpoint always scores *worse*, and
+    which arms get caught mid-training depends on the queue order, so arms with
+    more seeds queued later are penalised more than arms with fewer.
+
+    `done.json` is written by `runlock.mark_done` only after the epoch loop
+    completes, which is exactly the property needed.
+    """
+    return (p / "args.json").exists() and (p / "best.pt").exists() \
+        and (p / "done.json").exists()
+
+
 def arms(root: Path) -> dict:
     """{(K, variant): [run dirs]}. K=1 is runs/seed1..8, which stride=1 is pinned
-    to reproduce element-for-element, so the anchor is not re-fitted."""
+    to reproduce element-for-element, so the anchor is not re-fitted.
+
+    Only *completed* arms are collected -- see `is_complete`."""
     out = {}
-    anchor = sorted(p for p in root.glob("seed[0-9]*") if (p / "args.json").exists()
+    anchor = sorted(p for p in root.glob("seed[0-9]*") if is_complete(p)
                     and json.loads((p / "args.json").read_text()).get("stride", 1) == 1
                     and not json.loads((p / "args.json").read_text()).get("blind"))
     if anchor:
         out[(1, "nv")] = anchor
     for p in sorted((root / "kcurve").glob("K*_s*")):
-        if not (p / "args.json").exists() or not (p / "best.pt").exists():
+        if not is_complete(p):
             continue
         cfg = json.loads((p / "args.json").read_text())
         # The variant is in the directory name because three variants share one
@@ -70,6 +101,28 @@ def arms(root: Path) -> dict:
         assert (var == "ov") == bool(cfg.get("overlap_pairs")), \
             f"{p.name} says {var} but overlap_pairs={cfg.get('overlap_pairs')}"
         out.setdefault((int(cfg["stride"]), var), []).append(p)
+    return out
+
+
+def incomplete_arms(root: Path) -> list[dict]:
+    """Arms present on disk but not finished, so a reader can see what was left
+    out rather than having to infer it from a seed count."""
+    out = []
+    for p in sorted((root / "kcurve").glob("K*_s*")):
+        if is_complete(p) or not (p / "args.json").exists():
+            continue
+        log = p / "log.jsonl"
+        n_ep = sum(1 for ln in log.read_text().splitlines() if ln.strip()) \
+            if log.exists() else 0
+        cfg = json.loads((p / "args.json").read_text())
+        out.append({"run": str(p), "epoch_lines": n_ep,
+                    "epochs_requested": cfg.get("epochs"),
+                    "has_checkpoint": (p / "best.pt").exists(),
+                    "why_excluded": "no done.json: still training or killed. "
+                                    "Scoring its partial best.pt would enter an "
+                                    "undertrained model into the seed group, "
+                                    "which is what contaminated every K-curve "
+                                    "number before 2026-09-10."})
     return out
 
 
@@ -243,7 +296,14 @@ def main():
                       "one-step dataset by tests/test_stride.py)",
             "seed_rule": ("8 seeds per arm plus an exact paired test before a "
                           "comparison is a verdict; fewer is a screen"),
+            "completeness_rule": ("an arm is scored only if it carries done.json. "
+                                  "This script evaluates best.pt directly, so "
+                                  "without that rule a run still training, or "
+                                  "killed mid-training, is scored at its partial "
+                                  "checkpoint and joins the seed group as if "
+                                  "finished -- see kcurve_report.is_complete"),
         },
+        "excluded_incomplete_arms": incomplete_arms(Path(a.runs_root)),
         "arms": per_arm,
         "tests_vs_K1": tests,
         "n_arms_at_verdict_strength": len(verdict_arms),

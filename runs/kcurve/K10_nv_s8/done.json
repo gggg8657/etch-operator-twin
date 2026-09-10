@@ -1,0 +1,21 @@
+{
+  "finished": 1789047730.4952266,
+  "pid": 1184474,
+  "argv": [
+    "scripts/train.py",
+    "--run",
+    "runs/kcurve/K10_nv_s8",
+    "--epochs",
+    "80",
+    "--device",
+    "cuda:0",
+    "--seed",
+    "8",
+    "--stride",
+    "10"
+  ],
+  "epochs": 80,
+  "seed": 8,
+  "best_val_roll_band": 0.04296124046047529,
+  "train_wall_s": 209.24208777025342
+}

@@ -1,0 +1,28 @@
+{
+  "data": "data",
+  "run": "runs/kcurve/K5_nv_s8",
+  "epochs": 80,
+  "batch": 32,
+  "lr": 0.002,
+  "width": 64,
+  "modes": 20,
+  "layers": 4,
+  "rollout_steps": 0,
+  "stride": 5,
+  "overlap_pairs": false,
+  "band_weight": 0.0,
+  "blind": false,
+  "init_from": null,
+  "seed": 8,
+  "force": false,
+  "device": "cuda:0",
+  "num_workers": 0,
+  "params": 26248025,
+  "n_train_pairs": 1800,
+  "pair_starts": [
+    0,
+    5
+  ],
+  "applications_per_wafer": 2,
+  "gpu": "NVIDIA H100 NVL"
+}
