@@ -9,12 +9,12 @@ profile, and check the recipe it finds back in the simulator.
 
 Status: **REOPENED 2026-09-10** (attack ladder, rung 2: a K-step horizon
 operator, which attacks the accuracy and speedup clauses together). Two of three
-clauses met, one short by a factor of ~144.
+clauses met, one short by a factor of ~95.
 
 | clause | measured | verdict |
 |---|---|---|
 | 2D 표면진화 rel-L2 ≤0.05 | **0.0126** band rel-L2, 7 seeds, range 0.0011 | **MET, in distribution and nowhere else** — the crossed-dt probe misses under every coverage rule (terminal step 0.0531–0.0665, upper CI to 0.0947) |
-| 시뮬 대비 ≥1000× 가속 | **6.95×** like-for-like, CPU-seconds, one-time cost paid on both sides or neither (`K10_nv_s1`, `cold_single_wafer`) | **UNREACHABLE** — short by **144×**. At one step per application the operator is *slower* than ViennaPS (0.29–0.85×); only a 10-step horizon makes it faster at all. The batched-H100 readings are hardware comparisons and are not the KPI number |
+| 시뮬 대비 ≥1000× 가속 | **10.55×** like-for-like, CPU-seconds, one-time cost paid on both sides or neither — median over **8 whole invocations**, range **8.86–12.16×** (`K10_nv_s1`, `cold_single_wafer`) | **UNREACHABLE** — short by **95×** at the median and **82×** at the fastest of 8 invocations, so no choice among them passes. At one step per application the operator is *slower* than ViennaPS (0.22–0.59×); only a 10-step horizon makes it faster at all, and that costs clause 1. The harness's own run-to-run spread is 1.37×, measured, and the batched-H100 readings are hardware comparisons rather than the KPI number |
 | 역설계 형상오차 ≤5% | **0.0061** normalised area error, 20/20 targets, measured in ViennaPS | **MET** — profile targeting only; the inverse problem is degenerate over (rate × time), so the recovered recipe is not the one that made the target |
 
 The verdict rows in `RESULTS.md` are derived from the run JSONs by

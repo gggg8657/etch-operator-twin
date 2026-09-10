@@ -1,0 +1,457 @@
+{
+  "protocol": {
+    "estimator": "ratio of median CPU-seconds per wafer, solver / operator",
+    "why_cpu_seconds": "contention does not move the two sides together, so a wall-clock ratio is not a property of the implementations; solver_drift.json measured 1.11 CPU-s at load 11.3 and 1.26 at load 41.0",
+    "readings": {
+      "marginal_warm": "cost of one ADDITIONAL wafer: solver in a long-lived process with the first wafer discarded, operator warmed with 3 untimed rollouts. The reading for a sweep or an inverse-design loop.",
+      "cold_single_wafer": "latency of one wafer from nothing: fresh process on BOTH sides, one-time cost inside the timed region for both. The reading for a one-shot query."
+    },
+    "symmetry": "the defect being corrected is that bench_paired.py used a cold solver against a warm operator and called the ratio like-for-like",
+    "rounds": 8,
+    "n_steps_per_wafer": 10,
+    "dt": 0.2,
+    "grid_delta": 0.2,
+    "threads_each_side": 1,
+    "same_wafers": "every condition replays one seeded recipe stream and prices its wafers 1..8, so the cold reading skips the wafer the warm reading spent on warm-up; solver cost varies ~4x across recipes, which is larger than the cold/warm factor being measured",
+    "operator_input": "a random field of the deployed shape. FNO cost is set by tensor shape, not by values, so this times the same work a real SDF would -- but it is not a real SDF and no accuracy claim may be read off this file",
+    "excluded_from_both": "rasterisation"
+  },
+  "box": {
+    "n_cpu": 192,
+    "load_1min_samples": [
+      35.70654296875,
+      34.28857421875,
+      30.8486328125,
+      29.3388671875,
+      27.7900390625,
+      27.7900390625,
+      27.7900390625,
+      26.044921875,
+      26.044921875,
+      26.044921875,
+      26.044921875,
+      24.83984375,
+      24.83984375,
+      24.83984375,
+      19.7900390625,
+      24.931640625,
+      26.34130859375,
+      23.08935546875
+    ],
+    "load_min": 19.7900390625,
+    "load_max": 35.70654296875,
+    "quiet_note": "this box runs two other projects' jobs that this track must not touch; it cannot be quieted, which is why the estimator is CPU-seconds"
+  },
+  "solver": {
+    "marginal_warm": {
+      "wall_s_per_wafer": [
+        0.1928764395415783,
+        0.4964768514037132,
+        0.3197835870087147,
+        0.30083177238702774,
+        0.10501739382743835,
+        0.25761812180280685,
+        0.35082296654582024,
+        0.17453990876674652
+      ],
+      "cpu_s_per_wafer": [
+        0.19306088199999993,
+        0.49563516100000027,
+        0.319960037,
+        0.301041562,
+        0.10508891999999959,
+        0.2577614979999998,
+        0.3510117619999997,
+        0.1745908500000004
+      ],
+      "median_wall": 0.2792249470949173,
+      "median_cpu": 0.2794015299999999,
+      "cpu_over_wall_median": 1.000554162425104,
+      "single_threaded_verified": true,
+      "n": 8
+    },
+    "cold_single_wafer": {
+      "wall_s_per_wafer": [
+        0.9456131160259247,
+        1.0650327131152153,
+        0.8450555019080639,
+        0.8736163601279259,
+        0.7890612259507179,
+        0.9305041693150997,
+        1.0175777487456799,
+        0.8470559380948544
+      ],
+      "cpu_s_per_wafer": [
+        0.922726334,
+        1.0401854480000001,
+        0.819949852,
+        0.846957488,
+        0.7570203240000001,
+        0.9065284169999999,
+        0.994125428,
+        0.8196827339999999
+      ],
+      "median_wall": 0.9020602647215128,
+      "median_cpu": 0.8767429524999999,
+      "cpu_over_wall_median": 0.9722623563281421,
+      "single_threaded_verified": true,
+      "n": 8
+    },
+    "cold_over_warm": 3.1379318234227287,
+    "cold_over_warm_note": "the one-time initialisation ViennaPS charges inside .apply(); this factor is what bench_paired.py handed to the operator for free"
+  },
+  "solver_first_wafer_discarded_wall": [
+    1.3448413200676441
+  ],
+  "arms": {
+    "runs/seed1": {
+      "run": "runs/seed1",
+      "stride": 1,
+      "applications_per_wafer": 10,
+      "arch": {
+        "width": 64,
+        "modes": 20,
+        "layers": 4
+      },
+      "marginal_warm": {
+        "wall_s_per_wafer": [
+          0.7049253657460213,
+          0.7066274099051952,
+          0.7007153891026974,
+          0.7201258055865765,
+          0.7153582237660885,
+          0.6986061036586761,
+          0.6938574872910976,
+          0.6950305327773094
+        ],
+        "cpu_s_per_wafer": [
+          0.7049054500000005,
+          0.706631754,
+          0.7007105229999997,
+          0.720112136,
+          0.7153575219999997,
+          0.6985919460000005,
+          0.6938515669999994,
+          0.6950334780000009
+        ],
+        "median_wall": 0.7028203774243593,
+        "median_cpu": 0.7028079865000001,
+        "cpu_over_wall_median": 0.999992261545459,
+        "single_threaded_verified": true,
+        "n": 8,
+        "speedup_cpu": 0.39755030586864265,
+        "speedup_wall": 0.3972920479599622,
+        "median_cpu_per_application": 0.07028079865,
+        "both_sides_single_threaded": true
+      },
+      "cold_single_wafer": {
+        "wall_s_per_wafer": [
+          0.719189427793026,
+          0.7212671004235744,
+          0.7184201143682003,
+          0.7192203626036644,
+          0.876246266067028,
+          1.2661123685538769,
+          1.3524347841739655,
+          1.2719183899462223
+        ],
+        "cpu_s_per_wafer": [
+          0.7191911310000001,
+          0.7212521860000001,
+          0.7184143510000001,
+          0.719213879,
+          0.8762286739999998,
+          1.2660994069999998,
+          1.352398361,
+          1.2717845070000002
+        ],
+        "median_wall": 0.7987566832453012,
+        "median_cpu": 0.79874043,
+        "cpu_over_wall_median": 0.9999848430450948,
+        "single_threaded_verified": true,
+        "n": 8,
+        "speedup_cpu": 1.0976569102680829,
+        "speedup_wall": 1.1293304752787734,
+        "median_cpu_per_application": 0.07987404299999999,
+        "both_sides_single_threaded": true
+      }
+    },
+    "runs/kcurve/K2_nv_s1": {
+      "run": "runs/kcurve/K2_nv_s1",
+      "stride": 2,
+      "applications_per_wafer": 5,
+      "arch": {
+        "width": 64,
+        "modes": 20,
+        "layers": 4
+      },
+      "marginal_warm": {
+        "wall_s_per_wafer": [
+          0.3553412854671478,
+          0.3544014170765877,
+          0.35721343010663986,
+          0.35336125269532204,
+          0.43016185611486435,
+          0.5885080732405186,
+          0.44265132769942284,
+          0.3580953925848007
+        ],
+        "cpu_s_per_wafer": [
+          0.3553190989999999,
+          0.35440501499999977,
+          0.3572165169999999,
+          0.353356464,
+          0.43013819500000006,
+          0.5883476609999994,
+          0.4426289800000003,
+          0.3580985089999995
+        ],
+        "median_wall": 0.3576544113457203,
+        "median_cpu": 0.3576575129999997,
+        "cpu_over_wall_median": 0.9999679810746945,
+        "single_threaded_verified": true,
+        "n": 8,
+        "speedup_cpu": 0.7811985484560481,
+        "speedup_wall": 0.7807115982277357,
+        "median_cpu_per_application": 0.07153150259999994,
+        "both_sides_single_threaded": true
+      },
+      "cold_single_wafer": {
+        "wall_s_per_wafer": [
+          0.5735286734998226,
+          0.3821215070784092,
+          0.42971429601311684,
+          0.3796592205762863,
+          0.36816132068634033,
+          0.6640993431210518,
+          0.6405692994594574,
+          0.6427231207489967
+        ],
+        "cpu_s_per_wafer": [
+          0.5735018939999998,
+          0.3821224430000001,
+          0.4297168309999999,
+          0.3796480040000001,
+          0.3681610329999998,
+          0.66408716,
+          0.6405516090000001,
+          0.6427099759999999
+        ],
+        "median_wall": 0.5016214847564697,
+        "median_cpu": 0.5016093624999999,
+        "cpu_over_wall_median": 0.9999806015098821,
+        "single_threaded_verified": true,
+        "n": 8,
+        "speedup_cpu": 1.7478600242434672,
+        "speedup_wall": 1.798288733903514,
+        "median_cpu_per_application": 0.10032187249999998,
+        "both_sides_single_threaded": true
+      }
+    },
+    "runs/kcurve/K5_nv_s1": {
+      "run": "runs/kcurve/K5_nv_s1",
+      "stride": 5,
+      "applications_per_wafer": 2,
+      "arch": {
+        "width": 64,
+        "modes": 20,
+        "layers": 4
+      },
+      "marginal_warm": {
+        "wall_s_per_wafer": [
+          0.14567409083247185,
+          0.14475668594241142,
+          0.1996307522058487,
+          0.2557983286678791,
+          0.25832753255963326,
+          0.25157369300723076,
+          0.21794075146317482,
+          0.14143295213580132
+        ],
+        "cpu_s_per_wafer": [
+          0.14528236299999997,
+          0.14475959399999994,
+          0.19961606600000015,
+          0.25553223999999997,
+          0.25833055299999996,
+          0.2515688580000002,
+          0.21793297899999997,
+          0.14143525899999965
+        ],
+        "median_wall": 0.20878575183451176,
+        "median_cpu": 0.20877452250000006,
+        "cpu_over_wall_median": 0.999972558878593,
+        "single_threaded_verified": true,
+        "n": 8,
+        "speedup_cpu": 1.338293229721073,
+        "speedup_wall": 1.3373754896657757,
+        "median_cpu_per_application": 0.10438726125000003,
+        "both_sides_single_threaded": true
+      },
+      "cold_single_wafer": {
+        "wall_s_per_wafer": [
+          0.3103063032031059,
+          0.17627804353833199,
+          0.15747014060616493,
+          0.15822257474064827,
+          0.156369898468256,
+          0.14981181919574738,
+          0.19863983988761902,
+          0.19819999113678932
+        ],
+        "cpu_s_per_wafer": [
+          0.31030818699999996,
+          0.17627907599999992,
+          0.157471213,
+          0.1582060390000002,
+          0.15637074600000012,
+          0.1498079440000002,
+          0.19864107099999995,
+          0.19819552000000007
+        ],
+        "median_wall": 0.16725030913949013,
+        "median_cpu": 0.16724255750000006,
+        "cpu_over_wall_median": 1.000005638525355,
+        "single_threaded_verified": true,
+        "n": 8,
+        "speedup_cpu": 5.242343609221592,
+        "speedup_wall": 5.393474423830071,
+        "median_cpu_per_application": 0.08362127875000003,
+        "both_sides_single_threaded": true
+      }
+    },
+    "runs/kcurve/K10_nv_s1": {
+      "run": "runs/kcurve/K10_nv_s1",
+      "stride": 10,
+      "applications_per_wafer": 1,
+      "arch": {
+        "width": 64,
+        "modes": 20,
+        "layers": 4
+      },
+      "marginal_warm": {
+        "wall_s_per_wafer": [
+          0.07248152047395706,
+          0.07206571474671364,
+          0.07215801626443863,
+          0.07191940769553185,
+          0.07195302471518517,
+          0.07187430933117867,
+          0.0716920755803585,
+          0.07706096023321152
+        ],
+        "cpu_s_per_wafer": [
+          0.0724813649999998,
+          0.07206886400000001,
+          0.072161221,
+          0.07192269200000001,
+          0.07195560299999992,
+          0.07187698099999995,
+          0.07169433699999983,
+          0.07706338800000001
+        ],
+        "median_wall": 0.0720093697309494,
+        "median_cpu": 0.07201223349999997,
+        "cpu_over_wall_median": 1.0000365021457958,
+        "single_threaded_verified": true,
+        "n": 8,
+        "speedup_cpu": 3.8799175698390194,
+        "speedup_wall": 3.8776196505842666,
+        "median_cpu_per_application": 0.07201223349999997,
+        "both_sides_single_threaded": true
+      },
+      "cold_single_wafer": {
+        "wall_s_per_wafer": [
+          0.08309387415647507,
+          0.07543676346540451,
+          0.07628654688596725,
+          0.07916030287742615,
+          0.07746028155088425,
+          0.07658866047859192,
+          0.0766814649105072,
+          0.09947938472032547
+        ],
+        "cpu_s_per_wafer": [
+          0.08309433599999982,
+          0.07543631700000009,
+          0.07628601300000004,
+          0.07915978499999987,
+          0.07746031400000009,
+          0.07658827600000007,
+          0.07668105700000005,
+          0.09947841899999998
+        ],
+        "median_wall": 0.07707087323069572,
+        "median_cpu": 0.07707068550000007,
+        "cpu_over_wall_median": 0.9999943810244023,
+        "single_threaded_verified": true,
+        "n": 8,
+        "speedup_cpu": 11.375829173077735,
+        "speedup_wall": 11.70429537007297,
+        "median_cpu_per_application": 0.07707068550000007,
+        "both_sides_single_threaded": true
+      }
+    }
+  },
+  "kpi_clause": {
+    "clause": "simulation speedup >= 1000x",
+    "target": 1000.0,
+    "best_value": 11.375829173077735,
+    "best_arm": "runs/kcurve/K10_nv_s1",
+    "best_reading": "cold_single_wafer",
+    "met": false,
+    "shortfall_factor": 87.90568008586311,
+    "both_sides_single_threaded": true,
+    "all_rows": [
+      {
+        "speedup_cpu": 11.375829173077735,
+        "arm": "runs/kcurve/K10_nv_s1",
+        "reading": "cold_single_wafer",
+        "single_threaded_ok": true
+      },
+      {
+        "speedup_cpu": 5.242343609221592,
+        "arm": "runs/kcurve/K5_nv_s1",
+        "reading": "cold_single_wafer",
+        "single_threaded_ok": true
+      },
+      {
+        "speedup_cpu": 3.8799175698390194,
+        "arm": "runs/kcurve/K10_nv_s1",
+        "reading": "marginal_warm",
+        "single_threaded_ok": true
+      },
+      {
+        "speedup_cpu": 1.7478600242434672,
+        "arm": "runs/kcurve/K2_nv_s1",
+        "reading": "cold_single_wafer",
+        "single_threaded_ok": true
+      },
+      {
+        "speedup_cpu": 1.338293229721073,
+        "arm": "runs/kcurve/K5_nv_s1",
+        "reading": "marginal_warm",
+        "single_threaded_ok": true
+      },
+      {
+        "speedup_cpu": 1.0976569102680829,
+        "arm": "runs/seed1",
+        "reading": "cold_single_wafer",
+        "single_threaded_ok": true
+      },
+      {
+        "speedup_cpu": 0.7811985484560481,
+        "arm": "runs/kcurve/K2_nv_s1",
+        "reading": "marginal_warm",
+        "single_threaded_ok": true
+      },
+      {
+        "speedup_cpu": 0.39755030586864265,
+        "arm": "runs/seed1",
+        "reading": "marginal_warm",
+        "single_threaded_ok": true
+      }
+    ],
+    "reading_note": "the clause is reported under BOTH readings for every arm; the best is named here so the gap is explicit, not so the others can be dropped"
+  }
+}

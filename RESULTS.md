@@ -11,12 +11,12 @@ Invocation: `python scripts/report.py --run runs/seed1 --design runs/design_Tfre
 | clause | measured | verdict | protocol |
 |---|---|---|---|
 | rel-L2 ≤ 0.05 | 0.0129 mean / 0.0194 final step | MET | rollout band rel-L2, test split; both readings must pass |
-| speedup ≥ 1000× | 7.0× | NOT MET | CPU-seconds, operator CPU 1 thread vs ViennaPS CPU 1 thread, one-time cost paid on both sides or neither; best of 8 honest rows (`runs/kcurve/K10_nv_s1`, cold_single_wafer); short by 143.8×. Other honest rows: 3.8× (`K10_nv_s1`, marginal_warm), 2.8× (`K5_nv_s1`, cold_single_wafer), 1.9× (`K2_nv_s1`, cold_single_wafer), 1.6× (`K5_nv_s1`, marginal_warm), 0.8× (`seed1`, cold_single_wafer), 0.7× (`K2_nv_s1`, marginal_warm), 0.3× (`seed1`, marginal_warm) |
+| speedup ≥ 1000× | 10.6× | NOT MET | CPU-seconds, operator CPU 1 thread vs ViennaPS CPU 1 thread, one-time cost paid on both sides or neither; median over 8 whole invocations (range 8.86-12.16×), best arm `K10_nv_s1`, cold_single_wafer; short by 94.8×. Harness run-to-run spread 1.37×, and even the fastest invocation is short by 82.2× |
 | shape error ≤ 5% | 0.70% mean / 1.21% worst | MET | normalised area error, measured in ViennaPS on the recipe the operator proposed; total etch time searched from a `mid` start; 100% of targets under 5% |
 
 **PROJECT VERDICT: UNREACHABLE** — 2 of 3 clauses met; speedup ≥ 1000× is not.
 
-The binding clause is the speedup. The best honest figure is **7.0×** (`K10_nv_s1`, cold_single_wafer) against a **1000×** target — short by a factor of **144**, not by a margin that a better implementation closes. At K=1 the operator is *slower* than the simulator like-for-like. Every earlier figure this repo published for this clause (1.47×, 6.57×, 119.12×) timed a cold solver against a warm operator and is withdrawn; the clause-2 section says so with the measurement that shows it.
+The binding clause is the speedup. The best honest figure is **10.6×** (`K10_nv_s1`, cold_single_wafer) against a **1000×** target — short by a factor of **95**, not by a margin that a better implementation closes. At K=1 the operator is *slower* than the simulator like-for-like. Every earlier figure this repo published for this clause (1.47×, 6.57×, 119.12×) timed a cold solver against a warm operator and is withdrawn; the clause-2 section says so with the measurement that shows it.
 
 Clause 1 is met **in distribution and nowhere else**: the crossed-dt probe misses under every coverage rule, and the only trajectory selector that needs no oracle scores worse still. The scope of the accuracy claim is the training distribution, stated here rather than in a footnote.
 
@@ -100,29 +100,31 @@ Geometry of the final predicted profile:
 
 ## Clause 2 — speedup
 
-One 'wafer' = 10 timesteps from initial trench to final profile, 0.2 µm grid. Rasterisation excluded from both sides. Estimator: **ratio of median CPU-seconds per wafer, solver / operator** — contention does not move the two sides together, so a wall-clock ratio is not a property of the implementations; solver_drift.json measured 1.11 CPU-s at load 11.3 and 1.26 at load 41.0. Load average during measurement 33.66–53.82 (this box runs two other projects' jobs that this track must not touch; it cannot be quieted, which is why the estimator is CPU-seconds).
+One 'wafer' = 10 timesteps from initial trench to final profile, 0.2 µm grid. Rasterisation excluded from both sides. Estimator: **ratio of median CPU-seconds per wafer, solver / operator** — contention does not move the two sides together, so a wall-clock ratio is not a property of the implementations; solver_drift.json measured 1.11 CPU-s at load 11.3 and 1.26 at load 41.0. Load average during measurement 24.55–40.53 (this box runs two other projects' jobs that this track must not touch; it cannot be quieted, which is why the estimator is CPU-seconds).
 
-**Two readings, and each pays the one-time cost on both sides or neither.** ViennaPS charges a large initialisation inside `.apply()` (cold/warm = **2.64×**, `runs/solver_drift.json`), and the operator pays FFT-plan creation on its first call. Timing a cold solver against a warm operator — which is what every earlier speed file in this repo did — decides the answer by that factor.
+**Two readings, and each pays the one-time cost on both sides or neither.** ViennaPS charges a large initialisation inside `.apply()` (cold/warm = **2.67×**, `runs/solver_drift.json`), and the operator pays FFT-plan creation on its first call. Timing a cold solver against a warm operator — which is what every earlier speed file in this repo did — decides the answer by that factor.
 
 - `marginal_warm`: cost of one ADDITIONAL wafer: solver in a long-lived process with the first wafer discarded, operator warmed with 3 untimed rollouts. The reading for a sweep or an inverse-design loop.
 - `cold_single_wafer`: latency of one wafer from nothing: fresh process on BOTH sides, one-time cost inside the timed region for both. The reading for a one-shot query.
 
 | configuration | CPU-s / wafer (median) | CPU/wall (1.0 = single-threaded) | speedup vs solver, same reading |
 |---|---|---|---|
-| ViennaPS, 1 thread, marginal_warm | 0.2758 | 1.00 | — |
-| ViennaPS, 1 thread, cold_single_wafer | 0.7281 | 0.96 | — |
-| operator `seed1` (10 app/wafer), marginal_warm | 0.9506 | 1.00 | **0.29×** |
-| operator `seed1` (10 app/wafer), cold_single_wafer | 0.8602 | 1.00 | **0.85×** |
-| operator `K2_nv_s1` (5 app/wafer), marginal_warm | 0.3750 | 1.00 | **0.74×** |
-| operator `K2_nv_s1` (5 app/wafer), cold_single_wafer | 0.3910 | 1.00 | **1.86×** |
-| operator `K5_nv_s1` (2 app/wafer), marginal_warm | 0.1683 | 1.00 | **1.64×** |
-| operator `K5_nv_s1` (2 app/wafer), cold_single_wafer | 0.2623 | 1.00 | **2.78×** |
-| operator `K10_nv_s1` (1 app/wafer), marginal_warm | 0.0720 | 1.00 | **3.83×** |
-| operator `K10_nv_s1` (1 app/wafer), cold_single_wafer | 0.1047 | 1.00 | **6.95×** |
+| ViennaPS, 1 thread, marginal_warm | 0.2767 | 1.00 | — |
+| ViennaPS, 1 thread, cold_single_wafer | 0.7389 | 0.97 | — |
+| operator `seed1` (10 app/wafer), marginal_warm | 1.2585 | 1.00 | **0.22×** |
+| operator `seed1` (10 app/wafer), cold_single_wafer | 1.2629 | 1.00 | **0.59×** |
+| operator `K2_nv_s1` (5 app/wafer), marginal_warm | 0.3561 | 1.00 | **0.78×** |
+| operator `K2_nv_s1` (5 app/wafer), cold_single_wafer | 0.3706 | 1.00 | **1.99×** |
+| operator `K5_nv_s1` (2 app/wafer), marginal_warm | 0.2522 | 1.00 | **1.10×** |
+| operator `K5_nv_s1` (2 app/wafer), cold_single_wafer | 0.1482 | 1.00 | **4.99×** |
+| operator `K10_nv_s1` (1 app/wafer), marginal_warm | 0.1291 | 1.00 | **2.14×** |
+| operator `K10_nv_s1` (1 app/wafer), cold_single_wafer | 0.0771 | 1.00 | **9.58×** |
 
 The `CPU/wall` column is the check, not a setting: a row labelled '1 thread' whose ratio is well above 1.0 was never a 1-thread row, and a like-for-like claim resting on it would be void.
 
-**Best honest row: 7.0×** (`K10_nv_s1`, cold_single_wafer) against a 1000× clause — short by **143.8×**. At K=1 the operator is *slower* than the simulator it replaces on the same hardware at the same verified thread count.
+**The measurement's own run-to-run spread is larger than several of the differences in the table above.** 8 repeats of this whole invocation, identical arguments, put the best row at **10.6×** with a range of **8.86–12.16×** (1.37× max/min, `runs/speed_spread.json`) — while *within* an invocation the spread over rounds is 1.03–1.17×. The noise is per-process, so more rounds cannot see it and would only tighten an interval around the wrong centre. The single-invocation table above is therefore one draw; the interval is the reading. The verdict is unaffected: even the fastest invocation is short by **82.2×**.
+
+**Best honest row: 10.6×** (`K10_nv_s1`, cold_single_wafer) against a 1000× clause — short by **94.8×**. At K=1 the operator is *slower* than the simulator it replaces on the same hardware at the same verified thread count.
 
 **Withdrawn, and not quoted above:** 1.47× (`runs/speed.json`), 6.57× (`runs/speed_seed1_cpu.json`) and 119.12× (`runs/speed_K10_cpu.json`). All three timed a cold solver against a warm operator, and the latter two rest on a solver denominator of 8.457/8.390 s per wafer that no condition in `runs/solver_drift.json` reproduces (1.00 s cold, 0.296 s warm, at comparable load). That discrepancy is recorded as unexplained rather than reinterpreted.
 
@@ -371,7 +373,7 @@ Recorded because it changes the solver's seconds-per-wafer by a factor of 40 and
 |---|---|---|---|
 | clause 1 — accuracy | `runs/seed1/test_eval.json` | found | 2026-09-09 04:07 UTC |
 | clause 1b — crossed dt | `runs/seed1/test_crossed_eval.json` | found | 2026-09-09 04:27 UTC |
-| clause 2 — speed (symmetric, the clause reading) | `runs/speed_symmetric.json` | found | 2026-09-10 12:46 UTC |
+| clause 2 — speed (symmetric, the clause reading) | `runs/speed_symmetric.json` | found | 2026-09-10 12:54 UTC |
 | clause 2 — solver cold/warm diagnosis | `runs/solver_drift.json` | found | 2026-09-10 12:41 UTC |
 | clause 2 — WITHDRAWN, cold solver vs warm operator | `runs/speed.json` | found | 2026-09-09 04:13 UTC |
 | clause 3 — inverse design | `runs/design_Tfree_dtinit_mid.json` | found | 2026-09-10 08:33 UTC |

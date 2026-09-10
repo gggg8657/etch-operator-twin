@@ -60,22 +60,22 @@ Across converged seeds [1, 2, 3, 4, 5, 6, 7, 8]: 0.0129, 0.0119, 0.0123, 0.0126,
 
 ### 4.2 Clause 2 — speedup
 
-A speedup is a ratio, and both a numerator and a denominator can be chosen to flatter it. Two choices decide this one. First, **CPU-seconds rather than wall-seconds**: contention does not slow two processes with different threading behaviour by the same factor, so a wall-clock ratio measured on a shared box is not a property of the implementations. Second, **the one-time cost is paid on both sides or neither**: ViennaPS charges a large initialisation inside its `apply()` (cold/warm = 2.64×) and the operator pays FFT-plan creation on its first call, so a cold reference timed against a warmed surrogate awards the clause the difference. Both readings are therefore reported for every horizon.
+A speedup is a ratio, and both a numerator and a denominator can be chosen to flatter it. Two choices decide this one. First, **CPU-seconds rather than wall-seconds**: contention does not slow two processes with different threading behaviour by the same factor, so a wall-clock ratio measured on a shared box is not a property of the implementations. Second, **the one-time cost is paid on both sides or neither**: ViennaPS charges a large initialisation inside its `apply()` (cold/warm = 2.67×) and the operator pays FFT-plan creation on its first call, so a cold reference timed against a warmed surrogate awards the clause the difference. Both readings are therefore reported for every horizon.
 
 | configuration | CPU-s / wafer | CPU/wall | vs solver, same reading |
 |---|---|---|---|
-| ViennaPS, 1 thread, marginal_warm | 0.2758 | 1.00 | — |
-| ViennaPS, 1 thread, cold_single_wafer | 0.7281 | 0.96 | — |
-| operator `seed1`, 10 application(s)/wafer, marginal_warm | 0.9506 | 1.00 | 0.29× |
-| operator `seed1`, 10 application(s)/wafer, cold_single_wafer | 0.8602 | 1.00 | 0.85× |
-| operator `K2_nv_s1`, 5 application(s)/wafer, marginal_warm | 0.3750 | 1.00 | 0.74× |
-| operator `K2_nv_s1`, 5 application(s)/wafer, cold_single_wafer | 0.3910 | 1.00 | 1.86× |
-| operator `K5_nv_s1`, 2 application(s)/wafer, marginal_warm | 0.1683 | 1.00 | 1.64× |
-| operator `K5_nv_s1`, 2 application(s)/wafer, cold_single_wafer | 0.2623 | 1.00 | 2.78× |
-| operator `K10_nv_s1`, 1 application(s)/wafer, marginal_warm | 0.0720 | 1.00 | 3.83× |
-| operator `K10_nv_s1`, 1 application(s)/wafer, cold_single_wafer | 0.1047 | 1.00 | 6.95× |
+| ViennaPS, 1 thread, marginal_warm | 0.2767 | 1.00 | — |
+| ViennaPS, 1 thread, cold_single_wafer | 0.7389 | 0.97 | — |
+| operator `seed1`, 10 application(s)/wafer, marginal_warm | 1.2585 | 1.00 | 0.22× |
+| operator `seed1`, 10 application(s)/wafer, cold_single_wafer | 1.2629 | 1.00 | 0.59× |
+| operator `K2_nv_s1`, 5 application(s)/wafer, marginal_warm | 0.3561 | 1.00 | 0.78× |
+| operator `K2_nv_s1`, 5 application(s)/wafer, cold_single_wafer | 0.3706 | 1.00 | 1.99× |
+| operator `K5_nv_s1`, 2 application(s)/wafer, marginal_warm | 0.2522 | 1.00 | 1.10× |
+| operator `K5_nv_s1`, 2 application(s)/wafer, cold_single_wafer | 0.1482 | 1.00 | 4.99× |
+| operator `K10_nv_s1`, 1 application(s)/wafer, marginal_warm | 0.1291 | 1.00 | 2.14× |
+| operator `K10_nv_s1`, 1 application(s)/wafer, cold_single_wafer | 0.0771 | 1.00 | 9.58× |
 
-The best of these 8 rows is **6.95×** (`K10_nv_s1`, cold_single_wafer), short of 1000× by a factor of **144**, so the clause is **UNREACHABLE** with the table as the evidence. The `CPU/wall` column is a check rather than a setting: a row labelled one thread whose ratio exceeded 1 would void the like-for-like claim resting on it.
+The best of these 8 rows is **9.58×** (`K10_nv_s1`, cold_single_wafer), short of 1000× by a factor of **104**, so the clause is **UNREACHABLE** with the table as the evidence. The `CPU/wall` column is a check rather than a setting: a row labelled one thread whose ratio exceeded 1 would void the like-for-like claim resting on it.
 
 **At one step per application the operator is slower than the simulator it replaces.** That is the result the horizon sweep exists to explain: cost is linear in applications per wafer, and only by advancing ten dataset timesteps per application does the surrogate become faster at all. The accuracy cost of doing so is §4.1's, and it is not small.
 

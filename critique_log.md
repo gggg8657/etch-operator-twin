@@ -2045,3 +2045,86 @@ dies with its holder, so reaching that guard proves no live writer. Added
 with an `orphaned.json` recording the epoch count and why — archive rather than
 append, since appending is what produced the interleaved log the guard exists
 for. All long jobs this turn went to their own tmux sessions.
+
+### 5. The measurement's own run-to-run spread, measured before quoting it
+
+Two invocations of `bench_symmetric.py` with identical arguments disagreed by up
+to 1.8× (K=10 `marginal_warm` read 3.83× then 2.14×; `runs/seed1`'s operator cost
+0.9506 then 1.2585 CPU-s per wafer), while *within* either invocation the spread
+over 8 rounds was 1.03–1.17×. So the noise is **per-process**, not per-round —
+core assignment, frequency, NUMA placement, cache pressure from the other
+projects on this box — and adding rounds cannot see it. It is the CPU analogue of
+the H100 clock-ramp artefact that made `uq-surrogate-kit` report 40.8× for a
+23.5× quantity, and the seed-count lesson applies to a timing measurement
+unchanged.
+
+`scripts/speed_spread.py` repeats the whole invocation 8×. Best arm/reading
+(`K10_nv_s1`, `cold_single_wafer`): per-invocation 11.76, 12.16, 9.73, 9.70,
+8.86, 8.89, 11.38, 12.04 → **median 10.55×, range 8.86–12.16×, max/min 1.37×**
+(`runs/speed_spread.json`). Short of 1000× by **95× at the median and 82× at the
+fastest invocation**, so no choice among the eight passes the clause and the
+verdict is robust to the harness's own noise. The solver side contributes almost
+none of that spread (0.2758 and 0.2767 CPU-s warm across two invocations, 0.3%);
+the instability is the operator's, so the ratio inherits it.
+
+`RESULTS.md` now carries the interval rather than one draw, and one thing this
+retires is my own §2 table above: the single-invocation numbers there (K=1
+0.29×/0.85×, K=10 3.83×/6.95×) are one draw each, and the K=10 `marginal_warm`
+figure in particular moved 3.83× → 2.14× on a re-run. The *ordering* across K is
+stable — every invocation puts K=10 fastest and K=1 slowest, and K=1 below 1.0 —
+because that ordering is set by application count, which noise does not touch.
+The individual figures are not, and are labelled accordingly.
+
+### 6. Rung 4, asked the way the addendum says to ask it
+
+`codex`, given "how would you make this clause pass?" rather than "what is wrong
+with this", priced the gap instead of finding defects: to reach 1000× the
+operator would need **≤276 µs per wafer warm against its current 72 ms**, a
+further **261×**. Its four routes and my reading of each:
+
+- **Distil into a compact endpoint model** (narrow CNN, or predict a
+  low-dimensional surface basis and decode). Legitimate and untried. This is the
+  only route that attacks the clause without changing what the claim covers, and
+  a 261× parameter/FLOP reduction from a 26.2 M-parameter FNO is a large ask but
+  not an obviously impossible one. **This is the route to take next.**
+- **GPU batch throughput.** Legitimate as a deployment claim, and this repo
+  already reports 199×/347× as hardware comparisons and refuses them as the KPI.
+  It notes correctly that a GPU row must be timed in synchronised wall clock, not
+  `process_time()`, so my CPU-seconds estimator does not carry over.
+- **A genuinely more expensive simulator workload** (finer grid, 3-D, more
+  physics). Honest only with a convergence study establishing that the finer
+  setting is *required* for the target accuracy; otherwise it is denominator
+  inflation. The clause would then cover a different problem than the one this
+  repo trained on, and would have to say so.
+- **Full recipe-to-deliverable pipeline timing.** Legitimate if that output is
+  actually required, and it would move the denominator by including rasterisation
+  — which both sides currently exclude. Not obviously worth 261×.
+
+It also listed what would only manufacture a pass, and every item is something
+this repo has either already rejected or has now withdrawn: cold-solver /
+warm-operator (worth only ~10× even if taken, which matches §2), resurrecting the
+8.4 s denominator, charging the solver for intermediate frames the operator does
+not produce, and slowing the solver through contention. That the adversary's list
+of tricks matches the list of this repo's own corrected mistakes is the useful
+part of the exercise.
+
+**Its three defects in my new script were real and two changed a number.** The
+docstring claimed per-round interleaving that `main` does not do (blocks, which
+CPU-seconds makes acceptable — the docstring now says so instead of claiming
+otherwise). `marginal_warm` priced wafers 1–8 while `cold_single_wafer` priced
+0–7, so the cold/warm factor mixed initialisation with geometry across recipes
+that vary ~4× in cost; fixed, and re-measured at 2.67× against 2.64×, so the
+confound was small but was not zero and was not known to be small before the fix.
+Operator inputs are random fields; FNO cost is set by tensor shape rather than
+values so the timing stands, but it is now stated in the JSON that no accuracy
+claim may be read off that file.
+
+### 7. Where clause 2 stands
+
+`UNREACHABLE` at 1000× is now supported by a protocol that does not flatter it,
+an interval rather than a point, and a shortfall of 82× at the most favourable of
+eight invocations of the most favourable of four honest rows. What changed this
+turn is not the verdict but its basis: the previously recorded "short by 679×"
+came from a contaminated denominator and is withdrawn. The clause is not being
+declared again yet, because rung 2 has one route left that has not been tried —
+codex's distillation route — and a clause that is still moving has no budget.
