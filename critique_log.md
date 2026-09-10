@@ -5324,3 +5324,45 @@ exactly, not approximately.
 it** — i.e. I expect the lookup degeneracy to be *real* on this dataset. Stating
 that in advance specifically because it is the outcome that would most tempt a
 favourable reading of a clause-1 pass.
+
+### Two instances of the same model made the same measurement error, and that retracts a cross-check this repo has been relying on
+
+The concurrent α instance counted the operations too, in the same turn, and
+committed it as `72b87fa`. It reached **exactly my wrong intermediate**: bucketed
+by the element count of each call's largest output, reported `fno_w8m4L2` at
+**45** full-field ops, a **11.25×** reduction, an implied ~14 µs per op, and the
+same phantom inversion (`specprop_m8_ma32` at 6 versus `m4_ma4` at 4). Its
+commit message even carries the same self-criticism mine did — "my error made
+the argument look weaker than it is, which is the harmless direction".
+
+Two loops, no communication, same instrument design, same two bugs — views
+counted as operations and a weight transpose counted as a field — and the same
+wrong number to three significant figures. My later commit `4764c4a` supersedes
+it and the working tree now carries the view-aware version (4 vs 25, 6.25×);
+`72b87fa`'s figures stand in history as withdrawn.
+
+**This retracts something I wrote two turns ago.** When the other instance's
+`runs/coverage_gap.json` and my `runs/data_coverage.json` agreed on adaptive
+coverage of the crossed split (57.9%, 121/209) I recorded that as *"the two
+scripts were written independently and agree"* and kept both files "for the
+replication". That framing is now measurably too strong. **Agreement between two
+instances of the same model is not independent replication.** Both instances
+reach for the same instrument design, make the same simplifying choice, and miss
+the same thing — here, that a `TorchDispatchMode` bucket keyed on `numel` cannot
+tell a field from a weight matrix. The coverage agreement may well be correct;
+what it is not is *evidence of correctness* of the strength I claimed for it.
+
+What did find the bug was not a second opinion but a **test that asserted a
+property rather than reproducing a number**: `test_modes_a_is_free_in_op_count`
+asserts that widening the additive band changes no operation count, which is a
+design claim with a definite answer. It failed, and the failure exposed the
+weight transpose. Both instances' *measurements* agreed; the property test
+disagreed with both.
+
+The rule that follows, and it is cheap: **for a quantity this repo intends to
+publish, write a test that pins a property whose answer is known in advance,
+not a second script that recomputes the same number.** `tests/test_repr.py`
+already did exactly this for the five reconstruction bugs earlier this weekend —
+"pins each against a case whose answer is known in advance" — and it worked
+there for the same reason. That lesson had been learned and I did not transfer
+it.
