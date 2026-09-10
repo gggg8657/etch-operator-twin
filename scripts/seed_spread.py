@@ -21,18 +21,40 @@ import numpy as np
 
 
 def completed(d, cfg):
-    """Is this run finished, and written by exactly one process?
+    """Is this run finished, written by exactly one process, and evaluated after
+    the checkpoint it claims to describe?
 
     Counting lines in log.jsonl is not enough. `train.py` opens the log in
     APPEND mode, so two trainers sharing a directory interleave into one file
     and the line count reaches the epoch budget with neither model converged --
     which is how a 0.0400 rel-L2 belonging to no model got reported once. So:
 
+      * `test_eval.json` must be at least as new as `best.pt`, always checked
+        first, because an eval older than the checkpoint describes a model that
+        is no longer on disk;
       * `done.json` (written only at the end of a clean run) is the proof;
       * failing that, the logged epochs must be exactly 0..epochs-1, each once.
         A duplicate epoch number is positive evidence of two writers.
+
+    The staleness check is what caught `runs/base` on 2026-09-10. That directory
+    had been raced by two trainers and excluded for logging 49/80 epochs; the
+    surviving writer then finished the log to a clean 0..79 and kept training,
+    so the duplicate-epoch and completeness tests both went green while
+    `test_eval.json` still described a checkpoint from 14 minutes earlier.
+    Admitting it moved the reported 4-seed range from 0.00114 to 0.03721 and the
+    mean from 0.0126 to 0.0171 -- a 33x change in this repo's own noise floor,
+    from a run whose number was already formally withdrawn (commit 7a9a66e).
+    A guard that passes once is not a guard: the directory it protects can go
+    stale afterwards.
     """
     epochs = cfg.get("epochs")
+    best, ev = d / "best.pt", d / "test_eval.json"
+    if best.exists() and ev.exists():
+        lag = ev.stat().st_mtime - best.stat().st_mtime
+        if lag < 0:
+            return False, (f"test_eval.json is {-lag:.0f}s older than best.pt -- "
+                           "it describes a checkpoint that has since been "
+                           "overwritten, so the metric belongs to no model on disk")
     if (d / "done.json").exists():
         return True, "done.json"
     log = d / "log.jsonl"

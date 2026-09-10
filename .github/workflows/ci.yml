@@ -18,3 +18,10 @@ jobs:
         run: PYTHONPATH=. python tests/test_metrics.py
       - name: ViennaPS ground truth is importable and steps
         run: PYTHONPATH=. OMP_NUM_THREADS=1 python tests/test_solver.py
+      # These two were written after a race and a withdrawn number respectively,
+      # and were not in CI until 2026-09-10 -- the guards this repo relies on
+      # most were the only ones nothing checked.
+      - name: run locking and the run-completeness guard
+        run: PYTHONPATH=. python tests/test_runlock.py
+      - name: coverage verdict, both readings and the bootstrap
+        run: PYTHONPATH=. python tests/test_coverage_verdict.py

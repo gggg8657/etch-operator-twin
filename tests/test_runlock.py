@@ -79,6 +79,48 @@ def test_done_marker_is_accepted():
     assert ok and why == "done.json"
 
 
+
+
+def _with_ckpt(d, eval_lag_s):
+    """Give a run a best.pt and a test_eval.json `eval_lag_s` seconds apart."""
+    best, ev = Path(d) / "best.pt", Path(d) / "test_eval.json"
+    best.write_bytes(b"not-a-real-checkpoint")
+    ev.write_text(json.dumps({"rollout": {"op": {"band": {"mean": 0.01}}}}))
+    t = best.stat().st_mtime
+    os.utime(ev, (t + eval_lag_s, t + eval_lag_s))
+    return Path(d)
+
+
+def test_eval_older_than_checkpoint_is_refused():
+    """The `runs/base` failure of 2026-09-10, reduced to a test.
+
+    A raced directory was excluded for logging 49/80 epochs. The surviving
+    trainer then completed the log to a clean 0..79 and wrote a newer best.pt,
+    so every structural check passed while test_eval.json still described the
+    checkpoint from 14 minutes earlier. Admitting that run moved this repo's
+    measured seed range from 0.00114 to 0.03721.
+    """
+    d, cfg = _run(tempfile.mkdtemp() + "/e", [0, 1, 2, 3])
+    _with_ckpt(d, eval_lag_s=-859)
+    ok, why = completed(d, cfg)
+    assert not ok and "older than best.pt" in why
+
+
+def test_staleness_beats_the_done_marker():
+    """done.json is not a licence: a run can be marked done and then have its
+    checkpoint overwritten, which leaves the eval describing nothing on disk."""
+    d, cfg = _run(tempfile.mkdtemp() + "/f", [0, 1, 2, 3], done=True)
+    _with_ckpt(d, eval_lag_s=-10)
+    ok, why = completed(d, cfg)
+    assert not ok and "older than best.pt" in why
+
+
+def test_eval_newer_than_checkpoint_is_accepted():
+    d, cfg = _run(tempfile.mkdtemp() + "/g", [0, 1, 2, 3])
+    _with_ckpt(d, eval_lag_s=+7)   # the lag every clean run in this repo shows
+    assert completed(d, cfg)[0]
+
+
 if __name__ == "__main__":
     n = 0
     for k, v in sorted(globals().items()):

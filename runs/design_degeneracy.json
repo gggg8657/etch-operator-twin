@@ -1,0 +1,98 @@
+{
+  "arms": [
+    {
+      "source": "runs/design_Tfixed.json",
+      "dt_optimised": false,
+      "n_targets": 20,
+      "recipe_distance_unit_box": {
+        "per_axis": {
+          "ion_flux": {
+            "mean": 0.16901199831511632,
+            "median": 0.1193816549645612,
+            "max": 0.551028148389753
+          },
+          "etchant_flux": {
+            "mean": 0.04082483876838055,
+            "median": 0.019538012491198964,
+            "max": 0.17913441740922967
+          },
+          "oxygen_flux": {
+            "mean": 0.12245255947113039,
+            "median": 0.09793203353881835,
+            "max": 0.4402081680297852
+          },
+          "ion_energy": {
+            "mean": 0.21838163248697917,
+            "median": 0.1242188771565755,
+            "max": 0.7004626464843751
+          }
+        },
+        "rms": {
+          "mean": 0.16663405700905157,
+          "median": 0.12129578796734533,
+          "max": 0.453504810795715
+        },
+        "frac_beyond_10pct_of_box": 0.65
+      },
+      "etch_time_rel_error": {
+        "mean": 0.0,
+        "median": 0.0,
+        "max": 0.0
+      },
+      "shape_error_area_vs_removed": {
+        "mean": 0.009833084315141691,
+        "median": 0.006123994343756765,
+        "max": 0.05873267179459844
+      },
+      "corr_recipe_distance_vs_shape_error": 0.475598413421666,
+      "interpretation": "shape error is met while the recipe is not recovered -- the forward map is degenerate over (rate x time), so a matched profile does not identify the process that produced it"
+    },
+    {
+      "source": "runs/design_Tfree.json",
+      "dt_optimised": true,
+      "n_targets": 20,
+      "recipe_distance_unit_box": {
+        "per_axis": {
+          "ion_flux": {
+            "mean": 0.1974786254517782,
+            "median": 0.13805611268715867,
+            "max": 0.5298844862824623
+          },
+          "etchant_flux": {
+            "mean": 0.0969169879304536,
+            "median": 0.0734793477536545,
+            "max": 0.2629463529271452
+          },
+          "oxygen_flux": {
+            "mean": 0.13477608013153075,
+            "median": 0.13247695922851563,
+            "max": 0.4028097915649414
+          },
+          "ion_energy": {
+            "mean": 0.18440309143066408,
+            "median": 0.1353228759765625,
+            "max": 0.5487406921386719
+          }
+        },
+        "rms": {
+          "mean": 0.17701146439660068,
+          "median": 0.1419693842580979,
+          "max": 0.4076956705115905
+        },
+        "frac_beyond_10pct_of_box": 0.9
+      },
+      "etch_time_rel_error": {
+        "mean": 0.23132003764679263,
+        "median": 0.20136345076725642,
+        "max": 0.5476726171273704
+      },
+      "shape_error_area_vs_removed": {
+        "mean": 0.00607159855489126,
+        "median": 0.005979963701698826,
+        "max": 0.009750494789802947
+      },
+      "corr_recipe_distance_vs_shape_error": 0.21552300723154258,
+      "interpretation": "shape error is met while the recipe is not recovered -- the forward map is degenerate over (rate x time), so a matched profile does not identify the process that produced it"
+    }
+  ]
+}

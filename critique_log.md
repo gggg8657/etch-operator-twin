@@ -1294,3 +1294,114 @@ one while measuring the other, which is a reporting error, not a scoring error.
 The clause holds in distribution and nowhere else. That is a narrower and less
 satisfying result than the one I had at midday, and it is the one the
 measurements support.
+
+---
+
+## Turn 8 — clause 3 has a number at last, and three things about it need saying
+
+Both inverse-design runs landed while the loop was down (`runs/design_Tfixed.json`
+04:53, `runs/design_Tfree.json` 05:13, both from `runs/seed1`, invocations
+recorded in the `.lock` files and per-target progress in `logs/design.log`).
+`n_failed_simulation` is 0/20 in both, `n_pinned_at_wall` is 0, and the minimum
+box margin is 0.061 (T-pinned) / 0.083 (T-free), so no proposed recipe sits on a
+wall of the region the simulator was validated in. The tripwire row — the true
+recipe re-simulated — reads 0.0023, which is the pipeline's own floor.
+
+| protocol | area error vs removed, in ViennaPS | max over 20 | targets < 5% | random search |
+|---|---|---|---|---|
+| T pinned to target | 0.0098 | 0.0587 | 19/20 | 0.0232 |
+| T searched (honest) | **0.0061** | 0.0098 | 20/20 | 0.0233 |
+
+**Clause 3's threshold is 5% and the honest protocol reads 0.61%.** That is a
+factor of 8 of margin, and unlike clause 1 it is measured in the simulator on the
+recipe the operator proposed, not on the surrogate's opinion of it.
+
+### (a) The metric is the harder of the two on offer, which is worth stating
+
+`shape_error` computes two normalisations and the report uses `area_error_vs_removed`
+(mismatch over the area the target etch removed). The other reading,
+`area_error_vs_solid`, gives **0.0009** — seven times smaller. Had I quoted that,
+the clause would pass by 55× instead of 8×. It would also have been meaningless:
+dividing by the whole solid area makes the score depend on how much of the window
+happens to be filled, not on the etch. And the hard-threshold reading (0.0070,
+i.e. counting cells by sign rather than by smoothed occupancy) sits *above* the
+soft one, so the occupancy smoothing is not hiding a quantisation gap either. For
+once the number I had already committed to was the conservative one; recording
+this because the reverse is the failure mode the rules warn about, and the only
+way to know which way it went is to compute both.
+
+### (b) The recipe it finds is not the recipe that made the target, and by a lot
+
+Measured from the same JSONs (`scripts/analyse_design.py`), distance between the
+proposed and the true recipe as a fraction of the recipe box, per axis and RMS:
+
+| protocol | ion_flux | etchant_flux | oxygen_flux | ion_energy | RMS | > 10% of box |
+|---|---|---|---|---|---|---|
+| T pinned | 0.169 | 0.041 | 0.122 | 0.218 | 0.167 | 13/20 |
+| T searched | 0.197 | 0.097 | 0.135 | 0.184 | **0.177** | 18/20 |
+
+And in the T-free arm the etch time it recovers is wrong by **23% on average and
+55% at worst** — while the *shape* it produces is better than the arm that was
+handed the true time. Correlation between recipe distance and shape error is 0.22.
+
+So the inverse problem is **degenerate over (rate × time)**: the operator finds a
+different process that lands on the same profile, and gets a better profile
+precisely because searching T gives it a fourth-plus-one dimensional family to
+slide along instead of a fixed-depth constraint. That also explains the
+counter-intuitive ordering in the table above — I had labelled T-pinned "the
+optimistic bound" in `run_design.sh` and in `inverse.py`'s docstring, expecting it
+to win. It loses. The label is wrong and I am changing it: pinning T is not
+optimistic, it is *constrained*, and the constraint costs more than the
+information it hands over.
+
+The consequence for the claim is sharp and I want it in the headline rather than a
+caveat: **clause 3 as written asks for 형상오차 — shape error — and shape error is
+met. "The twin recovers the process recipe" is a different claim and it is NOT
+supported: 18 of 20 recovered recipes sit more than 10% of the box away from the
+truth.** Anyone using this to *set a tool* rather than to *hit a profile* is using
+a result that was not measured.
+
+### (c) The random-search baseline was not budget-matched, and I wrote that it was
+
+`design.py`'s own docstring says random search gets "a comparable number of
+operator evaluations". The invocation that produced these numbers was
+`--iters 200 --restarts 3 --random-budget 256`. Gradient descent therefore spent
+3 × 200 = **600 rollouts forward and 600 backward**; random search spent **256
+rollouts forward and none backward**. Taking a backward pass at roughly twice a
+forward, GD had on the order of **7× the operator compute**, not a comparable
+amount. The 3.8× quality gap (0.0061 against 0.0233) is therefore, as measured, a
+gap between two methods at unequal budget — which is precisely the shape of
+comparison the portfolio rules single out ("the baseline decides whether the
+number means anything… report the objective-versus-compute curve rather than one
+number, so the comparison cannot hide in the budget").
+
+### H3, written before the run
+
+> **Gradient descent's advantage over random search is not a budget artefact.**
+> Random search ranked by the same operator, given 64× its original budget
+> (16,384 candidates, ≈27× GD's total operator compute), will still not reach
+> GD's simulated area error of 0.0061 on the T-free protocol.
+>
+> Falsified if the curve reaches ≤0.0061 at any budget ≤16,384. Given 4 search
+> dimensions, best-of-N error should fall roughly as N^(-1/4), so 256 → 16,384 (a
+> 64× budget) predicts about a 2.8× improvement: 0.0233 → ~0.0083. That lands
+> *just above* GD, which is why the experiment is worth running rather than
+> arguing — the predicted margin is thin enough that I cannot call it from the
+> exponent.
+>
+> The alternative explanation this distinguishes against: the operator is a
+> usable *ranker* but its gradients carry no extra information, in which case
+> enough random samples buy the same answer and the word "design" is not earned.
+
+Running it costs one simulator call per budget per target, because only the
+best-of-budget candidate is verified; the ranking itself is batched and forward-only.
+
+### Also this turn, and separately: clause 3 rests on one seed
+
+`runs/seed1`. The seed-count lesson in the brief is explicit that one is not a
+verdict, and this repo has already withdrawn a crossed-split claim whose seed
+range exceeded its own mean. Clause 1 is reported over 4 converged seeds; clause 3
+must be too before it goes on the board as met. Replication on seeds 2, 5 and 6 is
+launched alongside H3. The margin is 8×, so a spread would have to be enormous to
+flip the verdict — but "would have to be enormous" is an argument, and the board
+takes measurements.
