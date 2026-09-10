@@ -7,6 +7,28 @@
 # are) and stride 1 (the control that separates a horizon penalty from a capacity
 # penalty), because a stride-10 arm inherits K=10's 0.04847 before it is shrunk.
 #
+# EPOCHS ARE STEP-MATCHED, and that correction is the whole reason this file was
+# revised before it ran. An arm at stride K trains on T/K pairs per trajectory,
+# so at a fixed epoch count it also takes K times FEWER gradient steps than the
+# stride-1 anchor. runs/kcurve.json, once eight partial checkpoints were excluded
+# from it (commit ec16fcd), measures what that is worth at the deployed
+# architecture: K10_nv at 80 epochs scores 0.04781 in-distribution terminal
+# rel-L2, while K10_sm -- identical pairs, identical input distribution, epochs =
+# 80*K so the gradient-step count matches the anchor's -- scores 0.02610. A
+# factor of 1.83, and the same direction at K=5 (0.03336 vs 0.02330).
+#
+# So a stride-10 arm trained for 80 epochs is undertrained by a margin larger
+# than the accuracy differences this sweep exists to resolve. Running it that way
+# would have measured shrunken networks under a budget known to be insufficient,
+# and H7's pre-registered decision rule -- "if w8/m4 already fails rel-L2 <= 0.05
+# badly, the frontier is closed below 1000x" -- would then have fired on a
+# training artefact rather than on a capacity limit, closing the only surviving
+# route to clause 2 for the wrong reason.
+#
+# Epochs are therefore 80*stride, matching the anchor's ~22.5k gradient steps.
+# The stride-1 control arms are unaffected (80*1 = 80), so they remain
+# comparable to runs/seed1..8 element-for-element.
+#
 #   scripts/shrink.sh <gpu> [n_parallel] [seeds...]
 set -u
 GPU=${1:-0}; NPAR=${2:-3}; shift 2 || true
@@ -29,8 +51,9 @@ run_cell() {
   if [ -f "$RUN/done.json" ] && [ -f "$RUN/test_eval.json" ]; then
     echo "skip $RUN (done)"; return 0
   fi
-  echo "=== w=$W m=$M L=$L K=$K seed=$S -> $RUN ==="
-  CUDA_VISIBLE_DEVICES=$GPU $PY scripts/train.py --run "$RUN" --epochs 80 \
+  EP=$((80 * K))
+  echo "=== w=$W m=$M L=$L K=$K seed=$S epochs=$EP -> $RUN ==="
+  CUDA_VISIBLE_DEVICES=$GPU $PY scripts/train.py --run "$RUN" --epochs "$EP" \
       --device cuda:0 --seed "$S" --stride "$K" \
       --width "$W" --modes "$M" --layers "$L" \
       > logs/shrink_w${W}m${M}L${L}_K${K}_s${S}.log 2>&1 \

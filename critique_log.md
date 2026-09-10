@@ -3155,3 +3155,69 @@ contour metric at 0.0061, so it is clause 1's choice of a field metric that make
 compact representations expensive. I am not touching that metric — rewriting it
 after seeing which representation it excludes is the one thing the rules forbid —
 but it is the honest location of the constraint and belongs in the discussion.
+
+### H10 — the corrected K-curve invalidates my own queued experiment, before it ran
+
+Commit `ec16fcd` excluded eight partial checkpoints from `runs/kcurve.json`, and
+the clean table says something none of the three readings this repo has published
+said. In-distribution terminal rel-L2, seeds and seed range now that only
+finished arms are scored:
+
+| arm | seeds | apps/wafer | in-dist terminal | range | crossed |
+|---|---|---|---|---|---|
+| K1_nv (anchor) | 8 | 10 | 0.01890 | 0.00172 | 0.05433 |
+| K2_nv | 7 | 5 | 0.02169 | 0.00248 | 0.05640 |
+| K5_nv | 8 | 2 | 0.03336 | 0.00553 | 0.07680 |
+| K10_nv | 8 | 1 | 0.04781 | 0.01399 | 0.09898 |
+| K2_sm | 3 | 5 | 0.01942 | 0.00115 | 0.05170 |
+| K5_sm | 3 | 2 | **0.02330** | 0.00136 | 0.08226 |
+| K10_sm | 2 | 1 | **0.02610** | 0.00059 | 0.10440 |
+
+Two things follow, and the second is the one that matters this turn.
+
+**Undertraining was the explanation after all.** The step-matched arms — same
+pairs, same input distribution, `epochs = 80*K` so the gradient-step count
+matches the anchor's ~22.5k — beat the fixed-epoch arms at the same horizon by
+**1.43× at K=5** (0.02330 vs 0.03336) and **1.83× at K=10** (0.02610 vs
+0.04781), with seed ranges of 0.00136 and 0.00059 against gaps of 0.010 and
+0.022. That is the opposite of what I wrote two turns ago ("the undertraining
+alternative is refuted"), which I drew from two seeds of contaminated data and
+labelled a screen; and it is also not the concurrent instance's withdrawal, which
+was drawn from the same contamination. The clean answer is that most of the
+K-curve at the deployed architecture was a training budget, not a horizon
+penalty. K10_sm is at 2 seeds and is a screen; the 8-seed extension is running on
+GPU 1 (`e4-sm8`, seeds 4–8), so I have not touched it.
+
+**And `scripts/shrink.sh` — H7, mine, queued for three turns and not yet
+started — was about to make exactly the mistake the correction just exposed.** It
+trained every arm at `--epochs 80`, including its five stride-10 configurations.
+That is the `nv` condition, the one now measured at 0.04781 where the
+step-matched condition reaches 0.02610. So H7 would have measured shrunken
+networks under a training budget known to be short by 1.83× at that horizon —
+larger than the accuracy differences the sweep exists to resolve — and its
+pre-registered decision rule ("if width 8 / modes 4 already fails rel-L2 ≤ 0.05
+badly, the frontier is closed below 1000×") would have fired on a training
+artefact and closed the last surviving route to clause 2 for the wrong reason.
+
+**H10: the step-matched correction transfers to the shrunken architectures, so a
+compact network at stride 10 trained to matched gradient steps holds clause 1
+in-distribution where the same network at 80 epochs does not.** Fixed
+`shrink.sh` to `epochs = 80*stride` and recorded why in the script itself. The
+stride-1 control arms are unaffected (80×1 = 80) so they stay comparable to
+`runs/seed1..8` element-for-element. `queue_after.sh` re-reads the script when
+the kcurve driver exits and `runs/shrink` is still empty, so the correction lands
+before the first arm rather than after the sweep.
+
+The distinguishing prediction, so this is falsifiable rather than a hedge: if H10
+holds, the step-matched shrink arms will beat their 80-epoch equivalents by
+roughly the 1.83× seen at the deployed width, and the frontier decision will be
+made on capacity. If the shrunken arms show *no* step-matching benefit, then the
+benefit at width 64 was about that architecture's capacity to exploit extra steps
+rather than about the horizon, which would be a finding about the anchor and not
+about H7 — and I would then have to re-read the K-curve a fourth time.
+
+**What this costs.** Fifteen stride-10 arms at 800 epochs instead of 80. The
+networks are 8–32 wide against the anchor's 64, so per-epoch cost is far lower,
+but the sweep is now the long pole on GPU 0 rather than a quick screen. That is
+the right trade: a fast answer to the wrong question is what the last three turns
+kept producing.
