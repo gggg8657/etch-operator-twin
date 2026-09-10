@@ -1,0 +1,21 @@
+{
+  "reclaimed_by_pid": 1696717,
+  "reclaimed_at": 1789048761.848091,
+  "original": "runs/kcurve/K2_ov_s4",
+  "epoch_lines": 26,
+  "argv": [
+    "scripts/train.py",
+    "--run",
+    "runs/kcurve/K2_ov_s4",
+    "--epochs",
+    "80",
+    "--device",
+    "cuda:0",
+    "--seed",
+    "4",
+    "--stride",
+    "2",
+    "--overlap-pairs"
+  ],
+  "reason": "log.jsonl present, done.json absent, flock free -> the only writer is dead. Archived, not appended to."
+}

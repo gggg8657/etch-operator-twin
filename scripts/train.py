@@ -18,7 +18,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import ConcatDataset, DataLoader
 
 import sys
 
@@ -91,6 +91,20 @@ def main():
                          "applications per wafer by K, so both the cost and the "
                          "number of compoundings fall by K. The conditioning's "
                          "log_dt channel becomes log(K*dt); nothing else changes.")
+    ap.add_argument("--strides", default=None,
+                    help="H12: comma-separated strides to train ONE operator on "
+                         "jointly, e.g. '1,2,5,10'. The conditioning already "
+                         "carries log(K*dt), so a single network can serve every "
+                         "horizon, and every intermediate state becomes an input "
+                         "at some stride. This exists because a stride-10 arm on "
+                         "a T=10 trajectory has exactly ONE start offset "
+                         "(T-K+1 = T/K = 1), so it cannot be given input-state "
+                         "diversity by --overlap-pairs the way K=2 and K=5 can. "
+                         "Evaluation still happens at --eval-stride.")
+    ap.add_argument("--eval-stride", type=int, default=None,
+                    help="horizon to validate and checkpoint on; defaults to "
+                         "--stride, or to max(--strides) when that is given, "
+                         "because the deployment horizon is the one that matters")
     ap.add_argument("--overlap-pairs", action="store_true",
                     help="data-matched control: train on every legal start offset "
                          "(T-K+1 per trajectory) instead of the K non-overlapping "
@@ -145,10 +159,16 @@ def main():
     norm = json.loads(norm_p.read_text())
     scale, band_um = norm["sdf_scale_um"], norm["band_um"]
 
-    tr_pairs = PairDataset(data / "train.npz", norm, stride=a.stride,
-                           overlap=a.overlap_pairs)
-    tr_traj = TrajDataset(data / "train.npz", norm, stride=a.stride)
-    va_traj = TrajDataset(data / "val.npz", norm, stride=a.stride)
+    strides = [int(x) for x in a.strides.split(",")] if a.strides else [a.stride]
+    eval_stride = a.eval_stride or (max(strides) if a.strides else a.stride)
+    # One PairDataset per stride, concatenated. Each sets its own conditioning
+    # via eot.data.standardise(..., stride=K), so log_dt carries log(K*dt) for
+    # its own pairs and the network is told which horizon each sample is.
+    parts = [PairDataset(data / "train.npz", norm, stride=k,
+                         overlap=a.overlap_pairs) for k in strides]
+    tr_pairs = parts[0] if len(parts) == 1 else ConcatDataset(parts)
+    tr_traj = TrajDataset(data / "train.npz", norm, stride=eval_stride)
+    va_traj = TrajDataset(data / "val.npz", norm, stride=eval_stride)
     device = torch.device(a.device)
 
     model = EtchOperator(cond_dim=len(norm["cond_keys"]), width=a.width,
@@ -170,7 +190,12 @@ def main():
     args_p = run / "args.json"
     args_p.write_text(json.dumps({**vars(a), "params": model.param_count(),
                                   "n_train_pairs": len(tr_pairs),
-                                  "pair_starts": tr_pairs.starts,
+                                  "trained_strides": strides,
+                                  "eval_stride": eval_stride,
+                                  "pairs_per_stride": [len(q) for q in parts],
+                                  "pair_starts": (parts[0].starts if len(parts) == 1
+                                                  else {str(k): q.starts for k, q
+                                                        in zip(strides, parts)}),
                                   "applications_per_wafer": len(va_traj.times),
                                   "gpu": torch.cuda.get_device_name(device)}, indent=2))
     logf = (run / "log.jsonl").open("a")

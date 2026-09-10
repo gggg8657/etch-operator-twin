@@ -9,6 +9,8 @@
   "layers": 4,
   "rollout_steps": 0,
   "stride": 2,
+  "strides": null,
+  "eval_stride": 2,
   "overlap_pairs": true,
   "band_weight": 0.0,
   "blind": false,
@@ -19,6 +21,12 @@
   "num_workers": 0,
   "params": 26248025,
   "n_train_pairs": 8100,
+  "trained_strides": [
+    2
+  ],
+  "pairs_per_stride": [
+    8100
+  ],
   "pair_starts": [
     0,
     1,

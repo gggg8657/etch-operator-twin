@@ -3228,7 +3228,16 @@ but the sweep is now the long pole on GPU 0 rather than a quick screen. That is
 the right trade: a fast answer to the wrong question is what the last three turns
 kept producing.
 
-### H10, written before the run: is the crossed-split penalty at high K about input-state diversity?
+### H12, written before the run: is the crossed-split penalty at high K about input-state diversity?
+
+*(Renumbered from H10. Two different hypotheses had been written under that
+label in this shared log by two instances of this loop — a k-d tree
+reconstruction speed test above, and this one — and a third had already been
+moved to H11 by the other instance on the mistaken belief that `--strides` and
+the reconstruction test were the same hypothesis. Mine was the only one still
+uncommitted, so mine is the one that moves; the label now appears once per
+hypothesis. Nothing about the hypothesis or its prediction changed, and it was
+still written before the run.)*
 
 The corrected table splits cleanly by reading. In-distribution, the horizon is
 nearly free once the gradient-step budget is matched (0.01890 → 0.01942 →
@@ -3265,7 +3274,7 @@ trench. A model that only ever sees initial trenches as inputs has memorised
 "trench + recipe → final profile" over the training recipes, which is precisely
 the thing that would generalise worst to unseen recipe/dt combinations.
 
-**H10: the crossed-split penalty at K=10 is caused by input-state narrowness, not
+**H12: the crossed-split penalty at K=10 is caused by input-state narrowness, not
 by horizon length. Training ONE operator jointly on strides {1, 2, 5, 10} — the
 conditioning already carries log(K·dt), so a single network can serve every
 horizon — will improve the K=10 crossed reading over the stride-10-only arm at

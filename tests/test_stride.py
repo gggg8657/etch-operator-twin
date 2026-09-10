@@ -150,6 +150,44 @@ def test_stride_k_trajectory_targets_are_the_k_multiples():
     np.testing.assert_allclose(tgt.numpy()[1, 0], d["sdf"][7, 10] / ds.scale)
 
 
+def test_mixed_strides_cover_every_start_offset_and_label_each_horizon():
+    """H10's dataset. Two properties have to hold or the hypothesis is untestable.
+
+    First, mixing strides {1,2,5,10} must supply the input-state diversity a
+    stride-10 arm cannot have: on a T=10 trajectory stride 10 admits exactly one
+    start offset (`T-K+1 = T/K = 1`), so every K=10 arm in this repo has only
+    ever seen the initial trench as an input. The union over strides must cover
+    all ten offsets.
+
+    Second, each stride's pairs must be labelled with their OWN horizon, because
+    one network serves all of them and the only thing distinguishing a 1-step
+    sample from a 10-step one is the `log_dt` conditioning channel carrying
+    log(K*dt). If two strides shared a conditioning vector the mixed arm would be
+    trained on contradictory targets for the same input.
+    """
+    from eot.data import PairDataset
+
+    root = Path(__file__).resolve().parents[1]
+    norm = json.loads((root / "data" / "norm.json").read_text())
+    npz = root / "data" / "train.npz"
+    strides = [1, 2, 5, 10]
+    parts = {k: PairDataset(npz, norm, stride=k, overlap=False) for k in strides}
+
+    covered = set()
+    for k, d in parts.items():
+        covered |= set(d.starts)
+        assert d.starts == list(range(0, d.T - d.T % k, k)), (k, d.starts)
+    assert covered == set(range(10)), f"mixed starts cover {sorted(covered)}"
+    assert parts[10].starts == [0], "stride 10 must have exactly one start offset"
+
+    # the log_dt channel must differ between strides for the same trajectory
+    idx = norm["cond_keys"].index("log_dt")
+    vals = {k: float(parts[k].cond[0][idx]) for k in strides}
+    assert len(set(round(v, 6) for v in vals.values())) == len(strides), vals
+    # and it must be ordered, since log(K*dt) is increasing in K
+    assert [vals[k] for k in strides] == sorted(vals[k] for k in strides), vals
+
+
 if __name__ == "__main__":
     n = 0
     for k, v in sorted(globals().items()):

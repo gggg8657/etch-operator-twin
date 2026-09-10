@@ -82,7 +82,12 @@ def main():
     scale, band_um = norm["sdf_scale_um"], norm["band_um"]
     device = torch.device(a.device)
 
-    stride = int(cfg.get("stride", 1))
+    # A mixed-stride arm (--strides) trains on several horizons at once, so
+    # cfg["stride"] is not the horizon it is meant to be judged at -- args.json
+    # records `eval_stride` for exactly that reason. Prefer it when present, so a
+    # mixed arm is scored at its deployment horizon rather than at the default
+    # --stride it never really used.
+    stride = int(cfg.get("eval_stride") or cfg.get("stride", 1))
     ds = TrajDataset(Path(a.data) / f"{a.split}.npz", norm, stride=stride)
     subset_note = None
     if a.indices_from:
@@ -166,6 +171,7 @@ def main():
     out = {
         "run": str(run), "split": a.split, "ckpt": a.ckpt,
         "stride": stride,
+        "trained_strides": cfg.get("trained_strides", [stride]),
         "applications_per_wafer": int(traj.shape[1]),
         "physical_steps_per_wafer": int(traj.shape[1]) * stride,
         "n_trajectories": len(ds), "steps": int(traj.shape[1]),
