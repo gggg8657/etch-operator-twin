@@ -1,0 +1,1071 @@
+{
+  "question": "which candidate surrogate architectures fit the clause-2 budget, measured before any of them is trained",
+  "protocol": {
+    "estimator": "CPU-seconds per wafer on one verified thread, fresh subprocess per config",
+    "rounds": 16,
+    "warm_rollouts_untimed": 3,
+    "budget_warm_s": 0.0003520743949999998,
+    "budget_cold_s": 0.0007389038889999999,
+    "solver_warm_cpu_s": 0.3520743949999998,
+    "solver_cold_cpu_s": 0.7389038889999999,
+    "speedup_target": 1000.0,
+    "budget_provenance": {
+      "paired": true,
+      "warm_source": "re-timed in this invocation by bench_symmetric.solver_warm",
+      "warm_median_cpu_s": 0.3520743949999998,
+      "warm_n": 16,
+      "warm_spread_factor": 15.737038500443157,
+      "stored_warm_median_cpu_s": 0.2767124970000001,
+      "drift_vs_stored": 1.2723472875892543,
+      "loadavg_1min_at_start": 58.76,
+      "cold_source": "runs/speed_symmetric.json",
+      "cold_is_paired": false,
+      "why_cold_unpaired": "cold_single_wafer is dominated by ViennaPS init, which load does not perturb the way it perturbs small tensor ops; re-timing it per invocation costs more than the whole ladder. Cold ratios in this file are unpaired."
+    },
+    "no_accuracy_claimed": "cost only. Accuracy for these rows is in runs/shrink.json and runs/multiscale.json."
+  },
+  "models": {
+    "fno_w8m4L2_K10": {
+      "note": "the accuracy-admissible FNO from runs/shrink.json (0.04717 in-distribution terminal at 3 seeds). Reference row: this is the cost the multiscale architecture has to beat by 6.4x.",
+      "params": 10897,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 50.89,
+        "after": 47.62
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0029855884999999693,
+        "per_wafer_cpu_s": 0.0029855884999999693,
+        "min_cpu_s": 0.0025406570000001683,
+        "max_cpu_s": 0.004251472999999839,
+        "spread_factor": 1.6733754300559098,
+        "over_budget_factor": 8.4799932696042,
+        "under_budget": false,
+        "speedup_vs_solver": 117.92462189615328,
+        "speedup_range": [
+          82.8123323375247,
+          138.57612223923832
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.0071008100000000685,
+        "per_wafer_cpu_s": 0.0071008100000000685,
+        "min_cpu_s": 0.006710520000000053,
+        "max_cpu_s": 0.012225217999999982,
+        "spread_factor": 1.821798906791111,
+        "over_budget_factor": 9.609923706870719,
+        "under_budget": false,
+        "speedup_vs_solver": 104.05909875070489,
+        "speedup_range": [
+          60.44095810806817,
+          110.11127140668593
+        ],
+        "n": 3
+      }
+    },
+    "multiscale_s4_w8m4L2_wf8_K10": {
+      "note": "H15's candidate: the same body at 32x32 plus a full-resolution FiLM-conditioned 1x1 path.",
+      "params": 9914,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 47.62,
+        "after": 44.77
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0027787120000001275,
+        "per_wafer_cpu_s": 0.0027787120000001275,
+        "min_cpu_s": 0.0026871980000000573,
+        "max_cpu_s": 0.0030262969999999,
+        "spread_factor": 1.1261905523894538,
+        "over_budget_factor": 7.892400127535912,
+        "under_budget": false,
+        "speedup_vs_solver": 126.70416905385792,
+        "speedup_range": [
+          116.33834848331523,
+          131.01914894250157
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.004149304999999881,
+        "per_wafer_cpu_s": 0.004149304999999881,
+        "min_cpu_s": 0.0040209270000000075,
+        "max_cpu_s": 0.00428683700000021,
+        "spread_factor": 1.0661315164389211,
+        "over_budget_factor": 5.615486752431861,
+        "under_budget": false,
+        "speedup_vs_solver": 178.07895274028328,
+        "speedup_range": [
+          172.3657533514719,
+          183.7645620027418
+        ],
+        "n": 3
+      }
+    },
+    "multiscale_s2_w8m4L2_wf8_K10": {
+      "note": "half the downsample, 4x the body cost: the control that says whether scale=4 was necessary or merely sufficient.",
+      "params": 9914,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 44.77,
+        "after": 42.7
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0016334729999999964,
+        "per_wafer_cpu_s": 0.0016334729999999964,
+        "min_cpu_s": 0.0016023609999999966,
+        "max_cpu_s": 0.0016768690000000808,
+        "spread_factor": 1.0464988850827526,
+        "over_budget_factor": 4.639567725451882,
+        "under_budget": false,
+        "speedup_vs_solver": 215.53732140047651,
+        "speedup_range": [
+          209.95939158036964,
+          219.72226920150987
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.004577658999999956,
+        "per_wafer_cpu_s": 0.004577658999999956,
+        "min_cpu_s": 0.004387665999999957,
+        "max_cpu_s": 0.006379320000000188,
+        "spread_factor": 1.453921059624924,
+        "over_budget_factor": 6.195202201730402,
+        "under_budget": false,
+        "speedup_vs_solver": 161.41523189036295,
+        "speedup_range": [
+          115.82800188734507,
+          168.40477123828643
+        ],
+        "n": 3
+      }
+    },
+    "multiscale_s8_w16m4L4_wf8_K10": {
+      "note": "if s=4 fits, s=8 buys back capacity inside the same budget: double the width and double the depth on a 16x16 body.",
+      "params": 69010,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 42.7,
+        "after": 40.32
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0016785925000000201,
+        "per_wafer_cpu_s": 0.0016785925000000201,
+        "min_cpu_s": 0.001649625000000099,
+        "max_cpu_s": 0.0017640110000000098,
+        "spread_factor": 1.0693406077138161,
+        "over_budget_factor": 4.767721038049419,
+        "under_budget": false,
+        "speedup_vs_solver": 209.74381513082872,
+        "speedup_range": [
+          199.58741470432886,
+          213.42692733195648
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.005302315000000002,
+        "per_wafer_cpu_s": 0.005302315000000002,
+        "min_cpu_s": 0.004539944000000018,
+        "max_cpu_s": 0.006838303000000101,
+        "spread_factor": 1.5062527202978877,
+        "over_budget_factor": 7.1759197358886855,
+        "under_budget": false,
+        "speedup_vs_solver": 139.35495891888726,
+        "speedup_range": [
+          108.05369241462232,
+          162.7561681377561
+        ],
+        "n": 3
+      }
+    },
+    "multiscale_s4_w8m4L2_wf8_K1": {
+      "note": "the same model deployed at stride 1, ten applications per wafer. Included because the stride is the difference between clearing the clause and missing it by 10x, and that must be visible.",
+      "params": 9914,
+      "applications_per_wafer": 10,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 40.32,
+        "after": 38.3
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0013166660000000219,
+        "per_wafer_cpu_s": 0.013166660000000219,
+        "min_cpu_s": 0.0012931780000000614,
+        "max_cpu_s": 0.0013787189999998617,
+        "spread_factor": 1.0661478930199835,
+        "over_budget_factor": 37.397380175858075,
+        "under_budget": false,
+        "speedup_vs_solver": 26.739841007513977,
+        "speedup_range": [
+          25.536341705600282,
+          27.22551690486407
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.0041244489999998635,
+        "per_wafer_cpu_s": 0.041244489999998635,
+        "min_cpu_s": 0.00387420599999988,
+        "max_cpu_s": 0.004434985999999919,
+        "spread_factor": 1.1447470784981635,
+        "over_budget_factor": 55.81847736086099,
+        "under_budget": false,
+        "speedup_vs_solver": 17.91521458987672,
+        "speedup_range": [
+          16.66079417161663,
+          19.072395453417364
+        ],
+        "n": 3
+      }
+    },
+    "fno_w8m4L2_K10_compiled": {
+      "note": "the accuracy-admissible FNO (0.04717 in-distribution terminal, runs/shrink.json), compiled. Same weights, same output.",
+      "params": 10897,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 38.3,
+        "after": 38.22
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.00633460500000016,
+        "per_wafer_cpu_s": 0.00633460500000016,
+        "min_cpu_s": 0.006266075999999288,
+        "max_cpu_s": 0.0064698710000001824,
+        "spread_factor": 1.032523544240593,
+        "over_budget_factor": 17.992234283325725,
+        "under_budget": false,
+        "speedup_vs_solver": 55.579534161954996,
+        "speedup_range": [
+          54.41752934486482,
+          56.187380267976295
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.9790328489999998,
+        "per_wafer_cpu_s": 0.9790328489999998,
+        "min_cpu_s": 0.648635686,
+        "max_cpu_s": 1.0296285330000003,
+        "spread_factor": 1.587375710623483,
+        "over_budget_factor": 1324.97996501951,
+        "under_budget": false,
+        "speedup_vs_solver": 0.7547283931838737,
+        "speedup_range": [
+          0.7176412320733536,
+          1.1391662607351516
+        ],
+        "n": 3
+      }
+    },
+    "multiscale_s4_w8m4L2_wf8_K10_compiled": {
+      "note": "H15's architecture, compiled. Accuracy UNMEASURED as of this row: no accuracy is claimed for it anywhere in this file.",
+      "params": 9914,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 38.22,
+        "after": 45.57
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0028008629999998202,
+        "per_wafer_cpu_s": 0.0028008629999998202,
+        "min_cpu_s": 0.00275145599999993,
+        "max_cpu_s": 0.0029400769999998744,
+        "spread_factor": 1.0685531587639232,
+        "over_budget_factor": 7.95531580761453,
+        "under_budget": false,
+        "speedup_vs_solver": 125.70211217043547,
+        "speedup_range": [
+          119.7500592671603,
+          127.95930409209116
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 1.102431513,
+        "per_wafer_cpu_s": 1.102431513,
+        "min_cpu_s": 1.1007371789999998,
+        "max_cpu_s": 1.116144003,
+        "spread_factor": 1.0139968234869627,
+        "over_budget_factor": 1491.9822853984197,
+        "under_budget": false,
+        "speedup_vs_solver": 0.6702492447709991,
+        "speedup_range": [
+          0.6620148359118136,
+          0.6712809407158219
+        ],
+        "n": 3
+      }
+    },
+    "multiscale_s8_w16m4L4_wf8_K10_compiled": {
+      "note": "the capacity-restored variant, compiled. Accuracy UNMEASURED.",
+      "params": 69010,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 45.57,
+        "after": 39.16
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0036377945000003464,
+        "per_wafer_cpu_s": 0.0036377945000003464,
+        "min_cpu_s": 0.0036152249999998887,
+        "max_cpu_s": 0.0037986870000006334,
+        "spread_factor": 1.0507470489390702,
+        "over_budget_factor": 10.332459706421844,
+        "under_budget": false,
+        "speedup_vs_solver": 96.7823759698263,
+        "speedup_range": [
+          92.68318105701815,
+          97.38657898194737
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.8740346239999996,
+        "per_wafer_cpu_s": 0.8740346239999996,
+        "min_cpu_s": 0.810966589,
+        "max_cpu_s": 1.1855123090000004,
+        "spread_factor": 1.4618509875503642,
+        "over_budget_factor": 1182.8799888749804,
+        "under_budget": false,
+        "speedup_vs_solver": 0.8453942998486982,
+        "speedup_range": [
+          0.6232781249005148,
+          0.9111397424043569
+        ],
+        "n": 3
+      }
+    },
+    "fno_w64m20L4_DEPLOYED_compiled": {
+      "note": "the deployed 26.2M-parameter operator, compiled. Its eager cost is 87835 us (runs/cost_floor.json); this says how much of that was dispatch overhead rather than arithmetic. At 26.2M params this row should be arithmetic-bound, so it is the control that says compilation is not a measurement trick.",
+      "params": 26248025,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 39.16,
+        "after": 217.0
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.21025714800000017,
+        "per_wafer_cpu_s": 0.21025714800000017,
+        "min_cpu_s": 0.20461220799999946,
+        "max_cpu_s": 0.23746524899999955,
+        "spread_factor": 1.1605624675141581,
+        "over_budget_factor": 597.1952263100538,
+        "under_budget": false,
+        "speedup_vs_solver": 1.6744942959085487,
+        "speedup_range": [
+          1.4826354444813965,
+          1.7206910498712802
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 1.2818861379999995,
+        "per_wafer_cpu_s": 1.2818861379999995,
+        "min_cpu_s": 1.163945455,
+        "max_cpu_s": 1.3220480810000002,
+        "spread_factor": 1.1358333634285296,
+        "over_budget_factor": 1734.8482760523132,
+        "under_budget": false,
+        "speedup_vs_solver": 0.5764192833482378,
+        "speedup_range": [
+          0.5589084842066344,
+          0.6348269034651628
+        ],
+        "n": 3
+      }
+    },
+    "pw_wf8_n1_relu_K10": {
+      "note": "pointwise per-pixel MLP, width 8, 1 hidden layer(s), relu. NO spatial mixing at any resolution.",
+      "params": 1217,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 217.0,
+        "after": 230.85
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.001045742500000002,
+        "per_wafer_cpu_s": 0.001045742500000002,
+        "min_cpu_s": 0.0007523099999999783,
+        "max_cpu_s": 0.0011222050000001538,
+        "spread_factor": 1.4916789621302204,
+        "over_budget_factor": 2.970231618235125,
+        "under_budget": false,
+        "speedup_vs_solver": 336.67408085642415,
+        "speedup_range": [
+          313.73447364781975,
+          467.9911140354508
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.002798544000000014,
+        "per_wafer_cpu_s": 0.002798544000000014,
+        "min_cpu_s": 0.0027398659999999797,
+        "max_cpu_s": 0.0028313709999998604,
+        "spread_factor": 1.0333976187156164,
+        "over_budget_factor": 3.787426269724254,
+        "under_budget": false,
+        "speedup_vs_solver": 264.03154247351347,
+        "speedup_range": [
+          260.97035287853,
+          269.68614122004703
+        ],
+        "n": 3
+      }
+    },
+    "pw_wf16_n2_relu_K10": {
+      "note": "pointwise per-pixel MLP, width 16, 2 hidden layer(s), relu. NO spatial mixing at any resolution.",
+      "params": 1673,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 230.85,
+        "after": 244.8
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0021439540000000035,
+        "per_wafer_cpu_s": 0.0021439540000000035,
+        "min_cpu_s": 0.0015783110000000544,
+        "max_cpu_s": 0.002186261000000078,
+        "spread_factor": 1.3851902445082134,
+        "over_budget_factor": 6.089491398543778,
+        "under_budget": false,
+        "speedup_vs_solver": 164.2173269575743,
+        "speedup_range": [
+          161.03950763426107,
+          223.07035495538437
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.004567317000000015,
+        "per_wafer_cpu_s": 0.004567317000000015,
+        "min_cpu_s": 0.004247254000000034,
+        "max_cpu_s": 0.004763233000000033,
+        "spread_factor": 1.1214853173368007,
+        "over_budget_factor": 6.181205794140862,
+        "under_budget": false,
+        "speedup_vs_solver": 161.7807323205281,
+        "speedup_range": [
+          155.12654724217663,
+          173.97214506125465
+        ],
+        "n": 3
+      }
+    },
+    "pw_wf32_n3_relu_K10": {
+      "note": "pointwise per-pixel MLP, width 32, 3 hidden layer(s), relu. NO spatial mixing at any resolution.",
+      "params": 3881,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 244.8,
+        "after": 252.9
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0056430619999999765,
+        "per_wafer_cpu_s": 0.0056430619999999765,
+        "min_cpu_s": 0.005190825999999982,
+        "max_cpu_s": 0.005884221999999939,
+        "spread_factor": 1.1335810524182393,
+        "over_budget_factor": 16.028038619508187,
+        "under_budget": false,
+        "speedup_vs_solver": 62.39066574140091,
+        "speedup_range": [
+          59.83363561062167,
+          67.82627562549796
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.009480009000000011,
+        "per_wafer_cpu_s": 0.009480009000000011,
+        "min_cpu_s": 0.00903350199999986,
+        "max_cpu_s": 0.00948717500000007,
+        "spread_factor": 1.0502211656122085,
+        "over_budget_factor": 12.829826911358985,
+        "under_budget": false,
+        "speedup_vs_solver": 77.94337420987671,
+        "speedup_range": [
+          77.884500812939,
+          81.79595122688978
+        ],
+        "n": 3
+      }
+    },
+    "pw_wf64_n4_relu_K10": {
+      "note": "pointwise per-pixel MLP, width 64, 4 hidden layer(s), relu. NO spatial mixing at any resolution.",
+      "params": 14985,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 252.9,
+        "after": 274.14
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.01622689849999992,
+        "per_wafer_cpu_s": 0.01622689849999992,
+        "min_cpu_s": 0.014914907999999949,
+        "max_cpu_s": 0.01670044500000012,
+        "spread_factor": 1.1197149187913311,
+        "over_budget_factor": 46.089402496878336,
+        "under_budget": false,
+        "speedup_vs_solver": 21.6969616837131,
+        "speedup_range": [
+          21.081737342926928,
+          23.6055358169156
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.019029564,
+        "per_wafer_cpu_s": 0.019029564,
+        "min_cpu_s": 0.018620630000000027,
+        "max_cpu_s": 0.01930049300000003,
+        "spread_factor": 1.036511278082428,
+        "over_budget_factor": 25.753774318002,
+        "under_budget": false,
+        "speedup_vs_solver": 38.829260039799124,
+        "speedup_range": [
+          38.28419766272285,
+          39.682002649749165
+        ],
+        "n": 3
+      }
+    },
+    "pw_wf32_n3_gelu_K10": {
+      "note": "pointwise per-pixel MLP, width 32, 3 hidden layer(s), gelu. NO spatial mixing at any resolution.",
+      "params": 3881,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 274.14,
+        "after": 281.42
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.00624390549999998,
+        "per_wafer_cpu_s": 0.00624390549999998,
+        "min_cpu_s": 0.0049202749999999185,
+        "max_cpu_s": 0.006724101999999954,
+        "spread_factor": 1.366611012595854,
+        "over_budget_factor": 17.73461969593098,
+        "under_budget": false,
+        "speedup_vs_solver": 56.386887181428506,
+        "speedup_range": [
+          52.36006161120135,
+          71.55583681806517
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.009981726999999996,
+        "per_wafer_cpu_s": 0.009981726999999996,
+        "min_cpu_s": 0.009973041999999932,
+        "max_cpu_s": 0.010023349000000126,
+        "spread_factor": 1.0050442984196992,
+        "over_budget_factor": 13.508829969089522,
+        "under_budget": false,
+        "speedup_vs_solver": 74.02565598117442,
+        "speedup_range": [
+          73.71826412509338,
+          74.09012104832256
+        ],
+        "n": 3
+      }
+    },
+    "ms_s8_w8m4L2_wf16_relu_K10": {
+      "note": "pointwise path plus a spectral body on a 16x16 grid, width 8, 2 layers. The cheapest rows that mix spatially at all.",
+      "params": 10370,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 281.42,
+        "after": 300.29
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.003033351999999989,
+        "per_wafer_cpu_s": 0.003033351999999989,
+        "min_cpu_s": 0.002076552999999981,
+        "max_cpu_s": 0.003106660000000039,
+        "spread_factor": 1.4960658360273333,
+        "over_budget_factor": 8.615656358651105,
+        "under_budget": false,
+        "speedup_vs_solver": 116.06776760494697,
+        "speedup_range": [
+          113.3289111135417,
+          169.5475121511481
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.006933545999999957,
+        "per_wafer_cpu_s": 0.006933545999999957,
+        "min_cpu_s": 0.006753640000000116,
+        "max_cpu_s": 0.007159337999999904,
+        "spread_factor": 1.0600710135571012,
+        "over_budget_factor": 9.383555971512768,
+        "under_budget": false,
+        "speedup_vs_solver": 106.56940748644409,
+        "speedup_range": [
+          103.2084096322886,
+          109.40824340651666
+        ],
+        "n": 3
+      }
+    },
+    "ms_s8_w16m4L4_wf16_relu_K10": {
+      "note": "pointwise path plus a spectral body on a 16x16 grid, width 16, 4 layers. The cheapest rows that mix spatially at all.",
+      "params": 69466,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 300.29,
+        "after": 327.92
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.003552246500000078,
+        "per_wafer_cpu_s": 0.003552246500000078,
+        "min_cpu_s": 0.0024083560000001114,
+        "max_cpu_s": 0.003866463000000042,
+        "spread_factor": 1.6054366547137813,
+        "over_budget_factor": 10.089476969775323,
+        "under_budget": false,
+        "speedup_vs_solver": 99.113165429255,
+        "speedup_range": [
+          91.05851911682485,
+          146.18868431410618
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.007967167000000108,
+        "per_wafer_cpu_s": 0.007967167000000108,
+        "min_cpu_s": 0.007570191999999976,
+        "max_cpu_s": 0.008915626000000065,
+        "spread_factor": 1.1777278568364045,
+        "over_budget_factor": 10.782413137360155,
+        "under_budget": false,
+        "speedup_vs_solver": 92.74361752427053,
+        "speedup_range": [
+          82.87739851357544,
+          97.6070209315698
+        ],
+        "n": 3
+      }
+    },
+    "ms_s16_w16m4L4_wf16_relu_K10": {
+      "note": "pointwise path plus a spectral body on a 8x8 grid, width 16, 4 layers. The cheapest rows that mix spatially at all.",
+      "params": 69466,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 327.92,
+        "after": 322.0
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0036278989999999345,
+        "per_wafer_cpu_s": 0.0036278989999999345,
+        "min_cpu_s": 0.002642565000000152,
+        "max_cpu_s": 0.003957702000000118,
+        "spread_factor": 1.4976744186046098,
+        "over_budget_factor": 10.304353430756976,
+        "under_budget": false,
+        "speedup_vs_solver": 97.04636071732045,
+        "speedup_range": [
+          88.95929885574742,
+          133.23206619325524
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.007772312999999809,
+        "per_wafer_cpu_s": 0.007772312999999809,
+        "min_cpu_s": 0.007590123000000171,
+        "max_cpu_s": 0.008816170000000012,
+        "spread_factor": 1.161531901393405,
+        "over_budget_factor": 10.51870631039514,
+        "under_budget": false,
+        "speedup_vs_solver": 95.068725230188,
+        "speedup_range": [
+          83.8123458372512,
+          97.350713420584
+        ],
+        "n": 3
+      }
+    },
+    "ms_s4_w8m4L2_wf16_relu_K10": {
+      "note": "pointwise path plus a spectral body on a 32x32 grid, width 8, 2 layers. The cheapest rows that mix spatially at all.",
+      "params": 10370,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 322.0,
+        "after": 319.15
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0030246310000000554,
+        "per_wafer_cpu_s": 0.0030246310000000554,
+        "min_cpu_s": 0.0021025159999998877,
+        "max_cpu_s": 0.0032460450000000307,
+        "spread_factor": 1.543885991830837,
+        "over_budget_factor": 8.590886025665277,
+        "under_budget": false,
+        "speedup_vs_solver": 116.40242892438562,
+        "speedup_range": [
+          108.46257368582275,
+          167.4538481514617
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.0070012550000000395,
+        "per_wafer_cpu_s": 0.0070012550000000395,
+        "min_cpu_s": 0.00635813800000018,
+        "max_cpu_s": 0.007018784,
+        "spread_factor": 1.1039055773875626,
+        "over_budget_factor": 9.475190351853787,
+        "under_budget": false,
+        "speedup_vs_solver": 105.53877683358137,
+        "speedup_range": [
+          105.27519994916497,
+          116.21388038447405
+        ],
+        "n": 3
+      }
+    }
+  },
+  "components": {
+    "coords_cat_only": {
+      "note": "building the two coordinate channels at 128x128 and concatenating them to phi. No parameters, no arithmetic on the data. Every architecture in this repo pays this.",
+      "params": 0,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": false,
+      "loadavg_1min": {
+        "before": 319.15,
+        "after": 326.43
+      },
+      "warm": {
+        "per_apply_cpu_s": 4.133350000001812e-05,
+        "per_wafer_cpu_s": 4.133350000001812e-05,
+        "min_cpu_s": 3.9316000000066964e-05,
+        "max_cpu_s": 5.490099999994058e-05,
+        "spread_factor": 1.3964034998435007,
+        "over_budget_factor": 0.1173999035062409,
+        "under_budget": true,
+        "speedup_vs_solver": 8517.894564937533,
+        "speedup_range": [
+          6412.895848898579,
+          8954.990207533832
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.0005360150000000008,
+        "per_wafer_cpu_s": 0.0005360150000000008,
+        "min_cpu_s": 0.0005008819999998693,
+        "max_cpu_s": 0.0005411499999998792,
+        "spread_factor": 1.0803941846583036,
+        "over_budget_factor": 0.7254191079240631,
+        "under_budget": true,
+        "speedup_vs_solver": 1378.5134539145338,
+        "speedup_range": [
+          1365.4326693156515,
+          1475.2055154710945
+        ],
+        "n": 3
+      }
+    },
+    "fullres_local_path_only": {
+      "note": "the FiLM-conditioned full-resolution 1x1 path alone, coords and cat included. What the multiscale model pays to keep any full-resolution processing at all.",
+      "params": 9914,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": false,
+      "loadavg_1min": {
+        "before": 326.43,
+        "after": 325.99
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0010292244999999811,
+        "per_wafer_cpu_s": 0.0010292244999999811,
+        "min_cpu_s": 0.000831908999999964,
+        "max_cpu_s": 0.0015144999999998632,
+        "spread_factor": 1.820511618458183,
+        "over_budget_factor": 2.923315397588006,
+        "under_budget": false,
+        "speedup_vs_solver": 342.07735532918844,
+        "speedup_range": [
+          232.4690623968515,
+          423.2126290255485
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.002260614999999966,
+        "per_wafer_cpu_s": 0.002260614999999966,
+        "min_cpu_s": 0.002160321999999937,
+        "max_cpu_s": 0.002668231000000132,
+        "spread_factor": 1.2351080070471947,
+        "over_budget_factor": 3.059416838446179,
+        "under_budget": false,
+        "speedup_vs_solver": 326.8596771232656,
+        "speedup_range": [
+          276.926506363191,
+          342.0341453727831
+        ],
+        "n": 3
+      }
+    },
+    "coarse_body_only": {
+      "note": "the coarse spectral body alone, including the avg_pool down and the bilinear up. What H15's argument said should be ~1/16 of the full-resolution body.",
+      "params": 9914,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": false,
+      "loadavg_1min": {
+        "before": 325.99,
+        "after": 332.0
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0010105084999999514,
+        "per_wafer_cpu_s": 0.0010105084999999514,
+        "min_cpu_s": 0.0007727440000000474,
+        "max_cpu_s": 0.001162052000000191,
+        "spread_factor": 1.5037994471650635,
+        "over_budget_factor": 2.870156178213278,
+        "under_budget": false,
+        "speedup_vs_solver": 348.41309598090146,
+        "speedup_range": [
+          302.9764545820169,
+          455.615824904468
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.003933485000000125,
+        "per_wafer_cpu_s": 0.003933485000000125,
+        "min_cpu_s": 0.003356248000000006,
+        "max_cpu_s": 0.004311026999999967,
+        "spread_factor": 1.2844780838602985,
+        "over_budget_factor": 5.323405463900767,
+        "under_budget": false,
+        "speedup_vs_solver": 187.84967757598577,
+        "speedup_range": [
+          171.39857602376546,
+          220.15771450738998
+        ],
+        "n": 3
+      }
+    },
+    "fullres_fno_body_only": {
+      "note": "the same body at 128x128: the thing the coarse body replaces. The ratio of this row to coarse_body_only is the saving H15 claimed, isolated from everything that did not change.",
+      "params": 10897,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": false,
+      "loadavg_1min": {
+        "before": 332.0,
+        "after": 355.77
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0029834044999998977,
+        "per_wafer_cpu_s": 0.0029834044999998977,
+        "min_cpu_s": 0.0022007899999998415,
+        "max_cpu_s": 0.004025288000000016,
+        "spread_factor": 1.8290195793330148,
+        "over_budget_factor": 8.473790035199519,
+        "under_budget": false,
+        "speedup_vs_solver": 118.01094856564436,
+        "speedup_range": [
+          87.46564096780116,
+          159.97636984902022
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.009033195999999855,
+        "per_wafer_cpu_s": 0.009033195999999855,
+        "min_cpu_s": 0.008776082000000018,
+        "max_cpu_s": 0.00919992199999986,
+        "spread_factor": 1.048294899705796,
+        "over_budget_factor": 12.225129863946156,
+        "under_budget": false,
+        "speedup_vs_solver": 81.79872206913387,
+        "speedup_range": [
+          80.31632105141883,
+          84.1951897213356
+        ],
+        "n": 3
+      }
+    },
+    "gelu_only_w8_fullres": {
+      "note": "one GELU over 8x128x128 = 131,072 elements and nothing else. torch's default GELU is erf-based, so this is the price of one transcendental pointwise nonlinearity at full resolution.",
+      "params": 0,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": false,
+      "loadavg_1min": {
+        "before": 355.77,
+        "after": 364.36
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.00012792600000011145,
+        "per_wafer_cpu_s": 0.00012792600000011145,
+        "min_cpu_s": 9.192199999996653e-05,
+        "max_cpu_s": 0.00013728200000007185,
+        "spread_factor": 1.4934618480899222,
+        "over_budget_factor": 0.36334934268682484,
+        "under_budget": true,
+        "speedup_vs_solver": 2752.17231055214,
+        "speedup_range": [
+          2564.607122563887,
+          3830.142892888841
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.0005316699999999841,
+        "per_wafer_cpu_s": 0.0005316699999999841,
+        "min_cpu_s": 0.0005050340000001263,
+        "max_cpu_s": 0.0005565869999999418,
+        "spread_factor": 1.102078275917666,
+        "over_budget_factor": 0.719538776172261,
+        "under_budget": true,
+        "speedup_vs_solver": 1389.7791656479058,
+        "speedup_range": [
+          1327.5622481302603,
+          1463.0775135927781
+        ],
+        "n": 3
+      }
+    },
+    "relu_only_w8_fullres": {
+      "note": "the same tensor through ReLU. The difference from the GELU row is what the choice of nonlinearity costs, holding the memory traffic fixed.",
+      "params": 0,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": false,
+      "loadavg_1min": {
+        "before": 364.36,
+        "after": 355.68
+      },
+      "warm": {
+        "per_apply_cpu_s": 2.056650000004101e-05,
+        "per_wafer_cpu_s": 2.056650000004101e-05,
+        "min_cpu_s": 1.989599999996372e-05,
+        "max_cpu_s": 2.87450000000522e-05,
+        "spread_factor": 1.4447627663904612,
+        "over_budget_factor": 0.05841521079668694,
+        "under_budget": true,
+        "speedup_vs_solver": 17118.82892078369,
+        "speedup_range": [
+          12248.196034070637,
+          17695.737585476567
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.0004243680000000083,
+        "per_wafer_cpu_s": 0.0004243680000000083,
+        "min_cpu_s": 0.00039572999999992753,
+        "max_cpu_s": 0.0004686289999999982,
+        "spread_factor": 1.1842139842824249,
+        "over_budget_factor": 0.5743209723450358,
+        "under_budget": true,
+        "speedup_vs_solver": 1741.1866328280773,
+        "speedup_range": [
+          1576.7353044732672,
+          1867.1919970690503
+        ],
+        "n": 3
+      }
+    },
+    "fullres_1x1_linear_no_act": {
+      "note": "the same two 1x1 convolutions with NO nonlinearity and NO FiLM. Subtracting this from fullres_local_path_only isolates what the conditioning and the activation add.",
+      "params": 41,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": false,
+      "loadavg_1min": {
+        "before": 355.68,
+        "after": 340.62
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.00010293650000003929,
+        "per_wafer_cpu_s": 0.00010293650000003929,
+        "min_cpu_s": 9.774299999998348e-05,
+        "max_cpu_s": 0.0001146730000001206,
+        "spread_factor": 1.1732093346852457,
+        "over_budget_factor": 0.29237144609746285,
+        "under_budget": true,
+        "speedup_vs_solver": 3420.306645357725,
+        "speedup_range": [
+          3070.246657884851,
+          3602.042038816686
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.0015578800000000115,
+        "per_wafer_cpu_s": 0.0015578800000000115,
+        "min_cpu_s": 0.0011553829999999543,
+        "max_cpu_s": 0.0017401449999998597,
+        "spread_factor": 1.506119615746405,
+        "over_budget_factor": 2.108366220819839,
+        "under_budget": false,
+        "speedup_vs_solver": 474.30090186663574,
+        "speedup_range": [
+          424.6220223027733,
+          639.5315570681144
+        ],
+        "n": 3
+      }
+    },
+    "fullres_1x1_plus_gelu": {
+      "note": "linear path plus the GELU, still no FiLM. The step from fullres_1x1_linear_no_act to here is the activation's price in situ; the step from here to fullres_local_path_only is FiLM's.",
+      "params": 41,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": false,
+      "loadavg_1min": {
+        "before": 340.62,
+        "after": 334.16
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.00019583349999996447,
+        "per_wafer_cpu_s": 0.00019583349999996447,
+        "min_cpu_s": 0.00018318999999999974,
+        "max_cpu_s": 0.00025393199999990124,
+        "spread_factor": 1.3861673672138304,
+        "over_budget_factor": 0.5562276120646734,
+        "under_budget": true,
+        "speedup_vs_solver": 1797.825167808693,
+        "speedup_range": [
+          1386.4908518821446,
+          1921.9083738195334
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.0021017789999999703,
+        "per_wafer_cpu_s": 0.0021017789999999703,
+        "min_cpu_s": 0.0019111510000000553,
+        "max_cpu_s": 0.0023446700000000487,
+        "spread_factor": 1.2268366026546207,
+        "over_budget_factor": 2.844455187324059,
+        "under_budget": false,
+        "speedup_vs_solver": 351.56117222600966,
+        "speedup_range": [
+          315.14195558436137,
+          386.6276861430512
+        ],
+        "n": 3
+      }
+    }
+  }
+}

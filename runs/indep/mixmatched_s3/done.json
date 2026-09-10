@@ -1,0 +1,21 @@
+{
+  "finished": 1789055583.7467108,
+  "pid": 3490332,
+  "argv": [
+    "scripts/train.py",
+    "--run",
+    "runs/indep/mixmatched_s3",
+    "--epochs",
+    "80",
+    "--device",
+    "cuda:0",
+    "--seed",
+    "3",
+    "--data",
+    "data_mixed_matched"
+  ],
+  "epochs": 80,
+  "seed": 3,
+  "best_val_roll_band": 0.012357152317029734,
+  "train_wall_s": 604.7848118804395
+}

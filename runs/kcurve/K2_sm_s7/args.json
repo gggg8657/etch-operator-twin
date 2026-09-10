@@ -1,0 +1,39 @@
+{
+  "data": "data",
+  "run": "runs/kcurve/K2_sm_s7",
+  "epochs": 160,
+  "batch": 32,
+  "lr": 0.002,
+  "width": 64,
+  "modes": 20,
+  "layers": 4,
+  "rollout_steps": 0,
+  "stride": 2,
+  "strides": null,
+  "eval_stride": 2,
+  "overlap_pairs": false,
+  "band_weight": 0.0,
+  "blind": false,
+  "init_from": null,
+  "seed": 7,
+  "force": false,
+  "device": "cuda:0",
+  "num_workers": 0,
+  "params": 26248025,
+  "n_train_pairs": 4500,
+  "trained_strides": [
+    2
+  ],
+  "pairs_per_stride": [
+    4500
+  ],
+  "pair_starts": [
+    0,
+    2,
+    4,
+    6,
+    8
+  ],
+  "applications_per_wafer": 5,
+  "gpu": "NVIDIA H100 NVL"
+}

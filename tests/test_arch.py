@@ -1,0 +1,139 @@
+"""The architecture factory, and the back-compatibility it has to preserve.
+
+`build_from_cfg` was added when a second architecture appeared. The risk it
+carries is not that it raises -- a raise is visible -- but that it silently
+rebuilds a *different* model from the same checkpoint, because two
+`MultiScaleOperator` configs differing only in `scale` have identical parameter
+names and identical shapes. So the tests here pin, in order: every run written
+before `--arch` existed still rebuilds as an `EtchOperator`; a multiscale config
+round-trips through its own state dict; and a scale-mismatched load is caught by
+something, since `load_state_dict` cannot catch it.
+"""
+import json
+import sys
+from pathlib import Path
+
+import torch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from eot.operator import (EtchOperator, MultiScaleOperator,  # noqa: E402
+                          build_from_cfg)
+
+
+def test_legacy_cfg_without_arch_is_fno():
+    """Every args.json in runs/ predating --arch has no `arch` key at all."""
+    m = build_from_cfg({"width": 8, "modes": 4, "layers": 2}, 7)
+    assert isinstance(m, EtchOperator), type(m)
+    assert m.param_count() == EtchOperator(cond_dim=7, width=8, modes=4,
+                                           n_layers=2).param_count()
+
+
+def test_real_stored_run_still_loads():
+    """Not a synthetic cfg: the actual args.json of a committed run, loaded into
+    the model the factory picks, with its real checkpoint."""
+    runs = sorted(Path("runs/shrink").glob("w8m4L2_K10_s*"))
+    runs = [r for r in runs if (r / "args.json").exists() and (r / "best.pt").exists()]
+    if not runs:
+        return  # dataset-dependent; skip rather than fail a fresh clone
+    cfg = json.loads((runs[0] / "args.json").read_text())
+    assert "arch" not in cfg or cfg["arch"] == "fno"
+    m = build_from_cfg(cfg, 7)
+    m.load_state_dict(torch.load(runs[0] / "best.pt", map_location="cpu"))
+
+
+def test_multiscale_roundtrip():
+    cfg = {"arch": "multiscale", "width": 8, "modes": 4, "layers": 2,
+           "width_full": 16, "scale": 4, "n_local": 2, "act": "relu"}
+    a = build_from_cfg(cfg, 7)
+    b = build_from_cfg(cfg, 7)
+    b.load_state_dict(a.state_dict())
+    phi, cond = torch.randn(2, 1, 128, 128), torch.randn(2, 7)
+    a.eval(), b.eval()
+    with torch.no_grad():
+        assert torch.allclose(a(phi, cond), b(phi, cond))
+
+
+def test_pointwise_has_no_body_and_no_spatial_mixing():
+    """scale=0 must remove the body, and the result must be genuinely pointwise:
+    changing one input pixel may only change that same output pixel. This is the
+    property the whole clause-2 argument rests on, so it is tested rather than
+    asserted in a docstring."""
+    m = build_from_cfg({"arch": "multiscale", "width": 8, "modes": 4,
+                        "layers": 2, "width_full": 8, "scale": 0,
+                        "n_local": 2, "act": "relu"}, 7)
+    assert not hasattr(m, "blocks") or len(getattr(m, "blocks", [])) == 0
+    assert not m.coarse
+    m.eval()
+    phi = torch.zeros(1, 1, 128, 128)
+    cond = torch.randn(1, 7)
+    with torch.no_grad():
+        base = m(phi, cond)
+        phi2 = phi.clone()
+        phi2[0, 0, 40, 70] = 3.0
+        pert = m(phi2, cond)
+    d = (pert - base).abs()
+    assert d[0, 0, 40, 70] > 0, "the perturbed pixel did not change"
+    d[0, 0, 40, 70] = 0
+    assert d.max() < 1e-6, f"a pointwise model leaked to other pixels: {d.max()}"
+
+
+def test_scale_mismatch_is_not_silent():
+    """Two multiscale configs differing only in `scale` share every parameter
+    name and shape, so load_state_dict CANNOT detect the mismatch -- it loads
+    happily and computes something else. Pin that the state dicts really are
+    interchangeable (the hazard is real) and that the outputs differ (the hazard
+    matters), so nobody later assumes the loader protects them."""
+    base = {"arch": "multiscale", "width": 8, "modes": 4, "layers": 2,
+            "width_full": 8, "scale": 4, "n_local": 1, "act": "gelu"}
+    a = build_from_cfg(base, 7)
+    b = build_from_cfg({**base, "scale": 8}, 7)
+    b.load_state_dict(a.state_dict())   # no error: that is the hazard
+    a.eval(), b.eval()
+    phi, cond = torch.randn(1, 1, 128, 128), torch.randn(1, 7)
+    with torch.no_grad():
+        assert not torch.allclose(a(phi, cond), b(phi, cond)), \
+            "scale is not affecting the computation, so the ladder is a no-op"
+
+
+def test_modes_above_coarse_nyquist_is_refused():
+    """The architecture's whole justification is that the downsample discards no
+    mode the body can represent. If modes exceed the coarse grid's Nyquist that
+    justification is false, so construction must fail rather than quietly
+    truncate."""
+    try:
+        MultiScaleOperator(cond_dim=7, width=8, modes=20, n_layers=2, scale=8)
+    except AssertionError:
+        return
+    raise AssertionError("modes=20 at scale=8 (Nyquist 8) was accepted")
+
+
+def test_relu_and_gelu_differ():
+    """The act flag exists for a measured 11.6x cost reason; make sure it is
+    wired to the computation and not just to args.json."""
+    cfg = {"arch": "multiscale", "width": 8, "modes": 4, "layers": 2,
+           "width_full": 8, "scale": 0, "n_local": 1, "act": "relu"}
+    torch.manual_seed(0)
+    a = build_from_cfg(cfg, 7)
+    b = build_from_cfg({**cfg, "act": "gelu"}, 7)
+    b.load_state_dict(a.state_dict())
+    a.eval(), b.eval()
+    phi, cond = torch.randn(1, 1, 128, 128), torch.randn(1, 7)
+    with torch.no_grad():
+        assert not torch.allclose(a(phi, cond), b(phi, cond))
+
+
+def test_unknown_arch_raises():
+    try:
+        build_from_cfg({"arch": "transformer", "width": 8, "modes": 4,
+                        "layers": 2}, 7)
+    except ValueError:
+        return
+    raise AssertionError("an unknown arch was accepted")
+
+
+if __name__ == "__main__":
+    fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
+    for f in fns:
+        f()
+        print("ok", f.__name__)
+    print(f"{len(fns)} tests passed")

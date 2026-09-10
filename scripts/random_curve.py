@@ -45,7 +45,7 @@ from eot import solver as S  # noqa: E402
 from eot.data import TrajDataset, cond_vector  # noqa: E402
 from eot.inverse import DESIGN_KEYS, recipe_from_values  # noqa: E402
 from eot.metrics import shape_error  # noqa: E402
-from eot.operator import EtchOperator  # noqa: E402
+from eot.operator import build_from_cfg, EtchOperator  # noqa: E402
 from scripts.design import simulate_recipe  # noqa: E402  (one simulator path, not two)
 
 BUDGETS = [64, 256, 1024, 1800, 4096, 16384]
@@ -77,8 +77,7 @@ def main():
     device = torch.device(a.device)
 
     ds = TrajDataset(Path(a.data) / "test.npz", norm)
-    model = EtchOperator(cond_dim=len(norm["cond_keys"]), width=cfg["width"],
-                         modes=cfg["modes"], n_layers=cfg["layers"]).to(device)
+    model = build_from_cfg(cfg, len(norm["cond_keys"])).to(device)
     model.load_state_dict(torch.load(run / "best.pt", map_location=device))
     model.eval()
     for p in model.parameters():

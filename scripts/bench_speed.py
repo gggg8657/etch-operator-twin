@@ -165,7 +165,7 @@ def main():
 
     import torch
 
-    from eot.operator import EtchOperator
+    from eot.operator import build_from_cfg, EtchOperator
 
     gen = json.loads((Path(a.data) / "gen_report.json").read_text())
     n_steps, grid_delta = gen["steps"], gen["grid_delta"]
@@ -174,8 +174,7 @@ def main():
     run = Path(a.run)
     cfg = json.loads((run / "args.json").read_text())
     norm = json.loads((Path(a.data) / "norm.json").read_text())
-    model = EtchOperator(cond_dim=len(norm["cond_keys"]), width=cfg["width"],
-                         modes=cfg["modes"], n_layers=cfg["layers"])
+    model = build_from_cfg(cfg, len(norm["cond_keys"]))
     model.load_state_dict(torch.load(run / "best.pt", map_location="cpu"))
 
     # One application advances `stride` dataset timesteps, so a wafer takes

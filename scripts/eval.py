@@ -34,7 +34,7 @@ from eot import solver as S  # noqa: E402
 from eot.data import TrajDataset, band_mask  # noqa: E402
 from eot.metrics import shape_error  # noqa: E402
 from eot import runlock
-from eot.operator import EtchOperator, band_rel_l2, rel_l2  # noqa: E402
+from eot.operator import build_from_cfg, EtchOperator, band_rel_l2, rel_l2  # noqa: E402
 
 
 def uniform_recession(prev_um, target_um):
@@ -97,8 +97,7 @@ def main():
                        f"displacement lies inside the training p1-p99 range, from "
                        f"{a.indices_from}")
     loader = DataLoader(ds, batch_size=16, shuffle=False, num_workers=0)
-    model = EtchOperator(cond_dim=len(norm["cond_keys"]), width=cfg["width"],
-                         modes=cfg["modes"], n_layers=cfg["layers"]).to(device)
+    model = build_from_cfg(cfg, len(norm["cond_keys"])).to(device)
     model.load_state_dict(torch.load(run / a.ckpt, map_location=device))
     model.eval()
 

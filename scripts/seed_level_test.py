@@ -156,6 +156,107 @@ def invert_to_interval(arm: np.ndarray, anc: np.ndarray, alpha: float = 0.05,
             "n_grid": n_grid}
 
 
+def seeds_needed(arm: np.ndarray, anc: np.ndarray, target: float,
+                 observed_width: float) -> dict:
+    """How many seeds per arm would make the interval narrower than `target`.
+
+    **This exists to settle a contradiction between two sections of this repo's
+    own critique log**, written by two instances of this loop from the same JSON:
+    one concluded the crossed split "needs more seeds -- not a different test",
+    the other that adding seeds "will not fix it". Both are assertions where a
+    number is available, so here is the number.
+
+    The interval's width scales with the standard error of the mean difference,
+    `sqrt(sd_arm^2/n_a + sd_anc^2/n_b)`. Rather than assume the normal
+    approximation -- the permutation interval at n=3 is coarse and measurably
+    wider than it -- this calibrates against the width actually observed and
+    scales from there, so the answer inherits the real enumeration's
+    conservatism instead of a textbook constant.
+
+    Both arms are scaled together, because the DOMINANT term is usually the
+    anchor's own spread: an arm seeded to infinity against an 8-seed anchor
+    cannot close the interval by itself.
+    """
+    arm = np.asarray(arm, float)
+    anc = np.asarray(anc, float)
+    sd_a = float(arm.std(ddof=1)) if arm.size > 1 else 0.0
+    sd_b = float(anc.std(ddof=1)) if anc.size > 1 else 0.0
+    se_obs = float(np.sqrt(sd_a ** 2 / max(arm.size, 1)
+                           + sd_b ** 2 / max(anc.size, 1)))
+    if se_obs <= 0 or observed_width <= 0:
+        return {"n_per_arm": None, "note": "no spread to extrapolate from"}
+    # width(n) = observed_width * SE(n)/SE(observed), with both arms at n
+    var_sum = sd_a ** 2 + sd_b ** 2
+    k = observed_width * float(np.sqrt(var_sum)) / se_obs  # width(n) = k/sqrt(n)
+    n_req = (k / target) ** 2
+    return {
+        "sd_arm": sd_a, "sd_anchor": sd_b,
+        "se_observed": se_obs,
+        "target_width": target,
+        "n_per_arm": float(n_req),
+        "n_per_arm_rounded_up": int(np.ceil(n_req)),
+        "width_at_8_per_arm": float(k / np.sqrt(8)),
+        "width_at_32_per_arm": float(k / np.sqrt(32)),
+        "dominant_term": "anchor" if sd_b > sd_a else "arm",
+        "method": "calibrated from the observed interval width, scaling as "
+                  "1/sqrt(n) with both arms at n; the dominant variance term is "
+                  "named because scaling only the arm cannot close the interval",
+    }
+
+
+def seeds_needed(arm: np.ndarray, anc: np.ndarray, target_width: float) -> dict:
+    """How many seeds per arm would make the interval narrower than `target_width`.
+
+    **This settles a contradiction between two sections of this repo's own
+    critique log.** One said the crossed split "needs more seeds -- not a
+    different test"; the other said adding seeds "will not fix it". Both were
+    unquantified, and the disagreement is resolvable from per-seed spreads that
+    are already measured.
+
+    A normal-approximation PROJECTION, not a measurement, and labelled as one:
+    for equal n per arm the 95% interval half-width is about
+    `1.96 * sigma * sqrt(2/n)`, so
+
+        n = 2 * (1.96 * sigma / (target_width / 2))**2
+
+    with `sigma` the larger of the two measured per-seed standard deviations,
+    since the interval inherits the noisier arm. The measured inputs are run
+    products; the extrapolation is arithmetic and is not a number this repo has
+    observed.
+
+    Also reported: the **floor** imposed by the anchor alone. The anchor's seed
+    count is shared by every comparison, so if `1.96 * sigma_anchor /
+    sqrt(n_anchor)` already exceeds `target_width / 2`, then no number of *arm*
+    seeds can close the interval and the anchor is the binding constraint.
+    """
+    arm = np.asarray(arm, float)
+    anc = np.asarray(anc, float)
+    sd_arm = float(arm.std(ddof=1)) if arm.size > 1 else float("nan")
+    sd_anc = float(anc.std(ddof=1)) if anc.size > 1 else float("nan")
+    sigma = float(np.nanmax([sd_arm, sd_anc]))
+    z, half = 1.96, target_width / 2.0
+    n_req = 2.0 * (z * sigma / half) ** 2 if half > 0 else float("inf")
+    anchor_only_half = z * sd_anc / np.sqrt(anc.size) if anc.size else float("inf")
+    return {
+        "method": "normal-approximation projection from MEASURED per-seed SDs; "
+                  "an extrapolation, not an observation",
+        "target_width": target_width,
+        "sd_per_seed_arm": sd_arm, "sd_per_seed_anchor": sd_anc,
+        "sigma_used": sigma,
+        "seeds_per_arm_required": float(n_req),
+        "seeds_per_arm_now": [int(arm.size), int(anc.size)],
+        "anchor_alone_half_width_at_current_n": float(anchor_only_half),
+        "anchor_is_the_binding_constraint": bool(anchor_only_half > half),
+        "reading": (
+            f"the anchor's own {anc.size} seeds already give a half-width of "
+            f"{anchor_only_half:.5f} against a target half-width of {half:.5f}, "
+            f"so NO number of arm seeds can close this interval -- the anchor "
+            f"must be re-run too" if anchor_only_half > half else
+            f"about {n_req:.0f} seeds per arm would bring the interval under "
+            f"{target_width:.5f}"),
+    }
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--kcurve", default="runs/kcurve.json")
@@ -256,6 +357,11 @@ def main():
             row[split]["interval_covers_yardstick"] = bool(
                 yard is not None and not iv["empty"]
                 and iv["lo"] <= yard <= iv["hi"])
+            if yard and not iv["empty"]:
+                row[split]["seeds_needed_for_width_below_yardstick"] = (
+                    seeds_needed(np.asarray(row[split]["arm_per_seed"]),
+                                 np.asarray(row[split]["anchor_per_seed"]),
+                                 yard, iv["width"]))
 
     # The claim this script was written to audit.
     k2sm = res["arms"].get("K2_sm", {}).get("in_distribution")

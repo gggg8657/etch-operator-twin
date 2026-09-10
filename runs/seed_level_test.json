@@ -59,7 +59,19 @@
         },
         "can_reject_at_0.05": true,
         "reading": "distinguishable, and the difference is somewhere in [0.00203, 0.00354]",
-        "interval_covers_yardstick": false
+        "interval_covers_yardstick": false,
+        "seeds_needed_for_width_below_yardstick": {
+          "sd_arm": 0.0008109620512449981,
+          "sd_anchor": 0.0005546492578720925,
+          "se_observed": 0.00036387611174886354,
+          "target_width": 0.004400640585459768,
+          "n_per_arm": 0.8564331509320117,
+          "n_per_arm_rounded_up": 1,
+          "width_at_8_per_arm": 0.0014398512942909185,
+          "width_at_32_per_arm": 0.0007199256471454592,
+          "dominant_term": "arm",
+          "method": "calibrated from the observed interval width, scaling as 1/sqrt(n) with both arms at n; the dominant variance term is named because scaling only the arm cannot close the interval"
+        }
       },
       "crossed_in_coverage": {
         "statistic": "difference of per-seed arm means",
@@ -105,7 +117,19 @@
         },
         "can_reject_at_0.05": true,
         "reading": "no difference detected; the 95% interval on the mean difference is [-0.01061, 0.01475], so effects up to 0.01475 are NOT ruled out",
-        "interval_covers_yardstick": true
+        "interval_covers_yardstick": true,
+        "seeds_needed_for_width_below_yardstick": {
+          "sd_arm": 0.009668348774404272,
+          "sd_anchor": 0.012651583576929267,
+          "se_observed": 0.00577595649657202,
+          "target_width": 0.004400640585459768,
+          "n_per_arm": 252.31403676047847,
+          "n_per_arm_rounded_up": 253,
+          "width_at_8_per_arm": 0.024713918618382864,
+          "width_at_32_per_arm": 0.012356959309191432,
+          "dominant_term": "anchor",
+          "method": "calibrated from the observed interval width, scaling as 1/sqrt(n) with both arms at n; the dominant variance term is named because scaling only the arm cannot close the interval"
+        }
       }
     },
     "K2_ov": {
@@ -157,7 +181,19 @@
         },
         "can_reject_at_0.05": true,
         "reading": "distinguishable, and the difference is somewhere in [0.00045, 0.00184]",
-        "interval_covers_yardstick": false
+        "interval_covers_yardstick": false,
+        "seeds_needed_for_width_below_yardstick": {
+          "sd_arm": 0.0006587880569469371,
+          "sd_anchor": 0.0005546492578720925,
+          "se_observed": 0.00033284845235719213,
+          "target_width": 0.004400640585459768,
+          "n_per_arm": 0.6756386095209714,
+          "n_per_arm_rounded_up": 1,
+          "width_at_8_per_arm": 0.0012788751128992287,
+          "width_at_32_per_arm": 0.0006394375564496143,
+          "dominant_term": "arm",
+          "method": "calibrated from the observed interval width, scaling as 1/sqrt(n) with both arms at n; the dominant variance term is named because scaling only the arm cannot close the interval"
+        }
       },
       "crossed_in_coverage": {
         "statistic": "difference of per-seed arm means",
@@ -202,7 +238,19 @@
         },
         "can_reject_at_0.05": true,
         "reading": "no difference detected; the 95% interval on the mean difference is [-0.01556, 0.01038], so effects up to 0.01556 are NOT ruled out",
-        "interval_covers_yardstick": true
+        "interval_covers_yardstick": true,
+        "seeds_needed_for_width_below_yardstick": {
+          "sd_arm": 0.008083191578963917,
+          "sd_anchor": 0.012651583576929267,
+          "se_observed": 0.005558550640758388,
+          "target_width": 0.004400640585459768,
+          "n_per_arm": 253.31388531942858,
+          "n_per_arm_rounded_up": 254,
+          "width_at_8_per_arm": 0.024762837308702934,
+          "width_at_32_per_arm": 0.012381418654351467,
+          "dominant_term": "anchor",
+          "method": "calibrated from the observed interval width, scaling as 1/sqrt(n) with both arms at n; the dominant variance term is named because scaling only the arm cannot close the interval"
+        }
       }
     },
     "K2_sm": {
@@ -251,7 +299,19 @@
         },
         "can_reject_at_0.05": true,
         "reading": "no difference detected; the 95% interval on the mean difference is [-0.00038, 0.00133], so effects up to 0.00133 are NOT ruled out",
-        "interval_covers_yardstick": false
+        "interval_covers_yardstick": false,
+        "seeds_needed_for_width_below_yardstick": {
+          "sd_arm": 0.0005771826645302465,
+          "sd_anchor": 0.0005546492578720925,
+          "se_observed": 0.00038665370076939595,
+          "target_width": 0.004400640585459768,
+          "n_per_arm": 0.6486896315664922,
+          "n_per_arm_rounded_up": 1,
+          "width_at_8_per_arm": 0.001253110544575013,
+          "width_at_32_per_arm": 0.0006265552722875064,
+          "dominant_term": "arm",
+          "method": "calibrated from the observed interval width, scaling as 1/sqrt(n) with both arms at n; the dominant variance term is named because scaling only the arm cannot close the interval"
+        }
       },
       "crossed_in_coverage": {
         "statistic": "difference of per-seed arm means",
@@ -293,7 +353,19 @@
         },
         "can_reject_at_0.05": true,
         "reading": "no difference detected; the 95% interval on the mean difference is [-0.01995, 0.01447], so effects up to 0.01995 are NOT ruled out",
-        "interval_covers_yardstick": true
+        "interval_covers_yardstick": true,
+        "seeds_needed_for_width_below_yardstick": {
+          "sd_arm": 0.0026426535081641796,
+          "sd_anchor": 0.012651583576929267,
+          "se_observed": 0.0047260653187305235,
+          "target_width": 0.004400640585459768,
+          "n_per_arm": 457.4484468215534,
+          "n_per_arm_rounded_up": 458,
+          "width_at_8_per_arm": 0.03327683282823623,
+          "width_at_32_per_arm": 0.016638416414118114,
+          "dominant_term": "anchor",
+          "method": "calibrated from the observed interval width, scaling as 1/sqrt(n) with both arms at n; the dominant variance term is named because scaling only the arm cannot close the interval"
+        }
       }
     },
     "K5_nv": {
@@ -347,7 +419,19 @@
         },
         "can_reject_at_0.05": true,
         "reading": "distinguishable, and the difference is somewhere in [0.01294, 0.01597]",
-        "interval_covers_yardstick": false
+        "interval_covers_yardstick": false,
+        "seeds_needed_for_width_below_yardstick": {
+          "sd_arm": 0.0020092398639917496,
+          "sd_anchor": 0.0005546492578720925,
+          "se_observed": 0.0007369430634648486,
+          "target_width": 0.004400640585459768,
+          "n_per_arm": 3.789970793104529,
+          "n_per_arm_rounded_up": 4,
+          "width_at_8_per_arm": 0.0030289272183259795,
+          "width_at_32_per_arm": 0.0015144636091629898,
+          "dominant_term": "arm",
+          "method": "calibrated from the observed interval width, scaling as 1/sqrt(n) with both arms at n; the dominant variance term is named because scaling only the arm cannot close the interval"
+        }
       },
       "crossed_in_coverage": {
         "statistic": "difference of per-seed arm means",
@@ -394,7 +478,19 @@
         },
         "can_reject_at_0.05": true,
         "reading": "distinguishable, and the difference is somewhere in [0.01120, 0.03374]",
-        "interval_covers_yardstick": false
+        "interval_covers_yardstick": false,
+        "seeds_needed_for_width_below_yardstick": {
+          "sd_arm": 0.007688191097795494,
+          "sd_anchor": 0.012651583576929267,
+          "se_observed": 0.00523415286078187,
+          "target_width": 0.004400640585459768,
+          "n_per_arm": 209.93316663207398,
+          "n_per_arm_rounded_up": 210,
+          "width_at_8_per_arm": 0.022542985653310112,
+          "width_at_32_per_arm": 0.011271492826655056,
+          "dominant_term": "anchor",
+          "method": "calibrated from the observed interval width, scaling as 1/sqrt(n) with both arms at n; the dominant variance term is named because scaling only the arm cannot close the interval"
+        }
       }
     },
     "K5_ov": {
@@ -446,7 +542,19 @@
         },
         "can_reject_at_0.05": true,
         "reading": "distinguishable, and the difference is somewhere in [0.00379, 0.00517]",
-        "interval_covers_yardstick": true
+        "interval_covers_yardstick": true,
+        "seeds_needed_for_width_below_yardstick": {
+          "sd_arm": 0.0006237734977172762,
+          "sd_anchor": 0.0005546492578720925,
+          "se_observed": 0.00032140841772268296,
+          "target_width": 0.004400640585459768,
+          "n_per_arm": 0.659316799215937,
+          "n_per_arm_rounded_up": 1,
+          "width_at_8_per_arm": 0.0012633333968322972,
+          "width_at_32_per_arm": 0.0006316666984161486,
+          "dominant_term": "arm",
+          "method": "calibrated from the observed interval width, scaling as 1/sqrt(n) with both arms at n; the dominant variance term is named because scaling only the arm cannot close the interval"
+        }
       },
       "crossed_in_coverage": {
         "statistic": "difference of per-seed arm means",
@@ -491,7 +599,19 @@
         },
         "can_reject_at_0.05": true,
         "reading": "distinguishable, and the difference is somewhere in [0.00344, 0.03028]",
-        "interval_covers_yardstick": true
+        "interval_covers_yardstick": true,
+        "seeds_needed_for_width_below_yardstick": {
+          "sd_arm": 0.009742187813588082,
+          "sd_anchor": 0.012651583576929267,
+          "se_observed": 0.005985498428817267,
+          "target_width": 0.004400640585459768,
+          "n_per_arm": 264.6050702077424,
+          "n_per_arm_rounded_up": 265,
+          "width_at_8_per_arm": 0.025308708695860518,
+          "width_at_32_per_arm": 0.012654354347930259,
+          "dominant_term": "anchor",
+          "method": "calibrated from the observed interval width, scaling as 1/sqrt(n) with both arms at n; the dominant variance term is named because scaling only the arm cannot close the interval"
+        }
       }
     },
     "K5_sm": {
@@ -540,7 +660,19 @@
         },
         "can_reject_at_0.05": true,
         "reading": "distinguishable, and the difference is somewhere in [0.00348, 0.00527]",
-        "interval_covers_yardstick": true
+        "interval_covers_yardstick": true,
+        "seeds_needed_for_width_below_yardstick": {
+          "sd_arm": 0.0006781012394929794,
+          "sd_anchor": 0.0005546492578720925,
+          "se_observed": 0.0004378678323130884,
+          "target_width": 0.004400640585459768,
+          "n_per_arm": 0.6607094372512211,
+          "n_per_arm_rounded_up": 1,
+          "width_at_8_per_arm": 0.0012646669272906189,
+          "width_at_32_per_arm": 0.0006323334636453094,
+          "dominant_term": "arm",
+          "method": "calibrated from the observed interval width, scaling as 1/sqrt(n) with both arms at n; the dominant variance term is named because scaling only the arm cannot close the interval"
+        }
       },
       "crossed_in_coverage": {
         "statistic": "difference of per-seed arm means",
@@ -582,7 +714,19 @@
         },
         "can_reject_at_0.05": true,
         "reading": "distinguishable, and the difference is somewhere in [0.00944, 0.04545]",
-        "interval_covers_yardstick": false
+        "interval_covers_yardstick": false,
+        "seeds_needed_for_width_below_yardstick": {
+          "sd_arm": 0.00583042505361838,
+          "sd_anchor": 0.012651583576929267,
+          "se_observed": 0.005598134181206293,
+          "target_width": 0.004400640585459768,
+          "n_per_arm": 414.78033395220166,
+          "n_per_arm_rounded_up": 415,
+          "width_at_8_per_arm": 0.031686916888772454,
+          "width_at_32_per_arm": 0.015843458444386227,
+          "dominant_term": "anchor",
+          "method": "calibrated from the observed interval width, scaling as 1/sqrt(n) with both arms at n; the dominant variance term is named because scaling only the arm cannot close the interval"
+        }
       }
     },
     "K10_nv": {
@@ -636,7 +780,19 @@
         },
         "can_reject_at_0.05": true,
         "reading": "distinguishable, and the difference is somewhere in [0.02579, 0.03216]",
-        "interval_covers_yardstick": false
+        "interval_covers_yardstick": false,
+        "seeds_needed_for_width_below_yardstick": {
+          "sd_arm": 0.004395690315667149,
+          "sd_anchor": 0.0005546492578720925,
+          "se_observed": 0.0015664342130499778,
+          "target_width": 0.004400640585459768,
+          "n_per_arm": 16.80143986692259,
+          "n_per_arm_rounded_up": 17,
+          "width_at_8_per_arm": 0.00637740733947982,
+          "width_at_32_per_arm": 0.00318870366973991,
+          "dominant_term": "arm",
+          "method": "calibrated from the observed interval width, scaling as 1/sqrt(n) with both arms at n; the dominant variance term is named because scaling only the arm cannot close the interval"
+        }
       },
       "crossed_in_coverage": {
         "statistic": "difference of per-seed arm means",
@@ -683,7 +839,19 @@
         },
         "can_reject_at_0.05": true,
         "reading": "distinguishable, and the difference is somewhere in [0.03381, 0.05548]",
-        "interval_covers_yardstick": false
+        "interval_covers_yardstick": false,
+        "seeds_needed_for_width_below_yardstick": {
+          "sd_arm": 0.0069803157373206585,
+          "sd_anchor": 0.012651583576929267,
+          "se_observed": 0.005108661453804617,
+          "target_width": 0.004400640585459768,
+          "n_per_arm": 194.09859312025182,
+          "n_per_arm_rounded_up": 195,
+          "width_at_8_per_arm": 0.021676147621688065,
+          "width_at_32_per_arm": 0.010838073810844033,
+          "dominant_term": "anchor",
+          "method": "calibrated from the observed interval width, scaling as 1/sqrt(n) with both arms at n; the dominant variance term is named because scaling only the arm cannot close the interval"
+        }
       }
     },
     "K10_sm": {
@@ -731,7 +899,19 @@
         },
         "can_reject_at_0.05": true,
         "reading": "distinguishable, and the difference is somewhere in [0.00605, 0.00828]",
-        "interval_covers_yardstick": false
+        "interval_covers_yardstick": false,
+        "seeds_needed_for_width_below_yardstick": {
+          "sd_arm": 0.0004177255841775497,
+          "sd_anchor": 0.0005546492578720925,
+          "se_observed": 0.0003545445060151059,
+          "target_width": 0.004400640585459768,
+          "n_per_arm": 0.9891178444519896,
+          "n_per_arm_rounded_up": 1,
+          "width_at_8_per_arm": 0.0015473726798251974,
+          "width_at_32_per_arm": 0.0007736863399125987,
+          "dominant_term": "anchor",
+          "method": "calibrated from the observed interval width, scaling as 1/sqrt(n) with both arms at n; the dominant variance term is named because scaling only the arm cannot close the interval"
+        }
       },
       "crossed_in_coverage": {
         "statistic": "difference of per-seed arm means",
@@ -772,7 +952,19 @@
         },
         "can_reject_at_0.05": true,
         "reading": "distinguishable, and the difference is somewhere in [0.02908, 0.07106]",
-        "interval_covers_yardstick": false
+        "interval_covers_yardstick": false,
+        "seeds_needed_for_width_below_yardstick": {
+          "sd_arm": 0.003374482222978861,
+          "sd_anchor": 0.012651583576929267,
+          "se_observed": 0.0050696534410256755,
+          "target_width": 0.004400640585459768,
+          "n_per_arm": 606.837080974519,
+          "n_per_arm_rounded_up": 607,
+          "width_at_8_per_arm": 0.03832718840714562,
+          "width_at_32_per_arm": 0.01916359420357281,
+          "dominant_term": "anchor",
+          "method": "calibrated from the observed interval width, scaling as 1/sqrt(n) with both arms at n; the dominant variance term is named because scaling only the arm cannot close the interval"
+        }
       }
     }
   },

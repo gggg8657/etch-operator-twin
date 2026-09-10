@@ -44,7 +44,7 @@ from torch.utils.data import DataLoader
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from eot.data import TrajDataset, band_mask  # noqa: E402
-from eot.operator import EtchOperator, band_rel_l2  # noqa: E402
+from eot.operator import build_from_cfg, EtchOperator, band_rel_l2  # noqa: E402
 from scripts.analyse_confound import per_step_displacement  # noqa: E402
 
 
@@ -142,8 +142,7 @@ def main():
     for r in a.runs:
         run = Path(r)
         cfg = json.loads((run / "args.json").read_text())
-        model = EtchOperator(cond_dim=len(norm["cond_keys"]), width=cfg["width"],
-                             modes=cfg["modes"], n_layers=cfg["layers"]).to(device)
+        model = build_from_cfg(cfg, len(norm["cond_keys"])).to(device)
         model.load_state_dict(torch.load(run / "best.pt", map_location=device))
         model.eval()
         m, t, pd_ = per_traj_both_readings(model, ds, device, scale, band_um,

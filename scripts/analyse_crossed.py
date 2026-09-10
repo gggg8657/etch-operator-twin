@@ -29,7 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from eot.data import TrajDataset, band_mask  # noqa: E402
 from eot.metrics import hausdorff_um  # noqa: E402
 from eot import solver as S  # noqa: E402
-from eot.operator import EtchOperator, band_rel_l2  # noqa: E402
+from eot.operator import build_from_cfg, EtchOperator, band_rel_l2  # noqa: E402
 from scripts.analyse_confound import per_step_displacement  # noqa: E402
 
 
@@ -86,8 +86,7 @@ def main():
     norm = json.loads((Path(a.data) / "norm.json").read_text())
     scale, band_um = norm["sdf_scale_um"], norm["band_um"]
     device = torch.device(a.device)
-    model = EtchOperator(cond_dim=len(norm["cond_keys"]), width=cfg["width"],
-                         modes=cfg["modes"], n_layers=cfg["layers"]).to(device)
+    model = build_from_cfg(cfg, len(norm["cond_keys"])).to(device)
     model.load_state_dict(torch.load(Path(a.run) / "best.pt", map_location=device))
     model.eval()
 

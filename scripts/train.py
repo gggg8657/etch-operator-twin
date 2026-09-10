@@ -25,7 +25,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from eot.data import PairDataset, TrajDataset, band_mask, fit_norm  # noqa: E402
 from eot import runlock  # noqa: E402
-from eot.operator import EtchOperator, band_rel_l2, rel_l2  # noqa: E402
+from eot.operator import EtchOperator, MultiScaleOperator, band_rel_l2, rel_l2  # noqa: E402
 
 
 def evaluate(model, loader, device, scale, band_um, rollout=True, blind=False):
@@ -83,6 +83,28 @@ def main():
     ap.add_argument("--width", type=int, default=64)
     ap.add_argument("--modes", type=int, default=20)
     ap.add_argument("--layers", type=int, default=4)
+    # Architecture. `fno` is EtchOperator, the model every existing run in this
+    # repo was trained with, and it stays the default so no stored args.json
+    # changes meaning. `multiscale` is MultiScaleOperator: a full-resolution
+    # pointwise path plus an optional spectral body on a coarser grid, added
+    # because runs/arch_cost.json prices the full-resolution spectral body 6-10x
+    # over the clause-2 budget while the pointwise path alone fits inside it.
+    ap.add_argument("--arch", choices=("fno", "multiscale"), default="fno")
+    ap.add_argument("--scale", type=int, default=4,
+                    help="multiscale only: spatial downsample of the spectral "
+                         "body. 0 removes the body, leaving a purely pointwise "
+                         "operator with no spatial mixing at any resolution.")
+    ap.add_argument("--width-full", type=int, default=8,
+                    help="multiscale only: channels in the full-resolution path")
+    ap.add_argument("--n-local", type=int, default=1,
+                    help="multiscale only: 1x1 layers in the full-resolution "
+                         "path, i.e. the depth of the per-pixel MLP")
+    ap.add_argument("--act", choices=("gelu", "relu"), default="gelu",
+                    help="multiscale only: full-resolution nonlinearity. One "
+                         "GELU at 128x128 costs 152.7 us against a ReLU's 13.2 "
+                         "us on the same tensor (runs/arch_cost.json), i.e. 55% "
+                         "of the entire clause-2 budget, so this is a budget "
+                         "decision and not a taste one.")
     ap.add_argument("--rollout-steps", type=int, default=0,
                     help="0 = one-step training; k>0 = pushforward over k steps")
     ap.add_argument("--stride", type=int, default=1,
@@ -171,8 +193,14 @@ def main():
     va_traj = TrajDataset(data / "val.npz", norm, stride=eval_stride)
     device = torch.device(a.device)
 
-    model = EtchOperator(cond_dim=len(norm["cond_keys"]), width=a.width,
-                         modes=a.modes, n_layers=a.layers).to(device)
+    if a.arch == "fno":
+        model = EtchOperator(cond_dim=len(norm["cond_keys"]), width=a.width,
+                             modes=a.modes, n_layers=a.layers).to(device)
+    else:
+        model = MultiScaleOperator(
+            cond_dim=len(norm["cond_keys"]), width=a.width, modes=a.modes,
+            n_layers=a.layers, width_full=a.width_full, scale=a.scale,
+            n_local=a.n_local, act=a.act).to(device)
     if a.init_from:
         model.load_state_dict(torch.load(a.init_from, map_location=device))
     opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=1e-4)

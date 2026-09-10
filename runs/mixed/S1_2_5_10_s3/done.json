@@ -1,0 +1,23 @@
+{
+  "finished": 1789059399.0070596,
+  "pid": 256068,
+  "argv": [
+    "scripts/train.py",
+    "--run",
+    "runs/mixed/S1_2_5_10_s3",
+    "--epochs",
+    "45",
+    "--device",
+    "cuda:0",
+    "--seed",
+    "3",
+    "--strides",
+    "1,2,5,10",
+    "--eval-stride",
+    "10"
+  ],
+  "epochs": 45,
+  "seed": 3,
+  "best_val_roll_band": 0.023839131761342287,
+  "train_wall_s": 595.9109259322286
+}

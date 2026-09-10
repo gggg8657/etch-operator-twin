@@ -1,0 +1,200 @@
+{
+  "run": "runs/kcurve/K2_sm_s7",
+  "split": "test",
+  "ckpt": "best.pt",
+  "stride": 2,
+  "trained_strides": [
+    2
+  ],
+  "applications_per_wafer": 5,
+  "physical_steps_per_wafer": 10,
+  "n_trajectories": 250,
+  "steps": 5,
+  "subset_note": null,
+  "band_um": 1.5,
+  "sdf_scale_um": 5.0,
+  "one_step": {
+    "op": {
+      "full": {
+        "mean": 0.0011304250863846392,
+        "median": 0.0009813930955715477,
+        "p90": 0.0017256542108953,
+        "max": 0.0057074823416769505,
+        "n": 1250
+      },
+      "band": {
+        "mean": 0.005730673589557409,
+        "median": 0.004989170236513019,
+        "p90": 0.008474674075841904,
+        "max": 0.029766954481601715,
+        "n": 1250
+      }
+    },
+    "persist": {
+      "full": {
+        "mean": 0.15038131531178953,
+        "median": 0.14801809191703796,
+        "p90": 0.21587335318326958,
+        "max": 0.28505203127861023,
+        "n": 1250
+      },
+      "band": {
+        "mean": 0.7029170105457306,
+        "median": 0.6936931610107422,
+        "p90": 0.9676438808441162,
+        "max": 1.24237859249115,
+        "n": 1250
+      }
+    },
+    "blind": {
+      "full": {
+        "mean": 0.11217093941867351,
+        "median": 0.10913382470607758,
+        "p90": 0.17150541394948973,
+        "max": 0.23038695752620697,
+        "n": 1250
+      },
+      "band": {
+        "mean": 0.5969064687252045,
+        "median": 0.5827538073062897,
+        "p90": 0.8035577952861789,
+        "max": 1.0395405292510986,
+        "n": 1250
+      }
+    },
+    "uniform": {
+      "full": {
+        "mean": 0.10851084625124931,
+        "median": 0.10579309239983559,
+        "p90": 0.157939387857914,
+        "max": 0.2199842482805252,
+        "n": 1250
+      },
+      "band": {
+        "mean": 0.5852963997840881,
+        "median": 0.581355631351471,
+        "p90": 0.7928334474563599,
+        "max": 0.9728601574897766,
+        "n": 1250
+      }
+    }
+  },
+  "rollout": {
+    "op": {
+      "full": {
+        "mean": 0.002725523014506325,
+        "median": 0.0020377071341499686,
+        "p90": 0.0052102908957749605,
+        "max": 0.02627481333911419,
+        "n": 1250
+      },
+      "band": {
+        "mean": 0.01319302640054375,
+        "median": 0.010378014761954546,
+        "p90": 0.0228367030620575,
+        "max": 0.10046182572841644,
+        "n": 1250
+      }
+    },
+    "persist": {
+      "full": {
+        "mean": 0.5075841263204813,
+        "median": 0.4262314736843109,
+        "p90": 1.0284230589866639,
+        "max": 1.760311484336853,
+        "n": 1250
+      },
+      "band": {
+        "mean": 2.3388948739528654,
+        "median": 2.14165997505188,
+        "p90": 4.253247261047365,
+        "max": 6.032610893249512,
+        "n": 1250
+      }
+    },
+    "blind": {
+      "full": {
+        "mean": 0.3714292348653078,
+        "median": 0.3053036630153656,
+        "p90": 0.7742113292217255,
+        "max": 1.3758550882339478,
+        "n": 1250
+      },
+      "band": {
+        "mean": 1.8757037376642227,
+        "median": 1.7542576789855957,
+        "p90": 3.3380389213562016,
+        "max": 4.854528903961182,
+        "n": 1250
+      }
+    },
+    "uniform": {
+      "full": {
+        "mean": 0.3388970311820507,
+        "median": 0.28161273896694183,
+        "p90": 0.690872061252594,
+        "max": 1.1368716955184937,
+        "n": 1250
+      },
+      "band": {
+        "mean": 1.8137369988441467,
+        "median": 1.7087920904159546,
+        "p90": 3.1693813085556033,
+        "max": 4.298896312713623,
+        "n": 1250
+      }
+    }
+  },
+  "rollout_band_rel_l2_by_step": [
+    0.0069144758982583885,
+    0.010362566193565726,
+    0.01340339340083301,
+    0.016267194628715516,
+    0.019017501881346106
+  ],
+  "final_profile_geometry": {
+    "area_error_vs_removed": {
+      "mean": 0.009417391885601993,
+      "median": 0.0073044752339376925,
+      "p90": 0.01571416271042602,
+      "max": 0.05354090203335985,
+      "n": 250
+    },
+    "hausdorff_um": {
+      "mean": 0.049715127045572655,
+      "median": 0.04130614680324262,
+      "p90": 0.07689156676633584,
+      "max": 0.21836514660095396,
+      "n": 250
+    },
+    "mean_surface_dist_um": {
+      "mean": 0.01191043400394984,
+      "median": 0.009389196917171093,
+      "p90": 0.01898207369535602,
+      "max": 0.0712757477733208,
+      "n": 250
+    }
+  },
+  "kpi_clause_rel_l2": {
+    "target": 0.05,
+    "headline_metric": "rollout band rel-L2, mean over the states the operator emits (T/stride of them), mean over test trajectories",
+    "terminal_is_comparable_across_stride": true,
+    "mean_reading_is_comparable_across_stride": false,
+    "stride_comparability_note": "The terminal-step value is at the same physical time (end of etch) for every stride, so it is the reading a K-curve may be built from. The mean-over-emitted-states value averages a different number of states at each stride and is NOT comparable across arms; it is kept because it is the historical headline at stride 1.",
+    "value": 0.01319302640054375,
+    "met": true,
+    "value_terminal_step": 0.019017501881346106,
+    "met_terminal_step": true,
+    "met_both_readings": true,
+    "terminal_note": "mean-over-steps averages the easy first step in with the hardest last one. The terminal-step value is the error standing at the end of the etch and is the stricter read.",
+    "persistence_null": 2.3388948739528654,
+    "recipe_blind_null": 1.8757037376642227,
+    "beats_recipe_blind": true,
+    "recipe_blind_note": "Constant advance by the train-set mean per-step displacement, ignoring recipe, dt and target. Because the dataset's timestep is chosen per recipe so every trajectory covers a comparable depth, per-step displacement is nearly recipe-independent by construction; this null therefore absorbs that confound, and beating it is the evidence that the conditioning carries shape information.",
+    "uniform_recession_null": 1.8137369988441467,
+    "beats_persistence": true,
+    "beats_uniform_recession": true,
+    "full_window_reading": 0.002725523014506325,
+    "note": "full_window_reading is the looser reading of the same clause: the far field of an SDF is a smooth ramp with a large norm, so it dilutes interface error. The band value is the headline."
+  }
+}

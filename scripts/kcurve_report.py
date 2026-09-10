@@ -44,7 +44,7 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from eot.data import TrajDataset, pair_starts  # noqa: E402
-from eot.operator import EtchOperator  # noqa: E402
+from eot.operator import build_from_cfg, EtchOperator  # noqa: E402
 from scripts.analyse_confound import per_step_displacement  # noqa: E402
 from scripts.coverage_verdict import boot_ci, per_traj_both_readings  # noqa: E402
 from scripts.seed_spread import completed  # noqa: E402
@@ -201,8 +201,7 @@ def main():
         for r in runs:
             cfg = json.loads((r / "args.json").read_text())
             cfgs.append(cfg)
-            model = EtchOperator(cond_dim=len(norm["cond_keys"]), width=cfg["width"],
-                                 modes=cfg["modes"], n_layers=cfg["layers"]).to(device)
+            model = build_from_cfg(cfg, len(norm["cond_keys"])).to(device)
             model.load_state_dict(torch.load(r / "best.pt", map_location=device))
             model.eval()
             for tag, ds in (("in", ds_in), ("crossed", ds_cr)):

@@ -3643,3 +3643,350 @@ to a third of the yardstick — a real result) from `K2_sm` crossed (bounded to
 4.5× the yardstick — no information). Both read "p ≈ 0.2–0.75, no difference
 detected". One is a finding and one is an empty cell, and only the interval says
 which.
+
+---
+
+## Turn 9 — H14: what clause 2 actually allows, once the model takes a recipe
+
+### The number this corrects is mine, and it was the one that reopened the clause
+
+`runs/cost_floor.json` priced a two-layer 3×3 convolution at **370 µs / 748×** —
+within 1.34× of the 1000× clause, the only architecture this repo had measured
+anywhere near it, and the row on the strength of which I wrote that clause 2 is
+*"bound by the architecture we chose"* rather than by the task. That row is
+
+    Conv2d(1, 8, 3) -> GELU -> Conv2d(8, 1, 3)
+
+on a bare field: **no recipe embedding, no broadcast, no coordinate channels.**
+It cannot advance a surface *given a recipe*, which is the entire task. The file
+labels every such row `is_a_real_surrogate: false` and I still leaned the
+conclusion on it — a label does not carry a conclusion.
+
+`eot.operator.CompactCNN` is the honest version. It keeps every structural
+element the conditioning needs — the recipe MLP, the broadcast to 128×128, the
+two coordinate channels, the 1×1 lift and projection, the residual form — and
+replaces only the spectral blocks with 3×3 convolutions, so a difference against
+`EtchOperator` at the same width is a difference between spectral and local
+mixing rather than between a surrogate and a toy.
+
+### The ladder (`runs/cnn_cost.json`, 6 processes per cell)
+
+Budget is the measured solver cost / 1000: **277 µs** warm.
+
+| config | params | warm | cold |
+|---|---|---|---|
+| `cond_only_w1_c1_L0` | 296 | **3394×** | 625× |
+| `cond_only_w4_c4_L0` | 425 | **2635×** | 488× |
+| `cnn_w4_L1_c4` | 573 | 653× | 188× |
+| `cnn_w8_L1_c8` | 1209 | 314× | 175× |
+| `cnn_w8_L2_c8` | 1793 | 196× | 175× |
+| `cnn_w16_L2_c8` | 5369 | 119× | 78× |
+| `cnn_w16_L4_c16` | 10401 | 67× | 95× |
+| `cnn_w32_L4_c24` | 38969 | 25× | 42× |
+
+`n_layers=0` removes the body entirely, leaving only what conditioning costs. It
+cannot learn surface evolution at all, so its price is a **hard floor** for every
+conditioned model emitting this field.
+
+**The first thing this kills is my own expectation.** I went in expecting the
+conditioning machinery — a 24-channel broadcast over 16,384 pixels — to be what
+blocked the clause. It is not: the floor is **82–101 µs, 2635–3394×**,
+comfortably under budget. Conditioning is affordable.
+
+### The boundary, resolved because the harness noise straddled it
+
+The full ladder put the budget between zero body layers and one, but
+between-invocation spread here reaches 2× — `cnn_w8_L2_c8` read 814 µs in one
+invocation and 1412 µs in the next — so `cnn_w4_L1_c4`'s 424 µs did not resolve
+which side of 277 µs it was on. Re-measured at **16 processes** each
+(`runs/cnn_cost_boundary.json`):
+
+| config | params | median | range | vs budget |
+|---|---|---|---|---|
+| `cond_only_w4_c4_L0` | 425 | **100.8 µs** | 95.0–181.9 | **0.36×** — under |
+| `cnn_w4_L1_c4` | 573 | **309.7 µs** | 295.6–393.3 | **1.12×** — over |
+
+The two ranges do not overlap and neither straddles the budget: the zero-layer
+maximum (181.9 µs) is under 277 µs and the one-layer minimum (295.6 µs) is over
+it. So the boundary is resolved rather than asserted, which the 6-process run
+could not do.
+
+### What clause 2 allows, stated sharply
+
+**On this hardware, at 128×128 output, the 1000× clause admits the entire
+conditioning apparatus and not one 3×3 convolution at width 4.** The budget is
+exhausted by the first layer of spatial mixing. The best conditioned model that
+does *any* spatial processing reaches **894× [704–936×]** — short of the clause
+by **1.12×** — and it has 573 parameters, which is far too small to be a
+plausible surrogate for surface evolution.
+
+This is a better statement than the one it replaces, and it cuts both ways
+against my previous framing:
+
+* It is **not** true that clause 2 fails only because we chose a 26.2 M-parameter
+  network. It fails for any model that processes the field spatially at all.
+* It is **also not** true that the clause is unreachable by orders of magnitude.
+  At the very edge of triviality it is missed by **12%**, not by 95× and not by
+  679×. Both of those earlier figures described particular models, not the
+  frontier.
+
+So the honest reading of clause 2 is: **the frontier passes within 12% of 1000×
+at a model size that cannot possibly be accurate, and every increase in capacity
+from there moves away from the clause.** Whether anything on the accuracy side of
+that frontier exists is the question `scripts/shrink.sh` is answering for the
+spectral family; for this family it is unmeasured and nothing here licenses a
+guess. **No accuracy is claimed by any row in either file.**
+
+### Recorded because it is a real limit on these prices
+
+Between-invocation spread reaches 2× on the mid-ladder cells and 1.33–1.91× on
+the boundary cells even at 16 processes, so every individual price above is good
+to roughly a factor of two and the ladder's *ordering* should be read only within
+one invocation — where it is monotone in work, as it must be. The two boundary
+cells are the exception: they were measured until their ranges separated, which
+is why the boundary claim is made and the ordering claim is not.
+
+### Duplication, and an independent replication worth keeping
+
+A peer instance reached the crossed-plateau hypothesis on the same evidence this
+turn, wrote it up as its own H13, and launched `scripts/indep.sh` before I got
+there. Two things follow. The wasteful one: I built `scripts/data_coverage.py`
+and `runs/data_coverage.json` measuring what its `runs/coverage_gap.json`
+already measured. The useful one: **the two scripts were written independently
+and agree** — adaptive coverage of the crossed split 57.9% (121/209) and mixed
+97.6% (204/209) in both. Mine additionally prices the *size-matched* rule the
+running arm actually uses, at **99.0%** (207/209), and records that the matched
+mix also raises in-distribution coverage from 0.972 to 1.000. Keeping both files
+for the replication and cross-referencing rather than deleting either.
+
+---
+
+## Turn 10 — H15 falsified on cost before a GPU hour was spent; the 8-seed K-curve kills another of my claims; and clause 2's binding constraint turns out to be my own inference stack
+
+### What finished since last turn, and the first thing it corrects is a stale file
+
+Nothing was running when this turn started: `runs/kcurve` reached **64 of 64
+arms complete at 8 seeds each**, `runs/shrink` 21, `runs/mixed` 3, `runs/indep`
+3. But `runs/kcurve.json` had been generated when the step-matched arms carried
+**2–3 seeds**, and every document in this repo was quoting it. Regenerating it
+is the whole of the measurement half of this turn, and it moves two things.
+
+**K10_sm survives, and it is now a verdict rather than a screen.** In-distribution
+terminal band rel-L2 **0.02610 (n=2) → 0.02639 (n=8)**, seed range 0.00267,
+bootstrap upper bound 0.02867, `met_every_seed` true. So the configuration that
+advances a whole wafer in **one application** meets clause 1 in distribution
+under all three readings this repo requires, at 8 seeds. That is the strongest
+form the accuracy clause has ever held in this repo at one application per
+wafer, and it was a 2-seed screen until this turn.
+
+**WITHDRAWN: "K2_sm is *better* than the K=1 anchor on the crossed split
+(−0.00263, sign-flip p = 0.00858)".** At 8 seeds the same test on the same split
+gives **+0.00334 — worse — sign-flip p = 0.0098**. Same test, same threshold,
+comparable p, **opposite sign**. The 3-seed version of that number was written
+into `WEEKEND.md`, `RESULTS.md` and the board as "the closest anything in this
+repo has come to the crossed split, and *better* than K=1". It was noise with a
+p-value attached. The crossed column moved on every step-matched arm:
+K2_sm 0.05170 → **0.05767**, K5_sm 0.08226 → **0.08033**, K10_sm 0.10440 →
+**0.10194**.
+
+That is the **third** time this weekend a ≤3-seed crossed reading in this
+repository reversed at 8 seeds. `runs/seed_level_test.json` had already measured
+why and I wrote it down last turn: crossed intervals are 0.022–0.042 wide *at
+every seed count including 8*, because the crossed subset is 121 trajectories
+whose per-seed spread is an order of magnitude larger than the in-distribution
+split's. I recorded that fact and then quoted a 3-seed crossed p-value anyway.
+The rule is not "collect more seeds"; it is **the crossed split may not carry a
+sign at any seed count this repo can afford, and a crossed comparison must be
+reported as an interval or not at all.**
+
+What does survive at 8 seeds, and is now clean: at matched gradient steps the
+crossed penalty is **monotone in the horizon** — K1 0.05433, K2_sm 0.05767,
+K5_sm 0.08033, K10_sm 0.10194 — while in distribution it is nearly flat —
+0.01890, 0.01948, 0.02277, 0.02639. The horizon is cheap in distribution and
+expensive outside it. K2_sm remains indistinguishable from K=1 in distribution
+(+0.00058, sign test p = 0.9496, sign-flip p = 0.0512) at half the applications.
+
+### H7 settled: capacity is cheap, and the frontier's two clauses are 6–9× apart on one model
+
+`scripts/shrink_report.py` (new) scores the 21 shrink arms **and** prices the
+same configs through `cost_floor.time_model`, in one file, because a frontier
+assembled by eye from an accuracy file and a cost file is exactly where a cost
+row and an accuracy row from different widths get read as one model.
+
+| config | params | apps/wafer | in-dist terminal | seed range | every seed ≤0.05 | crossed |
+|---|---|---|---|---|---|---|
+| `w8m4L2_K10` | 10,897 | 1 | **0.04717** | 0.00386 | **yes** | 0.07762 |
+| `w8m8L2_K10` | 35,473 | 1 | 0.04095 | 0.00204 | yes | 0.06971 |
+| `w16m8L2_K10` | 135,049 | 1 | 0.02966 | 0.00258 | yes | 0.05777 |
+| `w16m8L4_K10` | 266,729 | 1 | 0.02781 | 0.00179 | yes | 0.06325 |
+| `w32m12L4_K10` | 2,369,977 | 1 | 0.02626 | 0.00073 | yes | 0.07640 |
+| `w8m4L2_K1` | 10,897 | 10 | 0.05489 | 0.01732 | **no** | 0.07953 |
+| `w16m8L4_K1` | 266,729 | 10 | 0.02603 | 0.00184 | yes | **0.04328** |
+
+**H7's pre-registered decision rule fires in the direction that keeps clause 2
+alive.** The rule was: *if the smallest arm already misses rel-L2 ≤ 0.05 badly,
+the frontier is closed below 1000× for this family.* It does not miss. A
+**10,897-parameter** FNO — 2,410× smaller than the deployed 26,248,025-parameter
+one — meets clause 1 in distribution at **0.04717** on the point estimate, on
+every one of 3 seeds, and on the trajectory bootstrap's upper bound (0.04964),
+at **one application per wafer**. Accuracy is nearly flat from 266k params
+upward (0.02781 → 0.02626 for a 9× parameter increase, a 5% gain) and degrades
+gently below it. **Capacity is cheap on this problem.**
+
+So the two clauses are now 6–9× apart **on a single model** rather than 95× or
+679× apart on different ones — the smallest gap this project has measured. That
+is a much better position than the declaration recorded, and it is why the rest
+of this turn went at cost rather than at accuracy.
+
+### H15 stated, and falsified on cost before any GPU time was spent on it
+
+**H15, written first:** the accuracy-admissible FNO uses `modes=4` of the 64
+representable at 128×128, so `SpectralConv2d` provably zeroes everything above
+mode 4. Running that body on a 32×32 grid leaves Nyquist at mode 16 — still 4×
+above the highest mode it can carry — so the downsample removes **no frequency
+band the body can represent** while dividing every per-pixel cost in it by
+s² = 16. Prediction: ~6.4× cheaper, which is exactly the gap.
+
+Implemented as `MultiScaleOperator` (9,914 params against the FNO's 10,897, so
+capacity is matched), priced before training. **Measured saving: 2.26×, not
+16×.** The pixel-count argument is arithmetic about arithmetic, and arithmetic
+is not what this costs. The right move was to locate the money rather than
+theorise, so `scripts/arch_cost.py` prices the parts (all rows below in one
+invocation, so they are mutually comparable):
+
+| component | cost | vs 277 µs budget |
+|---|---|---|
+| coords + concat at 128×128 | 22.8 µs | 8% |
+| two 1×1 convs, no activation, no conditioning | **67.7 µs** | 24% — **inside** |
+| the same plus one GELU | **157.0 µs** | 57% — **inside** |
+| one GELU alone over 8×128×128 | 152.7 µs | 55% |
+| one ReLU alone over the same tensor | **13.2 µs** | 4.8% |
+| spectral body, 32×32, incl. pool and upsample | 645.1 µs | 233% |
+| spectral body, 128×128 | 1770.8 µs | 639% |
+
+Three things fall out, and two of them are corrections to me.
+
+1. **The full-resolution path is affordable and I had assumed it was not.** Two
+   1×1 convolutions over 16,384 pixels cost 67.7 µs — 24% of the budget. The
+   thing I built the coarse path to avoid was never the problem.
+2. **The nonlinearity is a budget line item.** `torch.nn.functional.gelu` is
+   erf-based and costs **11.6×** a ReLU on identical memory traffic — 152.7 µs
+   against 13.2 µs, i.e. 55% of the entire clause-2 budget for one activation.
+   Nowhere in this repo was that a considered choice; it was the default. `act`
+   is now a constructor argument and `--act` a training flag.
+3. **The coarse body still costs 645 µs**, 2.3× the whole budget, for ~0.1 MFLOP
+   of arithmetic on 8×32×32 tensors. At ~13 GFLOP/s that should be ~8 µs. It is
+   80× more. So the body's cost is **not arithmetic** — it is per-operation
+   dispatch, allocation and FFT plan lookup, roughly 20 operations at ~30 µs
+   each, and downsampling the tensors cannot reduce a per-operation cost.
+
+### Rung 3, attempted: the clause is being measured against eager PyTorch, which is my setup and not the task
+
+If the cost is dispatch rather than arithmetic then the clause-2 verdict is a
+statement about the inference stack. That is squarely rung 3 — fix your own
+setup — and `torch.compile` is what anyone deploying this would do; it changes
+no weight, no output and no metric, so it is not protocol-loosening.
+
+**Measured, and it is a clean negative:**
+
+| model | eager | compiled | ratio |
+|---|---|---|---|
+| `fno_w8m4L2` | 1869.6 µs | 6134.2 µs | **3.28× slower** |
+| `multiscale_s4` | 1405.2 µs | 2855.1 µs | **2.03× slower** |
+| `fno_w64m20L4` (26.2 M, deployed) | 87,835 µs | 216,849 µs | **2.47× slower** |
+
+`torch.compile` is not the escape on one CPU thread, and the 26.2M-parameter
+control says this is not a small-tensor artefact — inductor's generated code
+loses to MKL/oneDNN eager kernels at every size measured here. The route is
+closed **for `torch.compile` specifically**; it says nothing about ONNX Runtime,
+oneDNN graph fusion or a hand-written kernel, none of which is measured, and I
+am not claiming it does.
+
+### The defect I found in my own new script, which is the old defect in a new costume
+
+Nine ladder rows read **2.5× the cost the same architectures had read minutes
+earlier** — `multiscale_s4` went 1405 → 3569 µs/wafer without a line changing.
+Cause: load average 26.4, another track's job holding ~20 cores.
+
+That is not just noise. **Every `speedup_vs_solver` in `runs/cost_floor.json`
+and `runs/cnn_cost.json` divides a model cost timed *now* by a solver cost read
+out of `runs/speed_symmetric.json`, timed hours or days earlier.** It is the
+same shape as the error that inflated this repo's headline speedup up to 119× —
+two sides of a ratio measured under conditions that were not the same — with
+load standing in for warm-versus-cold.
+
+Fixed: `arch_cost.py` re-times the solver with `bench_symmetric.solver_warm` in
+the same invocation, same recipe stream, same grid and step count, and records
+`budget_provenance` with the drift against the stored value and the load
+average. `--stored-budget` keeps the old behaviour and says in the JSON that it
+was used. Pairing moves every number: `fno_w8m4L2` 148× → **108.7×**,
+`multiscale_s4` 196.9× → **251.2×**, pointwise wf8 256.9× → **501.5×**.
+
+**And pairing is necessary but not sufficient, which is the sharper point.**
+`runs/solver_drift.json` measured the solver at **1.15× across a 3.6× load
+range** — a ray-tracing solver is compute-bound and barely notices — while
+these tensor rows move **2.5×**. The two sides do not respond to load together,
+so the *ratio* is load-dependent even in CPU-seconds, and no pairing makes it a
+constant. Consequence, recorded per row as `loadavg_1min`: **a speedup measured
+under load is a lower bound on the quiet-box figure**, and the decisive rows
+must be re-measured on a quiet box before any of them is quoted as a verdict.
+No speedup number from this turn is being promoted to `RESULTS.md` for that
+reason.
+
+### Where clause 2 actually stands, stated as the frontier rather than as one model
+
+Paired denominator, load 26.4, so these are lower bounds:
+
+| architecture | params | µs/wafer | speedup | accuracy |
+|---|---|---|---|---|
+| `pw_wf8_n1_relu` (pointwise) | 1,217 | 714 | **501×** | training |
+| `multiscale_s4_wf8` | 9,914 | 1,426 | 251× | training |
+| `ms_s8_w8m4L2_wf16` | 10,370 | 1,998 | 179× | training |
+| `fno_w8m4L2` | 10,897 | 3,294 | 109× | **0.04717 (met)** |
+| `pw_wf32_n3_relu` (pointwise) | 3,881 | 4,042 | 89× | training |
+| `fno_w64m20L4` (deployed) | 26,248,025 | ~87,835 | ~3× | 0.01890 (met) |
+
+Note `pw_wf32_n3` is **more expensive than the FNO it was meant to undercut**.
+Width and depth at full resolution cost linearly in a way modes do not, so the
+pointwise family is only cheap while it is tiny. The cheapest row measured,
+`pw_wf8_n1_relu` at 1,217 parameters, is **501×** — still 2× short of the
+clause, under load.
+
+**So no architecture measured so far is inside the budget with known accuracy,
+and the cheapest one measured at all is 2× outside it.** Clause 2 stays open,
+not because it is close, but because the gap moved from 679× to 2–9× and the
+binding constraint changed from arithmetic to per-operation overhead, which is a
+different problem with different escapes.
+
+### H16 and H17, both written before their runs land
+
+**H16** (`scripts/ladder.sh`, GPU 0, 18 arms, 3 seeds): the pointwise arms will
+**miss** clause 1 at 0.06–0.15 in-distribution terminal, because
+`runs/surface_representable.json` finds a mask undercut in 249 of 250
+trajectories growing to 99.6% of frames, and how far a front advances beneath an
+overhang depends on the mask geometry *above* it, which a per-pixel function of
+(φ, x, y, recipe) cannot read from the field. Falsifier: a pointwise arm at
+≤0.05 means no spatial mixing is needed here, and both clauses would hold on one
+model for the first time. **The limitation of that outcome is stated now rather
+than after seeing it:** the mask geometry in this dataset is a two-parameter
+family (`trench_width`, `mask_height` are conditioning inputs), so
+(x, y, trench_width, mask_height) determines the layout and a pointwise model can
+infer from the recipe what a spatial model must read from the field. It would be
+a real pass of the clause as written and **not** evidence that pointwise
+operators solve etch simulation.
+
+**H17** (`scripts/oodshrink.sh`, GPU 1, seeds 4–8): `w16m8L4_K1` at 266,729
+parameters scores **0.04328** crossed-in-coverage against the 26.2M anchor's
+0.05433 — the only sub-0.05 crossed number this repo has produced, and produced
+by making the model *smaller*. Hypothesis: the crossed failure is partly
+overfitting. It is a screen and the bootstrap already says so: upper bound
+0.05332, above threshold. Falsifier: added seeds pull the mean above 0.05, which
+is what happened to the last two 3-seed crossed readings including this turn's.
+
+### One change, or two?
+
+The rule is one hypothesis and one change per turn. H16 is the change; H17 is
+the ablation the shrink result demands, it runs on the other GPU of this
+track's lease, and it shares no code path with H16 beyond `train.py`. Neither
+comparison is confounded by the other. Recording the judgement rather than
+hiding it.

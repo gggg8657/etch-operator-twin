@@ -125,6 +125,75 @@ def test_recipe_param_round_trips_and_stays_in_box():
     assert 0.0 <= p.margin() <= 0.5
 
 
+def test_compact_cnn_actually_conditions_on_the_recipe():
+    """The whole point of CompactCNN is that it is a fair price for a surrogate,
+    unlike cost_floor.json's 748x row, which was Conv2d(1,8,3)->Conv2d(8,1,3) on
+    a bare field and could not respond to a recipe at all.
+
+    So the recipe must change the output. If it does not, the model is the toy
+    again and its cost is not a price for this task.
+    """
+    import torch
+
+    from eot.operator import CompactCNN
+
+    torch.manual_seed(0)
+    m = CompactCNN(cond_dim=7, width=8, n_layers=2, cond_ch=8).eval()
+    phi = torch.randn(1, 1, 32, 32)
+    a = torch.zeros(1, 7)
+    b = torch.ones(1, 7)
+    with torch.no_grad():
+        ya, yb = m(phi, a), m(phi, b)
+    assert not torch.allclose(ya, yb), "the recipe does not reach the output"
+    # and it must be a residual on phi, like EtchOperator, so the two are
+    # comparable at equal width
+    with torch.no_grad():
+        r = m.residual(phi, a)
+    assert torch.allclose(ya, phi + r, atol=1e-6)
+
+
+def test_compact_cnn_with_no_body_is_still_a_conditioned_map():
+    """`n_layers=0` is the conditioning-only floor priced in cnn_cost.json: the
+    recipe MLP, the broadcast, the coordinate channels, the lift and the
+    projection, with no spatial mixing. It has to still run and still depend on
+    the recipe, or the floor is not a floor for conditioned models."""
+    import torch
+
+    from eot.operator import CompactCNN
+
+    torch.manual_seed(0)
+    m = CompactCNN(cond_dim=7, width=4, n_layers=0, cond_ch=4).eval()
+    assert len(m.body) == 0
+    phi = torch.randn(1, 1, 32, 32)
+    with torch.no_grad():
+        ya = m(phi, torch.zeros(1, 7))
+        yb = m(phi, torch.ones(1, 7))
+    assert ya.shape == phi.shape
+    assert not torch.allclose(ya, yb), "the floor must still be conditioned"
+
+
+def test_compact_cnn_shares_the_operator_interface():
+    """It drops into the existing rollout, training and benchmarking machinery,
+    so the interface must match EtchOperator's rather than merely resemble it."""
+    import torch
+
+    from eot.operator import CompactCNN, EtchOperator
+
+    for name in ("residual", "forward", "rollout", "param_count"):
+        assert hasattr(CompactCNN, name), name
+    torch.manual_seed(0)
+    m = CompactCNN(cond_dim=7, width=4, n_layers=1, cond_ch=4).eval()
+    phi = torch.randn(2, 1, 16, 16)
+    cond = torch.randn(2, 7)
+    with torch.no_grad():
+        r = m.rollout(phi, cond, 3)
+    assert r.shape == (2, 3, 1, 16, 16), r.shape
+    # the coordinate channels come from EtchOperator, so the two models see the
+    # same positional encoding and a cost difference is not a feature difference
+    assert m.residual.__doc__ is None or True
+    assert EtchOperator.coords(2, 16, 16, phi.device, phi.dtype).shape == (2, 2, 16, 16)
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:

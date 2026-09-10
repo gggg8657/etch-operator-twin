@@ -342,14 +342,14 @@ Three variants separate the horizon from the things that change with it. `nv` ta
 | arm | seeds | app/wafer | grad steps | in-dist terminal | seed range | clause 1 | crossed terminal | seed range | clause 1 | strength |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `K1_nv` | 8 | 10 | 22,560 | **0.01890** | 0.00172 | MET | **0.05433** | 0.03511 | NOT MET | verdict |
-| `K2_nv` | 7 | 5 | 11,280 | **0.02169** | 0.00248 | MET | **0.05640** | 0.02975 | NOT MET | screen (7) |
-| `K2_ov` | 6 | 5 | 20,320 | **0.02006** | 0.00179 | MET | **0.05174** | 0.02063 | NOT MET | screen (6) |
-| `K2_sm` | 3 | 5 | 22,560 | **0.01942** | 0.00115 | MET | **0.05170** | 0.00487 | NOT MET | screen (3) |
+| `K2_nv` | 8 | 5 | 11,280 | **0.02162** | 0.00248 | MET | **0.05613** | 0.02975 | NOT MET | verdict |
+| `K2_ov` | 8 | 5 | 20,320 | **0.02003** | 0.00179 | MET | **0.05641** | 0.04334 | NOT MET | verdict |
+| `K2_sm` | 8 | 5 | 22,560 | **0.01948** | 0.00153 | MET | **0.05767** | 0.03649 | NOT MET | verdict |
 | `K5_nv` | 8 | 2 | 4,560 | **0.03336** | 0.00553 | MET | **0.07680** | 0.02302 | NOT MET | verdict |
-| `K5_ov` | 6 | 2 | 13,520 | **0.02338** | 0.00165 | MET | **0.07119** | 0.02884 | NOT MET | screen (6) |
-| `K5_sm` | 3 | 2 | 22,800 | **0.02330** | 0.00136 | MET | **0.08226** | 0.01127 | NOT MET | screen (3) |
+| `K5_ov` | 8 | 2 | 13,520 | **0.02341** | 0.00165 | MET | **0.07301** | 0.02884 | NOT MET | verdict |
+| `K5_sm` | 8 | 2 | 22,800 | **0.02277** | 0.00185 | MET | **0.08033** | 0.01287 | NOT MET | verdict |
 | `K10_nv` | 8 | 1 | 2,320 | **0.04781** | 0.01399 | point only | **0.09898** | 0.02459 | NOT MET | verdict |
-| `K10_sm` | 2 | 1 | 23,200 | **0.02610** | 0.00059 | MET | **0.10440** | 0.00477 | NOT MET | screen (2) |
+| `K10_sm` | 8 | 1 | 23,200 | **0.02639** | 0.00267 | MET | **0.10194** | 0.01479 | NOT MET | verdict |
 
 `clause 1` columns apply the strictest of the three rules the coverage analysis uses — the bootstrap upper CI, not the point estimate. `point only` means the arm clears 0.05 on its point estimate and fails on the upper CI, which is a weaker statement and is labelled rather than rounded away.
 
@@ -357,35 +357,24 @@ Paired against the K=1 anchor per test trajectory — every arm sees the same on
 
 | arm | split | mean diff vs K=1 | arm better | sign test p | sign-flip p | diff < anchor seed range |
 |---|---|---|---|---|---|---|
-| `K2_nv` | in-dist | +0.00278 | 61/250 | 2.026e-16 | 1e-05 | no |
-| `K2_nv` | crossed | +0.00207 | 25/121 | 5.303e-11 | 0.00147 | no |
-| `K2_ov` | in-dist | +0.00116 | 94/250 | 0.0001061 | 2e-05 | yes |
-| `K2_ov` | crossed | -0.00259 | 48/121 | 0.0287 | 0.06305 | no |
-| `K2_sm` | in-dist | +0.00052 | 132/250 | 0.411 | 0.1032 | yes |
-| `K2_sm` | crossed | -0.00263 | 63/121 | 0.7163 | 0.00858 | no |
+| `K2_nv` | in-dist | +0.00271 | 61/250 | 2.026e-16 | 1e-05 | no |
+| `K2_nv` | crossed | +0.00180 | 29/121 | 7.977e-09 | 0.00784 | no |
+| `K2_ov` | in-dist | +0.00113 | 97/250 | 0.0004801 | 2e-05 | yes |
+| `K2_ov` | crossed | +0.00208 | 42/121 | 0.000983 | 0.00511 | no |
+| `K2_sm` | in-dist | +0.00058 | 126/250 | 0.9496 | 0.05121 | yes |
+| `K2_sm` | crossed | +0.00334 | 57/121 | 0.5856 | 0.0098 | no |
 | `K5_nv` | in-dist | +0.01446 | 6/250 | 3.617e-64 | 1e-05 | no |
 | `K5_nv` | crossed | +0.02247 | 3/121 | 2.222e-31 | 1e-05 | no |
-| `K5_ov` | in-dist | +0.00448 | 43/250 | 6.421e-27 | 1e-05 | no |
-| `K5_ov` | crossed | +0.01686 | 13/121 | 8.369e-20 | 1e-05 | no |
-| `K5_sm` | in-dist | +0.00440 | 68/250 | 3.442e-13 | 1e-05 | no |
-| `K5_sm` | crossed | +0.02792 | 22/121 | 7.411e-13 | 1e-05 | no |
+| `K5_ov` | in-dist | +0.00451 | 42/250 | 1.318e-27 | 1e-05 | no |
+| `K5_ov` | crossed | +0.01868 | 14/121 | 6.532e-19 | 1e-05 | no |
+| `K5_sm` | in-dist | +0.00386 | 67/250 | 1.264e-13 | 1e-05 | no |
+| `K5_sm` | crossed | +0.02600 | 19/121 | 6.365e-15 | 1e-05 | no |
 | `K10_nv` | in-dist | +0.02890 | 3/250 | 2.879e-69 | 1e-05 | no |
 | `K10_nv` | crossed | +0.04465 | 1/121 | 9.178e-35 | 1e-05 | no |
-| `K10_sm` | in-dist | +0.00719 | 39/250 | 9.601e-30 | 1e-05 | no |
-| `K10_sm` | crossed | +0.05007 | 14/121 | 6.532e-19 | 1e-05 | no |
+| `K10_sm` | in-dist | +0.00749 | 32/250 | 3.352e-35 | 1e-05 | no |
+| `K10_sm` | crossed | +0.04761 | 8/121 | 7.274e-25 | 1e-05 | no |
 
-**8 arm(s) on disk were excluded as incomplete.** This script scores each arm's `best.pt` directly rather than reading a committed eval, so before the completeness guard an arm still training — or killed mid-training — was scored at whatever epoch it had reached and joined its seed group as if finished. A partial checkpoint always scores worse, and which arms are caught depends on queue order, so the bias does not cancel across arms: it is the shape that manufactures a monotone trend.
-
-| arm | epochs logged | the guard's reason |
-|---|---|---|
-| `K10_sm_s1` | 384/800 | logged 384/800 epochs, not a complete 0..799 |
-| `K2_nv_s5` | 26/80 | unparseable log line (interleaved writers?) |
-| `K2_ov_s4` | 26/80 | unparseable log line (interleaved writers?) |
-| `K2_ov_s8` | 38/80 | logged 38/80 epochs, not a complete 0..79 |
-| `K2_sm_s4` | 90/160 | logged 90/160 epochs, not a complete 0..159 |
-| `K5_ov_s4` | 26/80 | unparseable log line (interleaved writers?) |
-| `K5_ov_s8` | 44/80 | logged 44/80 epochs, not a complete 0..79 |
-| `K5_sm_s4` | 214/400 | logged 214/400 epochs, not a complete 0..399 |
+**0 arm(s) on disk were excluded as incomplete.** This script scores each arm's `best.pt` directly rather than reading a committed eval, so before the completeness guard an arm still training — or killed mid-training — was scored at whatever epoch it had reached and joined its seed group as if finished. A partial checkpoint always scores worse, and which arms are caught depends on queue order, so the bias does not cancel across arms: it is the shape that manufactures a monotone trend.
 
 Completeness rule: scripts/seed_spread.completed -- done.json, or a log of exactly epochs 0..n-1 each once, and in both cases test_eval.json no older than best.pt. This script evaluates best.pt directly, so without the rule a run still training, or killed mid-training, is scored at its partial checkpoint and joins the seed group as if finished -- see kcurve_report.is_complete.
 

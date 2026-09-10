@@ -1,0 +1,633 @@
+{
+  "hypothesis": "H7: shrinking the FNO costs accuracy. The decision rule, written before the sweep ran: if the smallest arm already misses rel-L2 <= 0.05 badly, the frontier is closed below 1000x for this family; if it holds, capacity is cheap here and the cost-admissible architectures are worth building.",
+  "protocol": {
+    "accuracy": "band rel-L2, coverage_verdict.per_traj_both_readings; terminal-step reading is the cross-stride-comparable one",
+    "cost": "CPU-seconds on one verified thread, fresh subprocess per config, cost_floor.time_model; PER WAFER = per_apply * applications_per_wafer",
+    "budget_source": "runs/speed_symmetric.json: solver marginal_warm 0.2767 and cold_single_wafer 0.7389 CPU-s, / 1000",
+    "budget_warm_s": 0.0002767124970000001,
+    "budget_cold_s": 0.0007389038889999999,
+    "accuracy_target": 0.05,
+    "speedup_target": 1000.0,
+    "seeds_caveat": "3 seeds per config is a screen. No row here is a verdict, and every row carries its seed range."
+  },
+  "crossed_coverage_rule": {
+    "disp_lo_um": 0.07555290407071312,
+    "disp_hi_um": 0.2987453897955747,
+    "n_in_coverage": 121,
+    "n_total": 209
+  },
+  "configs": {
+    "w16m8L2_K10": {
+      "config": {
+        "width": 16,
+        "modes": 8,
+        "layers": 2,
+        "stride": 10
+      },
+      "params_trained": 135049,
+      "epochs": [
+        800
+      ],
+      "applications_per_wafer": 1,
+      "runs": [
+        "runs/shrink/w16m8L2_K10_s1",
+        "runs/shrink/w16m8L2_K10_s2",
+        "runs/shrink/w16m8L2_K10_s3"
+      ],
+      "seeds": [
+        1,
+        2,
+        3
+      ],
+      "n_seeds": 3,
+      "verdict_strength": "screen",
+      "in_distribution": {
+        "terminal_step": {
+          "per_seed": [
+            0.030256501920521258,
+            0.028075496613979338,
+            0.030657033264636993
+          ],
+          "point": 0.02966301059971253,
+          "seed_range": 0.002581536650657655,
+          "lo": 0.028270197482779626,
+          "hi": 0.03111528242925803,
+          "n": 250,
+          "met_point": true,
+          "met_every_seed": true,
+          "met_upper_ci": true
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.02966301059971253
+      },
+      "crossed_in_coverage": {
+        "n_trajectories": 121,
+        "terminal_step": {
+          "per_seed": [
+            0.05742498822818118,
+            0.05565772816723536,
+            0.06024154050906828
+          ],
+          "point": 0.05777475230149494,
+          "seed_range": 0.004583812341832916,
+          "lo": 0.04553438715852243,
+          "hi": 0.07254074408272511,
+          "n": 121,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.05777475230149494
+      },
+      "cost": {
+        "params": 135049,
+        "applications_per_wafer": 1,
+        "rounds": 12,
+        "warm": {
+          "per_apply_cpu_s": 0.016629030499999975,
+          "per_wafer_cpu_s": 0.016629030499999975,
+          "spread_factor": 1.0986024071913438,
+          "over_budget_factor": 60.09497467691157,
+          "under_budget": false,
+          "speedup_vs_solver": 16.640326506106327,
+          "n": 12
+        },
+        "cold": {
+          "per_apply_cpu_s": 0.011094467499999983,
+          "per_wafer_cpu_s": 0.011094467499999983,
+          "spread_factor": 1.3595635801280865,
+          "over_budget_factor": 15.014763983736435,
+          "under_budget": false,
+          "speedup_vs_solver": 66.60111348291399,
+          "n": 12
+        }
+      },
+      "clause2_met_warm": false,
+      "joint_met": false
+    },
+    "w16m8L4_K1": {
+      "config": {
+        "width": 16,
+        "modes": 8,
+        "layers": 4,
+        "stride": 1
+      },
+      "params_trained": 266729,
+      "epochs": [
+        80
+      ],
+      "applications_per_wafer": 10,
+      "runs": [
+        "runs/shrink/w16m8L4_K1_s1",
+        "runs/shrink/w16m8L4_K1_s2",
+        "runs/shrink/w16m8L4_K1_s3"
+      ],
+      "seeds": [
+        1,
+        2,
+        3
+      ],
+      "n_seeds": 3,
+      "verdict_strength": "screen",
+      "in_distribution": {
+        "terminal_step": {
+          "per_seed": [
+            0.024917721055448056,
+            0.026407344076782465,
+            0.026757577791810035
+          ],
+          "point": 0.026027547641346852,
+          "seed_range": 0.0018398567363619792,
+          "lo": 0.024464663657483957,
+          "hi": 0.027762152021657677,
+          "n": 250,
+          "met_point": true,
+          "met_every_seed": true,
+          "met_upper_ci": true
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.01828980911274751
+      },
+      "crossed_in_coverage": {
+        "n_trajectories": 121,
+        "terminal_step": {
+          "per_seed": [
+            0.04217762182936195,
+            0.04290608897774426,
+            0.04475605009077502
+          ],
+          "point": 0.04327992029929374,
+          "seed_range": 0.0025784282614130655,
+          "lo": 0.035057150317194356,
+          "hi": 0.05331691068535562,
+          "n": 121,
+          "met_point": true,
+          "met_every_seed": true,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.028545800357872297
+      },
+      "cost": {
+        "params": 266729,
+        "applications_per_wafer": 10,
+        "rounds": 12,
+        "warm": {
+          "per_apply_cpu_s": 0.01071395850000001,
+          "per_wafer_cpu_s": 0.10713958500000009,
+          "spread_factor": 1.0109901973141335,
+          "over_budget_factor": 387.1873737599934,
+          "under_budget": false,
+          "speedup_vs_solver": 2.582728848539033,
+          "n": 12
+        },
+        "cold": {
+          "per_apply_cpu_s": 0.014897937000000083,
+          "per_wafer_cpu_s": 0.14897937000000083,
+          "spread_factor": 1.6660346705093252,
+          "over_budget_factor": 201.62212192660533,
+          "under_budget": false,
+          "speedup_vs_solver": 4.959773215580089,
+          "n": 12
+        }
+      },
+      "clause2_met_warm": false,
+      "joint_met": false
+    },
+    "w16m8L4_K10": {
+      "config": {
+        "width": 16,
+        "modes": 8,
+        "layers": 4,
+        "stride": 10
+      },
+      "params_trained": 266729,
+      "epochs": [
+        800
+      ],
+      "applications_per_wafer": 1,
+      "runs": [
+        "runs/shrink/w16m8L4_K10_s1",
+        "runs/shrink/w16m8L4_K10_s2",
+        "runs/shrink/w16m8L4_K10_s3"
+      ],
+      "seeds": [
+        1,
+        2,
+        3
+      ],
+      "n_seeds": 3,
+      "verdict_strength": "screen",
+      "in_distribution": {
+        "terminal_step": {
+          "per_seed": [
+            0.027672845456749202,
+            0.026974827624857426,
+            0.02876967604458332
+          ],
+          "point": 0.027805783042063315,
+          "seed_range": 0.0017948484197258946,
+          "lo": 0.02632554732064406,
+          "hi": 0.029403388170401255,
+          "n": 250,
+          "met_point": true,
+          "met_every_seed": true,
+          "met_upper_ci": true
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.027805783042063315
+      },
+      "crossed_in_coverage": {
+        "n_trajectories": 121,
+        "terminal_step": {
+          "per_seed": [
+            0.059101225608143924,
+            0.06488713120256574,
+            0.06576766651739513
+          ],
+          "point": 0.06325200777603493,
+          "seed_range": 0.006666440909251205,
+          "lo": 0.04717829345171301,
+          "hi": 0.08286958804652968,
+          "n": 121,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.06325200777603493
+      },
+      "cost": {
+        "params": 266729,
+        "applications_per_wafer": 1,
+        "rounds": 12,
+        "warm": {
+          "per_apply_cpu_s": 0.010882978499999862,
+          "per_wafer_cpu_s": 0.010882978499999862,
+          "spread_factor": 1.0087558957611018,
+          "over_budget_factor": 39.3295518561269,
+          "under_budget": false,
+          "speedup_vs_solver": 25.426173266813272,
+          "n": 12
+        },
+        "cold": {
+          "per_apply_cpu_s": 0.015240069499999953,
+          "per_wafer_cpu_s": 0.015240069499999953,
+          "spread_factor": 1.7831456447311917,
+          "over_budget_factor": 20.62523925895856,
+          "under_budget": false,
+          "speedup_vs_solver": 48.484286046071,
+          "n": 12
+        }
+      },
+      "clause2_met_warm": false,
+      "joint_met": false
+    },
+    "w32m12L4_K10": {
+      "config": {
+        "width": 32,
+        "modes": 12,
+        "layers": 4,
+        "stride": 10
+      },
+      "params_trained": 2369977,
+      "epochs": [
+        800
+      ],
+      "applications_per_wafer": 1,
+      "runs": [
+        "runs/shrink/w32m12L4_K10_s1",
+        "runs/shrink/w32m12L4_K10_s2",
+        "runs/shrink/w32m12L4_K10_s3"
+      ],
+      "seeds": [
+        1,
+        2,
+        3
+      ],
+      "n_seeds": 3,
+      "verdict_strength": "screen",
+      "in_distribution": {
+        "terminal_step": {
+          "per_seed": [
+            0.026676441956311463,
+            0.025950718112289904,
+            0.026163493700325488
+          ],
+          "point": 0.026263551256308953,
+          "seed_range": 0.0007257238440215585,
+          "lo": 0.02451268821116537,
+          "hi": 0.028110224808752537,
+          "n": 250,
+          "met_point": true,
+          "met_every_seed": true,
+          "met_upper_ci": true
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.026263551256308953
+      },
+      "crossed_in_coverage": {
+        "n_trajectories": 121,
+        "terminal_step": {
+          "per_seed": [
+            0.0742057573727586,
+            0.08186120766961624,
+            0.07314301189035177
+          ],
+          "point": 0.07640332564424221,
+          "seed_range": 0.00871819577926447,
+          "lo": 0.05072757734220537,
+          "hi": 0.10838356567540311,
+          "n": 121,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.07640332564424221
+      },
+      "cost": {
+        "params": 2369977,
+        "applications_per_wafer": 1,
+        "rounds": 12,
+        "warm": {
+          "per_apply_cpu_s": 0.02340349850000001,
+          "per_wafer_cpu_s": 0.02340349850000001,
+          "spread_factor": 1.0075208763629973,
+          "over_budget_factor": 84.5769481094307,
+          "under_budget": false,
+          "speedup_vs_solver": 11.823552662436345,
+          "n": 12
+        },
+        "cold": {
+          "per_apply_cpu_s": 0.03294905349999999,
+          "per_wafer_cpu_s": 0.03294905349999999,
+          "spread_factor": 1.7294810886485523,
+          "over_budget_factor": 44.59179873121496,
+          "under_budget": false,
+          "speedup_vs_solver": 22.425648402919983,
+          "n": 12
+        }
+      },
+      "clause2_met_warm": false,
+      "joint_met": false
+    },
+    "w8m4L2_K1": {
+      "config": {
+        "width": 8,
+        "modes": 4,
+        "layers": 2,
+        "stride": 1
+      },
+      "params_trained": 10897,
+      "epochs": [
+        80
+      ],
+      "applications_per_wafer": 10,
+      "runs": [
+        "runs/shrink/w8m4L2_K1_s1",
+        "runs/shrink/w8m4L2_K1_s2",
+        "runs/shrink/w8m4L2_K1_s3"
+      ],
+      "seeds": [
+        1,
+        2,
+        3
+      ],
+      "n_seeds": 3,
+      "verdict_strength": "screen",
+      "in_distribution": {
+        "terminal_step": {
+          "per_seed": [
+            0.06587516009807587,
+            0.05023132007569075,
+            0.04855236364156008
+          ],
+          "point": 0.05488628127177556,
+          "seed_range": 0.017322796456515792,
+          "lo": 0.05153120066411794,
+          "hi": 0.05883033626551429,
+          "n": 250,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.04186378111938636
+      },
+      "crossed_in_coverage": {
+        "n_trajectories": 121,
+        "terminal_step": {
+          "per_seed": [
+            0.09493191623367554,
+            0.07218511411843222,
+            0.07148705025719217
+          ],
+          "point": 0.0795346935364333,
+          "seed_range": 0.023444865976483376,
+          "lo": 0.06950343172784289,
+          "hi": 0.09099907579128796,
+          "n": 121,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.05494060019959924
+      },
+      "cost": {
+        "params": 10897,
+        "applications_per_wafer": 10,
+        "rounds": 12,
+        "warm": {
+          "per_apply_cpu_s": 0.002074259499999953,
+          "per_wafer_cpu_s": 0.02074259499999953,
+          "spread_factor": 1.5329574914423023,
+          "over_budget_factor": 74.96081754485965,
+          "under_budget": false,
+          "speedup_vs_solver": 13.340302744184436,
+          "n": 12
+        },
+        "cold": {
+          "per_apply_cpu_s": 0.008681431500000059,
+          "per_wafer_cpu_s": 0.08681431500000059,
+          "spread_factor": 1.6070018022047636,
+          "over_budget_factor": 117.49067272807466,
+          "under_budget": false,
+          "speedup_vs_solver": 8.511313934804358,
+          "n": 12
+        }
+      },
+      "clause2_met_warm": false,
+      "joint_met": false
+    },
+    "w8m4L2_K10": {
+      "config": {
+        "width": 8,
+        "modes": 4,
+        "layers": 2,
+        "stride": 10
+      },
+      "params_trained": 10897,
+      "epochs": [
+        800
+      ],
+      "applications_per_wafer": 1,
+      "runs": [
+        "runs/shrink/w8m4L2_K10_s1",
+        "runs/shrink/w8m4L2_K10_s2",
+        "runs/shrink/w8m4L2_K10_s3"
+      ],
+      "seeds": [
+        1,
+        2,
+        3
+      ],
+      "n_seeds": 3,
+      "verdict_strength": "screen",
+      "in_distribution": {
+        "terminal_step": {
+          "per_seed": [
+            0.04719995222985744,
+            0.04908787447959185,
+            0.0452307403832674
+          ],
+          "point": 0.04717285569757223,
+          "seed_range": 0.0038571340963244466,
+          "lo": 0.044964506709699835,
+          "hi": 0.049642060853913414,
+          "n": 250,
+          "met_point": true,
+          "met_every_seed": true,
+          "met_upper_ci": true
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.04717285569757223
+      },
+      "crossed_in_coverage": {
+        "n_trajectories": 121,
+        "terminal_step": {
+          "per_seed": [
+            0.07884047446726275,
+            0.08172493212479205,
+            0.07230277122421698
+          ],
+          "point": 0.07762272593875726,
+          "seed_range": 0.009422160900575072,
+          "lo": 0.06704837130780329,
+          "hi": 0.08925435049343886,
+          "n": 121,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.07762272593875726
+      },
+      "cost": {
+        "params": 10897,
+        "applications_per_wafer": 1,
+        "rounds": 12,
+        "warm": {
+          "per_apply_cpu_s": 0.0017770649999999666,
+          "per_wafer_cpu_s": 0.0017770649999999666,
+          "spread_factor": 1.0946789224006794,
+          "over_budget_factor": 6.422062679734938,
+          "under_budget": false,
+          "speedup_vs_solver": 155.71321082796933,
+          "n": 12
+        },
+        "cold": {
+          "per_apply_cpu_s": 0.007211803500000058,
+          "per_wafer_cpu_s": 0.007211803500000058,
+          "spread_factor": 1.7683427217453371,
+          "over_budget_factor": 9.760137424314001,
+          "under_budget": false,
+          "speedup_vs_solver": 102.45757375391523,
+          "n": 12
+        }
+      },
+      "clause2_met_warm": false,
+      "joint_met": false
+    },
+    "w8m8L2_K10": {
+      "config": {
+        "width": 8,
+        "modes": 8,
+        "layers": 2,
+        "stride": 10
+      },
+      "params_trained": 35473,
+      "epochs": [
+        800
+      ],
+      "applications_per_wafer": 1,
+      "runs": [
+        "runs/shrink/w8m8L2_K10_s1",
+        "runs/shrink/w8m8L2_K10_s2",
+        "runs/shrink/w8m8L2_K10_s3"
+      ],
+      "seeds": [
+        1,
+        2,
+        3
+      ],
+      "n_seeds": 3,
+      "verdict_strength": "screen",
+      "in_distribution": {
+        "terminal_step": {
+          "per_seed": [
+            0.04003337508440018,
+            0.0407435257807374,
+            0.04207617188990116
+          ],
+          "point": 0.04095102425167958,
+          "seed_range": 0.002042796805500985,
+          "lo": 0.038524669456668194,
+          "hi": 0.04360772075361261,
+          "n": 250,
+          "met_point": true,
+          "met_every_seed": true,
+          "met_upper_ci": true
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.04095102425167958
+      },
+      "crossed_in_coverage": {
+        "n_trajectories": 121,
+        "terminal_step": {
+          "per_seed": [
+            0.07178530760478875,
+            0.0667308523234996,
+            0.07060660857491749
+          ],
+          "point": 0.06970758950106862,
+          "seed_range": 0.005054455281289158,
+          "lo": 0.05873534188557098,
+          "hi": 0.0820249975233059,
+          "n": 121,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.06970758950106862
+      },
+      "cost": {
+        "params": 35473,
+        "applications_per_wafer": 1,
+        "rounds": 12,
+        "warm": {
+          "per_apply_cpu_s": 0.0030939629999999774,
+          "per_wafer_cpu_s": 0.0030939629999999774,
+          "spread_factor": 1.0775536250093456,
+          "over_budget_factor": 11.181146618036468,
+          "under_budget": false,
+          "speedup_vs_solver": 89.43626572134254,
+          "n": 12
+        },
+        "cold": {
+          "per_apply_cpu_s": 0.006994726999999923,
+          "per_wafer_cpu_s": 0.006994726999999923,
+          "spread_factor": 1.2652735906783,
+          "over_budget_factor": 9.466355643988123,
+          "under_budget": false,
+          "speedup_vs_solver": 105.63727347757934,
+          "n": 12
+        }
+      },
+      "clause2_met_warm": false,
+      "joint_met": false
+    }
+  },
+  "incomplete": [],
+  "joint_pass_configs": [],
+  "verdict": "no config in this sweep meets both clauses"
+}
