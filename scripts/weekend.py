@@ -166,6 +166,91 @@ def live_jobs():
                               if ln.startswith("def test_"))
     return out
 
+def cost_reproducibility_section():
+    """The clause-2 cost, as a distribution rather than a point.
+
+    Every speedup this repo published before 2026-09-10 23:00 was one invocation
+    of one process. `scripts/cost_reproducibility.py` measured the same
+    architecture 14 times and the readings straddle the clause, so a point
+    estimate is not a verdict. Generated here rather than written, and from the
+    repro JSONs plus every `arch_cost*.json` that priced the same config, so the
+    between-invocation table cannot drift.
+    """
+    L = []
+    repros = sorted(Path("runs").glob("cost_repro_*.json"))
+    repros = [r for r in repros if "WRONG_DENOMINATOR" not in r.name]
+    if not repros:
+        return L
+    L += ["## Clause 2 is a distribution, and its median fails", ""]
+    for rp in repros:
+        d = read(rp)
+        if not d:
+            continue
+        sm, cfg = d["summary"], d["config"]
+        n, tot = sm["n_invocations_meeting_target"], len(d["invocations"])
+        tgt = d["protocol"]["speedup_target"]
+        L += [f"**`{cfg}`, {tot} independent invocations** "
+              f"(fresh subprocess each, workload-matched denominator held fixed "
+              f"at {d['protocol']['denominator_cpu_s']:.4f} CPU-s):", "",
+              f"| per-wafer cost | **{sm['min_us']:.1f} – {sm['max_us']:.1f} µs** "
+              f"(median {sm['median_us']:.1f}), spread "
+              f"**{sm['between_invocation_spread_factor']:.2f}×** |",
+              "|---|---|",
+              f"| speedup | **{sm['speedup_min']:.1f} – {sm['speedup_max']:.1f}×** "
+              f"(median {sm['speedup_median']:.1f}×) |",
+              f"| invocations meeting {tgt:g}× | **{n} of {tot}** |",
+              f"| loadavg during the run | {sm['loadavg_range'][0]:.1f} – "
+              f"{sm['loadavg_range'][1]:.1f} |",
+              f"| Spearman(µs, loadavg) | {sm['spearman_us_vs_loadavg']} |",
+              "",
+              f"**Verdict: {d['verdict']}**", ""]
+
+        # Every arch_cost invocation that priced this same config, so the
+        # single-draw readings sit beside the distribution that contains them.
+        rows = []
+        for acp in sorted(Path("runs").glob("arch_cost*.json")):
+            ac = read(acp) or {}
+            m = (ac.get("models") or {}).get(cfg)
+            if not m or "warm" not in m:
+                continue
+            prov = (ac.get("protocol", {}).get("budget_provenance", {})
+                    .get("denominators_cpu_s", {}))
+            rows.append((acp.name, m.get("loadavg_1min", {}).get("before"),
+                         prov.get("terminal_one_apply"),
+                         m["warm"]["per_wafer_cpu_s"] * 1e6,
+                         m["warm"]["speedup_vs_solver"]))
+        if rows:
+            L += ["Each single-invocation reading this repo published for the "
+                  "same architecture, with the load it was taken at and the "
+                  "solver denominator measured in the same invocation:", "",
+                  "| invocation | loadavg | solver denominator | operator | speedup |",
+                  "|---|---|---|---|---|"]
+            for name, ld, den, us, sp in rows:
+                L += [f"| `{name}` | {ld:.1f} | "
+                      f"{den:.4f} s | {us:.1f} µs | {sp:.1f}× |"]
+            dens = [r[2] for r in rows if r[2]]
+            uss = [r[3] for r in rows]
+            if len(dens) > 1:
+                L += ["",
+                      f"**The denominator is stable to "
+                      f"{(max(dens) / min(dens) - 1) * 100:.1f}% across that "
+                      f"range of load while the operator moves "
+                      f"{max(uss) / min(uss):.2f}×**, so the ratio inherits the "
+                      f"operator's whole variance instead of cancelling any of "
+                      f"it. Load is the plausible mechanism — four tiny "
+                      f"dispatches are far more exposed to cache and "
+                      f"memory-bandwidth contention than a half-second "
+                      f"compute-bound C++ solve — but the ordering is not "
+                      f"monotone in loadavg, so it is a hypothesis with a "
+                      f"mechanism and not a finding.", ""]
+        L += ["Any single number above is a real measurement and none of them is "
+              "a verdict. A clause verdict needs a distribution whose whole "
+              "range sits on one side of the threshold — the same standard this "
+              "repo already applies to accuracy, where it demands 8 seeds and an "
+              "exact test before believing a 0.01 difference in rel-L2.", ""]
+    return L
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", default="runs/seed1")
@@ -690,6 +775,8 @@ def main():
     L += [""]
 
     L += [""]
+
+    L += cost_reproducibility_section()
 
     Path(a.out).write_text("\n".join(L) + "\n")
     print(f"wrote {a.out}")
