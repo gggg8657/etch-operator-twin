@@ -196,7 +196,11 @@ def test_an_arm_still_training_is_not_scored_as_a_seed():
     import json as _json
     import tempfile
 
-    from kcurve_report import is_complete
+    # `scripts.kcurve_report`, matching this file's module-level import. A
+    # bare `kcurve_report` only resolves when scripts/ happens to be on
+    # sys.path, which it is not under `python tests/test_kcurve.py` -- the
+    # way CI and every other runner invoke this file.
+    from scripts.kcurve_report import is_complete
 
     root = Path(tempfile.mkdtemp())
     run = root / "K2_nv_s1"
@@ -227,7 +231,11 @@ def test_the_anchor_is_not_excluded_for_predating_the_done_marker():
     import json as _json
     import tempfile
 
-    from kcurve_report import is_complete
+    # `scripts.kcurve_report`, matching this file's module-level import. A
+    # bare `kcurve_report` only resolves when scripts/ happens to be on
+    # sys.path, which it is not under `python tests/test_kcurve.py` -- the
+    # way CI and every other runner invoke this file.
+    from scripts.kcurve_report import is_complete
 
     run = Path(tempfile.mkdtemp()) / "seed3"
     run.mkdir(parents=True)
