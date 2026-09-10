@@ -1,0 +1,195 @@
+{
+  "hypothesis": "H6: the 1000x clause is unreachable on this hardware for ANY model whose output is a 128x128 field, because the cost floor of producing that output exceeds the budget. Falsified if a useless model comes in under budget.",
+  "protocol": {
+    "estimator": "CPU-seconds per wafer, one verified thread, fresh subprocess per model, one application per wafer",
+    "rounds": 12,
+    "warm_rollouts_untimed": 3,
+    "budget_source": "runs/speed_symmetric.json: solver marginal_warm 0.2767 CPU-s and cold_single_wafer 0.7389 CPU-s, divided by the clause's 1000x",
+    "budget_warm_s": 0.0002767124970000001,
+    "budget_cold_s": 0.0007389038889999999,
+    "no_accuracy_claimed": "every row but the deployed one is chosen to be useless. These are cost floors; a fast row here is not a surrogate."
+  },
+  "models": {
+    "identity_field": {
+      "note": "returns its input unchanged. The absolute floor for a 128x128 field output: no arithmetic, only the tensor handling.",
+      "output": "field 128x128",
+      "is_a_real_surrogate": false,
+      "params": 0,
+      "warm": {
+        "median_cpu_s": 1.1309999999875586e-06,
+        "min_cpu_s": 8.819999999243322e-07,
+        "cpu_over_wall_median": 1.03448243993796,
+        "n": 12,
+        "over_budget_factor": 0.0040872747427361696,
+        "under_budget": true,
+        "speedup_vs_solver": 244661.80106369941
+      },
+      "cold": {
+        "median_cpu_s": 8.788000000037322e-06,
+        "min_cpu_s": 7.995000000038388e-06,
+        "cpu_over_wall_median": 0.8765048671405922,
+        "n": 12,
+        "over_budget_factor": 0.01189329239007067,
+        "under_budget": true,
+        "speedup_vs_solver": 84081.00694092648
+      }
+    },
+    "conv1x1_field": {
+      "note": "one multiply-add per pixel. The floor for any convolutional model with this output.",
+      "output": "field 128x128",
+      "is_a_real_surrogate": false,
+      "params": 2,
+      "warm": {
+        "median_cpu_s": 1.0376500000019995e-05,
+        "min_cpu_s": 9.293000000076823e-06,
+        "cpu_over_wall_median": 1.0060787146531274,
+        "n": 12,
+        "over_budget_factor": 0.037499209874933805,
+        "under_budget": true,
+        "speedup_vs_solver": 26667.22854521919
+      },
+      "cold": {
+        "median_cpu_s": 0.0002877255000000023,
+        "min_cpu_s": 0.0002637779999999923,
+        "cpu_over_wall_median": 0.9968283337194159,
+        "n": 12,
+        "over_budget_factor": 0.389395027260443,
+        "under_budget": true,
+        "speedup_vs_solver": 2568.0862106417194
+      }
+    },
+    "conv3x3_w8_field": {
+      "note": "the smallest convolutional stack with any spatial capacity at all.",
+      "output": "field 128x128",
+      "is_a_real_surrogate": false,
+      "params": 153,
+      "warm": {
+        "median_cpu_s": 0.0003698589999999724,
+        "min_cpu_s": 0.0003434829999999778,
+        "cpu_over_wall_median": 1.0015243929359863,
+        "n": 12,
+        "over_budget_factor": 1.3366183457914886,
+        "under_budget": false,
+        "speedup_vs_solver": 748.156721885964
+      },
+      "cold": {
+        "median_cpu_s": 0.0029048895000000075,
+        "min_cpu_s": 0.002579843999999998,
+        "cpu_over_wall_median": 1.0000899244667978,
+        "n": 12,
+        "over_budget_factor": 3.9313495885525214,
+        "under_budget": false,
+        "speedup_vs_solver": 254.3655753514886
+      }
+    },
+    "fno_w8_m4_field": {
+      "note": "a deliberately tiny spectral operator: 1/8 the width, 1/5 the modes and half the depth of the deployed one.",
+      "output": "field 128x128",
+      "is_a_real_surrogate": false,
+      "params": 10897,
+      "warm": {
+        "median_cpu_s": 0.0017818139999999927,
+        "min_cpu_s": 0.001761809000000003,
+        "cpu_over_wall_median": 1.0008624763513074,
+        "n": 12,
+        "over_budget_factor": 6.439224897023686,
+        "under_budget": false,
+        "speedup_vs_solver": 155.29819442433455
+      },
+      "cold": {
+        "median_cpu_s": 0.0068069730000000495,
+        "min_cpu_s": 0.0062423050000000035,
+        "cpu_over_wall_median": 0.9999710073838181,
+        "n": 12,
+        "over_budget_factor": 9.212257644512208,
+        "under_budget": false,
+        "speedup_vs_solver": 108.55102392796248
+      }
+    },
+    "fno_w64_m20_field_DEPLOYED": {
+      "note": "the architecture every accuracy number in this repo comes from, 26,248,025 parameters. The only row here that is a real surrogate.",
+      "output": "field 128x128",
+      "is_a_real_surrogate": true,
+      "params": 26248025,
+      "warm": {
+        "median_cpu_s": 0.0878353420000001,
+        "min_cpu_s": 0.07919844000000031,
+        "cpu_over_wall_median": 1.0000322772809995,
+        "n": 12,
+        "over_budget_factor": 317.42455780737674,
+        "under_budget": false,
+        "speedup_vs_solver": 3.1503548651293443
+      },
+      "cold": {
+        "median_cpu_s": 0.08083625700000008,
+        "min_cpu_s": 0.07620010500000007,
+        "cpu_over_wall_median": 1.0000097708819946,
+        "n": 12,
+        "over_budget_factor": 109.40023215928709,
+        "under_budget": false,
+        "speedup_vs_solver": 9.140748426785757
+      }
+    },
+    "mlp_surface_128": {
+      "note": "recipe -> 128 surface heights, no field at all. The alternative output representation, at a capacity that is at least arguable.",
+      "output": "surface, 128 heights",
+      "is_a_real_surrogate": false,
+      "params": 34048,
+      "warm": {
+        "median_cpu_s": 4.7462999999914324e-05,
+        "min_cpu_s": 4.663299999996262e-05,
+        "cpu_over_wall_median": 1.0063684385101643,
+        "n": 12,
+        "over_budget_factor": 0.17152459868812614,
+        "under_budget": true,
+        "speedup_vs_solver": 5830.067568432244
+      },
+      "cold": {
+        "median_cpu_s": 0.0007439199999999535,
+        "min_cpu_s": 0.0006954809999999423,
+        "cpu_over_wall_median": 0.9993264726459025,
+        "n": 12,
+        "over_budget_factor": 1.0067885838396955,
+        "under_budget": false,
+        "speedup_vs_solver": 993.2571902893404
+      }
+    },
+    "mlp_surface_128_plus_raster": {
+      "note": "the same surface model, plus the broadcast that turns 128 heights into a 128x128 signed-height field -- the cost of scoring it against clause 1's field metric, which belongs on the operator's side of the ratio.",
+      "output": "surface -> field 128x128",
+      "is_a_real_surrogate": false,
+      "params": 34048,
+      "warm": {
+        "median_cpu_s": 3.304099999995591e-05,
+        "min_cpu_s": 3.2570999999981254e-05,
+        "cpu_over_wall_median": 1.003615395470042,
+        "n": 12,
+        "over_budget_factor": 0.11940552146423622,
+        "under_budget": true,
+        "speedup_vs_solver": 8374.822099826559
+      },
+      "cold": {
+        "median_cpu_s": 0.0008865920000000194,
+        "min_cpu_s": 0.0007195119999999777,
+        "cpu_over_wall_median": 0.9992847200330988,
+        "n": 12,
+        "over_budget_factor": 1.1998745888317006,
+        "under_budget": false,
+        "speedup_vs_solver": 833.4204335252109
+      }
+    }
+  },
+  "verdict": {
+    "cheapest_field_model_cpu_s": 1.1309999999875586e-06,
+    "cheapest_field_model_is": "returns its input unchanged. The absolute floor for a 128x128 field output: no arithmetic, only the tensor handling.",
+    "budget_warm_s": 0.0002767124970000001,
+    "field_floor_over_budget": 0.0040872747427361696,
+    "H6_supported": false,
+    "H6_reading": "FALSIFIED: a useless model comes in under budget, so the field output does not bound the clause and the gap is capacity we chose. The distillation route is open and H6 is withdrawn.",
+    "surface_output_cpu_s": 4.7462999999914324e-05,
+    "surface_output_over_budget": 0.17152459868812614,
+    "surface_plus_raster_cpu_s": 3.304099999995591e-05,
+    "surface_plus_raster_over_budget": 0.11940552146423622,
+    "escape_note": "the surface rows are the alternative representation. If they are under budget and the field floor is not, then the clause turns on the output representation, which is a design decision this repo made and can revisit -- and the '+raster' row prices scoring it against clause 1's field metric. Neither surface row has been trained or scored for accuracy; this file bounds cost only."
+  }
+}

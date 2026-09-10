@@ -2128,3 +2128,129 @@ turn is not the verdict but its basis: the previously recorded "short by 679×"
 came from a contaminated denominator and is withdrawn. The clause is not being
 declared again yet, because rung 2 has one route left that has not been tried —
 codex's distillation route — and a clause that is still moving has no budget.
+
+---
+
+## Turn 3, H6 — written before the run: is 1000× reachable by ANY model in this output representation?
+
+codex's distillation route requires the operator to reach **≤276 µs per wafer
+warm** (solver warm 0.2758 CPU-s / 1000). Before training anything smaller, there
+is a cheaper question that bounds the whole route, and an arithmetic sketch says
+it may already be decided.
+
+The deployed operator emits a 128×128 signed-distance field per application:
+16,384 float32 outputs, 65 KB. On one CPU thread, *writing* that array is already
+tens of microseconds, and a single 3×3 convolution at 8 channels is
+16384·8·8·9·2 ≈ 19 MFLOP, which at a few GFLOP/s per core is **milliseconds** —
+an order of magnitude past the 276 µs budget before any useful capacity exists.
+
+**H6: the 1000× clause is unreachable on this hardware for *any* model whose
+output is a 128×128 field, independent of architecture, because the cost floor of
+producing that output exceeds the budget.** If true, this converts "our operator
+is 95× short" into a statement about the problem formulation rather than about
+our network, and it identifies the only escape: change the output
+representation.
+
+The prediction that distinguishes H6 from "we did not shrink hard enough": the
+measured cost of a *deliberately useless* model — an identity map, a 1×1
+convolution — will already exceed 276 µs. A distillation story predicts the
+opposite, that the floor is well under budget and the gap is capacity we chose to
+buy.
+
+**The escape H6 implies, and the reason it is worth measuring rather than
+asserting.** The etch front is a curve, not a field: the 128×128 SDF is a
+*rasterisation* of ~128 surface heights. A model that emits the surface directly
+(N heights, or a low-dimensional basis) has an output 100–1000× smaller and a
+correspondingly lower floor. This is codex's "low-dimensional surface basis" and
+it is the only one of its four routes that is both legitimate and not yet tried.
+Clause 3 already measures shape error from contours, so the metric survives the
+change of representation — but clause 1 is a *field* rel-L2, so a surface-output
+model would have to be rasterised back to be scored, and that rasterisation cost
+belongs on the operator's side of the ratio. Both sides of that trade get
+measured, not argued.
+
+`scripts/cost_floor.py` measures, at one application per wafer, CPU-seconds for:
+identity, 1×1 conv, single 3×3 conv, tiny FNO (width 8 / modes 4), the deployed
+FNO (width 64 / modes 20), and a surface-output MLP (recipe → 128 heights) both
+with and without rasterisation to a 128×128 field. **No accuracy is claimed by
+any row**: these are cost floors, and a row that is fast and useless is the point
+of the exercise, not a result.
+
+### H6 FALSIFIED, and my arithmetic was wrong by an order of magnitude
+
+`runs/cost_floor.json`, CPU-seconds per wafer at one application, budget = the
+measured solver cost / 1000 (warm 277 µs, cold 739 µs):
+
+| model | output | warm | cold | warm speedup | cold speedup |
+|---|---|---|---|---|---|
+| identity | field 128×128 | 1 µs | 9 µs | 244662× | 84081× |
+| 1×1 conv | field 128×128 | 10 µs | 288 µs | 26667× | 2568× |
+| **3×3 conv, width 8** | field 128×128 | **370 µs** | 2905 µs | **748×** | 254× |
+| FNO width 8 / modes 4 / 2 layers | field 128×128 | 1782 µs | 6807 µs | 155× | 109× |
+| **FNO width 64 / modes 20 / 4 layers (deployed)** | field 128×128 | **87835 µs** | 80836 µs | **3.2×** | 9.1× |
+| MLP → 128 surface heights | surface | 47 µs | 744 µs | **5830×** | 993× |
+| the same + rasterise to a field | surface → field | 33 µs | 887 µs | 8375× | 833× |
+
+**H6 is falsified and withdrawn.** I predicted that producing a 128×128 field
+would itself exceed the budget; a 3×3 convolution at width 8 produces one in
+370 µs, which is **748×** — within 1.34× of the clause — and a 1×1 convolution
+manages 26,667×. My sketch put a two-layer 8-channel stack in the milliseconds
+by assuming a few GFLOP/s per core; the measured rate is ~13 GFLOP/s
+(4.7 MFLOP in 370 µs), because this is an AVX-512 Xeon and MKL vectorises it. An
+order of magnitude, in the direction that would have let me stop.
+
+So the finding is the opposite of the one I wrote down, and it is much better:
+**clause 2 is not architecture-bound. It is bound by the architecture we chose.**
+The deployed operator is **317× over the warm budget** and its 26,248,025
+parameters are the entire reason the clause fails. The distillation route codex
+named is not merely open, it is nearly closed already on cost: something between
+a 1×1 and a 3×3 convolution at width 8 sits on the 1000× line, and a
+surface-output model clears it by 5.8× *including* the rasterisation needed to
+score it against clause 1's field metric.
+
+The honest statement of clause 2's position has therefore changed from "short by
+95× and that is not a gap an implementation closes" to **"short by 95× because we
+spent 317× of the budget on capacity, and whether that capacity is necessary for
+rel-L2 ≤ 0.05 is not measured."** The earlier framing asserted the answer to a
+question nobody had asked. That framing is withdrawn too.
+
+Note also that the cold reading is *unfavourable* to cheap models and favourable
+to the deployed one (identity 1 µs warm against 9 µs cold; the deployed FNO 3.2×
+warm against 9.1× cold), because a cheap model's cost is dominated by the
+one-time initialisation the cold reading charges it. Both readings stay in the
+table; neither is dropped.
+
+---
+
+## Turn 3, H7 — written before the run: what does shrinking cost in accuracy?
+
+Cost is now known at every scale; accuracy at those scales is not. The frontier
+is the deliverable, and one branch of it needs no new code, since `train.py`
+already takes `--width`, `--modes` and `--layers`.
+
+**H7: the capacity the deployed operator spends is mostly unnecessary, so a
+shrunken FNO at stride 10 holds terminal-step rel-L2 within the anchor's seed
+range while costing 1–2 orders of magnitude less.**
+
+The decision rule, fixed now so it cannot be chosen after seeing the numbers:
+
+* The cheapest FNO measured, width 8 / modes 4 / 2 layers, is **155×** warm — so
+  **no FNO on this frontier reaches 1000×**. This sweep therefore cannot pass
+  clause 2 by itself, and is not being run in the hope that it will.
+* It is run because it is the cheap half of the decision about whether to write
+  the code for a convolutional or surface-output model. **If width 8 / modes 4
+  already fails rel-L2 ≤ 0.05 badly**, then a model 6× cheaper again will fail
+  worse, the frontier is closed below 1000×, and clause 2 is `UNREACHABLE` for a
+  reason about the problem rather than about our taste in architectures. **If it
+  holds accuracy**, capacity is cheap here, and the convolutional and
+  surface-output models — which do reach 1000× on cost — are worth building.
+* Screen at 3 seeds per config, verdict at 8 only for whichever config the
+  decision turns on. K=1's in-distribution terminal reading is 0.01890 with a
+  seed range of 0.00172, and the K=10 anchor is 0.04847 with a range of 0.01069;
+  a shrunken arm's gap must exceed those to mean anything.
+
+Confound to keep in view: every arm here is at **stride 10**, so it inherits
+K=10's accuracy penalty (terminal 0.04847 in distribution against K=1's 0.01890)
+*before* any shrinking. An arm that fails might be failing at the horizon rather
+than at the width, and the K=1 shrink arms are the control that separates those.
+Both are in the sweep.
