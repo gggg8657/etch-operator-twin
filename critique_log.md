@@ -5366,3 +5366,364 @@ already did exactly this for the five reconstruction bugs earlier this weekend �
 "pins each against a case whose answer is known in advance" — and it worked
 there for the same reason. That lesson had been learned and I did not transfer
 it.
+
+### H18's falsifier fired, and the reason is more interesting than the hypothesis was
+
+**Cost: confirmed and better than predicted.** All three variants clear the
+workload-matched 1000× budget — 226–294 µs/wafer, 1742–2268× — the first
+architectures in this repo to do so.
+
+**Accuracy: badly falsified.** Predicted 0.05–0.12 in-distribution terminal
+band rel-L2. Measured (`runs/specprop.json`, 1 seed each, so a screen):
+
+| config | params | in-dist terminal | 95% CI | crossed |
+|---|---|---|---|---|
+| `sp_m8ma32` | 283,904 | **0.29591** | [0.28887, 0.30293] | 0.35126 |
+| `sp_m4ma16` | 71,744 | 0.44269 | [0.43180, 0.45337] | 0.46810 |
+| `sp_m4ma4` | 9,344 | 0.82754 | [0.80575, 0.84926] | 0.78939 |
+
+The best is **5.9× outside the clause** and **2.5× worse than the top of my
+predicted range**. For scale, the same eval file puts persistence — a do-nothing
+predictor — at 3.89893, so the model has learned something real (13× better than
+doing nothing); it is simply nowhere near the clause.
+
+**The comparison that carries the finding is not against the clause but against
+the pointwise arms**, and it inverts what I would have guessed:
+
+| model | in phi | spatial coupling | in-dist terminal |
+|---|---|---|---|
+| `K10_sm` (deployed FNO) | nonlinear | global, 8 channels | **0.02639** |
+| `fno_w8m4L2` | nonlinear | global | 0.04717 |
+| `pw_wf32n3_gelu` | **nonlinear** | **none at all** | **0.05052** |
+| `sp_m8ma32` | **linear** | **global** | **0.29591** |
+
+**A nonlinear model with no spatial coupling whatsoever (0.05052) beats a
+linear model with global spatial coupling (0.29591) by 5.9×.** So on this
+problem, nonlinearity in φ is worth far more than spatial coupling is — which
+retro-explains why the pointwise family got as close as it did, and it is the
+physics: a level-set update depends on |∇φ| and on the sign of φ, both
+*nonlinear pointwise* functions of the field. My H18 write-up had the
+architecture's limitation exactly right ("a linear map cannot represent an
+undercut") and mis-sized it by an order of magnitude, because I priced the
+missing undercut and not the missing nonlinearity.
+
+**So H18's stated falsifier fires.** It said: *if this reaches under 300 µs and
+still misses rel-L2 ≤ 0.05 by more than the pointwise arms did, then the etch
+update is genuinely nonlinear in φ and the operation-count route is closed.* It
+missed by 5.9× where the best pointwise arm missed by 1.01×. **The
+operation-count route to clause 2 is closed for linear propagators**, and the
+four attacks on clause 2 are now exhausted inside eager PyTorch: tensor size
+(2.26× of a predicted 16×), the compiler (2.0–3.3× slower), architecture family
+(Pareto-dominated), and operation count (clears the clause at 6× the error).
+
+One thing that is *not* closed and is cheap: **more modes cost nothing.**
+`runs/op_count.json` shows `sp_m4ma4` and `sp_m8ma32` dispatch the same 4
+field-materialising operations despite 30× the parameters, and the accuracy
+trend in modes is steep and monotone — 0.82754 → 0.44269 → 0.29591 as
+(modes, modes_a) goes (4,4) → (4,16) → (8,32), while cost went *down* (277 →
+226 µs). So the model is still capacity-starved in a direction that is free, and
+pushing to Nyquist is the obvious next probe. A concurrent instance has already
+launched `m4_ma64` and `m0_ma64` (the latter an ablation with no multiplicative
+term at all, which is a good control I had not thought of). **But the required
+gain is 5.9× and the last doubling of modes bought 1.5×**, so I am recording the
+expectation that this does not close the clause, and the honest reason to run it
+is that it costs nothing rather than that it is likely to work.
+
+### Where the frontier now stands, with measured points on both sides of 1000×
+
+This is what H18 was for, and it is delivered even though the hypothesis failed:
+
+| architecture | speedup | rel-L2 | clause 1 | clause 2 |
+|---|---|---|---|---|
+| `sp_m8ma32` | **2268×** | 0.29591 | **fails by 5.9×** | **MEETS** |
+| `sp_m4ma4` | 1848× | 0.82754 | fails by 16.6× | MEETS |
+| `pw_wf8n1` | 542× | 0.26103 | fails by 5.2× | fails by 1.8× |
+| `fno_w8m4L2` | 187× | **0.04717** | **MEETS** | fails by 5.3× |
+| `fno_w64m20L4` | ~3× | 0.01890 | MEETS | fails by 333× |
+
+**No architecture measured meets both clauses, and the frontier is now bracketed
+rather than extrapolated.** Before this turn every statement about the clause-2
+gap was a cost row with no accuracy or an accuracy row with no cost. Now there
+are measured points on both sides: something 2.3× *faster* than the clause
+requires which is 5.9× too inaccurate, and something 5.3× too slow which is
+accurate. The crossing, if it exists, is inside that box.
+
+Every specprop row is **1 seed — a screen, not a verdict**; seeds 2 and 3 are
+running. The direction is not in doubt at this magnitude (the gap is 5.9×
+against a between-seed spread that is ~0.003 on comparable in-distribution
+arms), but the numbers will be restated at 3 seeds.
+
+### And a defect in my own reporting script, which produced a number before I caught it
+
+The first scoring run of `runs/specprop.json` reported **two** configs, one of
+them a "2-seed arm" at 0.76796. `shrink_report.config_key` had no `specprop`
+branch, so specprop runs fell through to the multiscale branch, `modes_a` was
+absent from the key, and **`sp_m4ma4` and `sp_m4ma16` — 9,344 and 71,744
+parameters — were pooled into one seed group and their means averaged.**
+
+The guard immediately below it, `assert len({config_key(c) for c in cfgs}) == 1`,
+was written for exactly this hazard and **cannot** catch it: it calls the same
+`config_key`, and a key blind to a field is self-consistently blind. Same shape
+of failure as the op-count bug an hour earlier — an instrument validating itself.
+
+Fixed by making the key's fields explicit per architecture (`ARCH_FIELDS`), by
+raising rather than defaulting when a field is missing, and by asserting the
+property from *outside* the function in `tests/test_report_keys.py`: changing any
+architecture-defining field must change the key, and no two run directories on
+the real tree may share one. That is the third time this weekend that the thing
+which caught a bug was a property test rather than a recomputation.
+
+## Turn 14 — H20's pre-registered null fires in the direction I did not predict, the optimisation explanation dies on the training curve, and depth conditioning meets clause 1 on every seed
+
+Three queues drained since last turn: `specprop64` (H20), `depthcond` (H19) and
+the locality control. Nothing was running when this turn started; GPUs 0 and 1
+were idle.
+
+### H20: both predictions I registered were wrong, and the one that was wrong in my favour is the interesting one
+
+Pre-registered in `scripts/specprop64.sh`: *"m4_ma64 lands 0.02–0.06; m0_ma64
+lands within 0.01 of it, i.e. I expect the lookup degeneracy to be REAL on this
+dataset."* Measured, in-distribution terminal band rel-L2, 3 seeds each:
+
+| config | params | s1 | s2 | s3 | mean | oracle floor at its `modes_a` |
+|---|---|---|---|---|---|---|
+| `m4_ma64` | 1,070,144 | 0.08823 | 0.08741 | 0.09094 | **0.08886** | 0.00003 |
+| `m0_ma64` (null) | — | 0.32238 | 0.31981 | 0.31973 | **0.32064** | 0.00003 |
+| `m8_ma32` (H18) | 283,904 | 0.29591 | 0.29581 | 0.29727 | 0.29633 | 0.28516 |
+
+**Prediction 1 falsified, mildly:** `m4_ma64` landed at 0.0889, outside the
+0.02–0.06 I registered, missing clause 1 by 1.78×.
+
+**Prediction 2 falsified, and this is the finding:** I expected the φ-blind null
+to land within 0.01 of the candidate, which would have meant this dataset cannot
+tell an operator from a recipe lookup table. It landed **3.6× worse**
+(0.32064 vs 0.08886). The `A(recipe)` term *can* in principle encode the whole
+terminal residual — the initial geometry is determined by `trench_width` and
+`mask_height`, both conditioning inputs, and at `ma=64` the additive term spans
+the whole spectrum — and it demonstrably does not learn to. 900 training pairs
+are not enough to memorise 250 recipe→field maps through a 64-hidden-unit MLP.
+
+So **the model is an operator on this dataset, not a lookup**, and that is
+established by a control registered before the run rather than argued after it.
+This is the single strongest piece of evidence in this repo that the φ pathway
+is doing real work, and it exists only because the null was launched *alongside*
+the candidate instead of being kept in reserve for the case where the number
+looked too good.
+
+**My own decision rule was incomplete, and I am not going to force the result
+into it.** The rule had three branches; the outcome is none of them. It said
+"neither meets 0.05 → the floor was not the binding constraint and the
+optimisation is." The first half is right and the second half is wrong, by
+measurement, in the next section. There is a fourth outcome I did not write
+down: neither the floor nor the optimisation, but *the shape of the φ pathway*.
+Writing a decision rule in advance is worth doing; treating it as exhaustive
+when the world produces a fourth branch is not.
+
+### The optimisation explanation is dead, and it died on a curve I already had
+
+"Needs more epochs" is the guess this log is explicitly forbidden to make
+without evidence, so here is the evidence. `runs/specprop/m4_ma64_s1/log.jsonl`,
+validation rollout band rel-L2 against the cosine LR schedule:
+
+| epoch | train_loss | val `roll_band` | val `roll_full` |
+|---|---|---|---|
+| 4 | 0.51967 | 1.92902 | 0.47218 |
+| 404 | 0.08262 | 0.09146 | 0.01948 |
+| 799 | 0.08183 | **0.08679** | 0.01781 |
+
+The last **400 of 800 epochs**, with the learning rate annealed from 1.169e-3 to
+exactly 0, moved validation error by **5.1%**. Test reads 0.08823 against
+validation's 0.08679, so there is no generalisation gap either — the model has
+converged to what this architecture can do. Doubling the epoch budget cannot
+recover 1.78×.
+
+**And the same curve kills the other easy explanation.** `m8_ma32` converges to
+val 0.30280 against an oracle projection floor of **0.28516** — it saturates its
+own representational bound to within **3.8%**. So at `ma=32` the model was
+representation-limited and the bound was tight, which is the strongest
+validation the `spectral_floor` instrument has had. At `ma=64` the same
+architecture sits **2900× above** its floor of 0.00003. The constraint moved,
+and it moved off representation.
+
+**What is left is the multiplicative band.** The model's entire dependence on φ
+runs through the lowest `modes`×`modes` corners of the input spectrum, and
+`modes` is still **4** — chosen by analogy with FNO practice, which is the exact
+mistake I made with `modes_a` two turns ago and accepted a falsification for.
+The null pins the value of that pathway at 3.6×, and it is seeing 4 modes of 64.
+
+### The comparison that reframes the frontier
+
+| model | in φ | φ pathway bandwidth | terminal rel-L2 | speedup |
+|---|---|---|---|---|
+| `fno_w8m4L2` | nonlinear | 4 modes, 8 channels | **0.04717** | 141× |
+| `pw_wf16n2_relu` (locality control) | nonlinear | pointwise only | 0.08722 | — |
+| `sp_m4_ma64` | **linear** | 4 modes, 1 channel | **0.08886** | **1188×** |
+| `sp_m8_ma32` | linear | 8 modes, 1 channel | 0.29633 | 2268× |
+| `sp_m0_ma64` (φ-blind null) | — | none | 0.32064 | — |
+
+Two things to say about this table and one of them retracts an emphasis of mine.
+
+**First, `sp_m4_ma64` is the best accuracy ever measured under 1000× in this
+repo, by 3.3×** — the previous best point clearing clause 2 was `sp_m8ma32` at
+0.29633. The clause-1 gap for a clause-2-clearing architecture went from 5.9× to
+1.78× in one change. The frontier box that turn 13 said was "bracketed rather
+than extrapolated" just got 3.3× narrower on the accuracy axis.
+
+**Second, and I did not expect it: the locality control lands on top of the
+linear propagator.** `pw_wf16n2_relu` — nonlinear, no spatial coupling at all —
+reads 0.09137/0.08308/0.08722, mean **0.08722**, against `sp_m4_ma64`'s 0.08886.
+Two architectures with disjoint capabilities (one has nonlinearity and no
+spatial mixing, the other has spatial mixing and no nonlinearity) land within
+1.9% of each other, and the FNO that has *both* reads 0.04717, a factor of 1.88
+better than either. That is a cleaner statement than turn 13's "nonlinearity is
+worth far more than spatial coupling", which was drawn from `pw_wf32n3` at
+0.05052 against `sp_m8ma32` at 0.29591 — a comparison in which the spectral arm
+was *also* crippled by a `modes_a` bound I had not yet computed. **Turn 13's
+ranking of the two ingredients was measured against a handicapped opponent and I
+am withdrawing the size of it.** What the matched comparison now supports is
+weaker and more useful: *neither ingredient alone gets past ~0.088, and having
+both is worth 1.88×.* Whether they compose that way inside a cheap architecture
+is the open question, and it is a better question than the one I was asking.
+
+### H19: depth conditioning meets clause 1 on every seed, and it is the route out of the D5 cap
+
+This is the larger result of the turn. `scripts/depthcond.sh` conditions the
+operator on the achieved etch **depth** instead of `log(K·dt)`. The arms are
+matched in architecture (fno, width 8, modes 4, layers 2), stride, epoch budget
+and seed — they differ in one channel.
+
+| seed | dt (`runs/shrink/w8m4L2_K10_s*`) | depth (`runs/depthcond/*`) | paired diff |
+|---|---|---|---|
+| 1 | 0.04720 | **0.03688** | −0.01032 |
+| 2 | 0.04909 | **0.03949** | −0.00960 |
+| 3 | 0.04523 | **0.03530** | −0.00993 |
+| mean | 0.04717 | **0.03722** | **−0.00995** |
+
+Depth conditioning is better on **every** seed, by a margin (0.00995) that is
+2.6× the repo's own 8-seed yardstick of 0.00386, and the three paired
+differences agree to within 0.7% of each other — an unusually tight paired
+effect for this repo. **Every depth seed meets clause 1; so does every dt seed,
+but the depth arm meets it with 26% more headroom.**
+
+**Why this matters far more than 0.01 of rel-L2.** Decision D5 has been the
+thing blocking clause 2 since turn 9: the operator takes its horizon as
+`log(K·dt)`, so a caller whose query is a target *depth* must run
+`eot.solver.probe_rate` — a real solver call, measured at 39.9 ms — to build the
+query, which caps the speedup at **12.8×** for any architecture however fast.
+Option C in D5 was "condition on target_depth instead, and the probe disappears
+by construction." I recorded it as "**Unmeasured, and no number is claimed for
+it. This is the route I would take first.**" It is now measured, and it does not
+cost accuracy — it *buys* accuracy.
+
+The mechanism I registered in `depthcond.sh` was: *"a dt-conditioned model must
+infer the etch rate from the recipe and multiply; a depth-conditioned one is
+told the answer's magnitude and needs only its shape."* The sign and rough size
+are as predicted, which is the first time this weekend a stated mechanism
+predicted an effect correctly before the run.
+
+**Three things this does not yet establish, stated before anyone quotes it.**
+
+1. **3 seeds is a screen.** A paired sign test on 3/3 cannot go below p = 0.25.
+   The 8-seed extension for both arms is launched (`scripts/h19_seeds.sh`, seeds
+   4–8, GPU 1). No headline until it lands.
+2. **This arm clears clause 1 and not clause 2.** `fno_w8m4L2` costs 3,599
+   µs/wafer = 141×. Removing the 12.8× *cap* is not the same as meeting 1000×;
+   it makes 1000× possible in principle for the first time, and the architecture
+   that would have to do it is the one from the previous section, not this one.
+3. **The crossed-dt split cannot be evaluated for this arm at all** — it stores
+   `target_depth` as NaN for all 209 trajectories, exactly as D5 Option C
+   warned. `scripts/derive_depth.py` derives depth from stored SDFs for
+   train/val/test; whether it can be made to work on the crossed set is
+   unchecked, and the split clause 1 already fails on is therefore currently
+   *unmeasurable* for the conditioning that fixes clause 2. That is a real hole
+   and it is not a caveat, it is the next thing after the seed extension.
+
+### A contaminated instrument, caught by the null before it published anything
+
+Scoring the new arms crashed. `scripts/shrink_report.price()` reads:
+
+```python
+if cfg.get("arch", "fno") == "fno":
+    build = "... EtchOperator(...)"
+else:
+    build = "... MultiScaleOperator(...)"          # <- every other architecture
+```
+
+Its docstring says *"Builds whatever architecture args.json names. Pricing an
+FNO for a multiscale run would report a cost the checkpoint never had."* It does
+not do that. **Every `specprop` config was priced as a `MultiScaleOperator`**,
+and it never raised, because argparse writes `width`, `layers`, `scale` and
+`width_full` defaults into every `args.json` whether the architecture reads them
+or not — so the wrong constructor found every key it needed. It surfaced only
+because `modes=0` made the wrong build fail an einsum:
+`subscript x has size 0 for operand 1`.
+
+**Blast radius: zero, and by luck rather than design.** Both `runs/specprop.json`
+and `runs/shrink.json` were produced with `--no-cost`, so neither carries a cost
+column, and every published specprop speedup came from `scripts/arch_cost.py`,
+which writes its build strings out explicitly. The φ-blind null — run to check a
+*scientific* degeneracy — is what exposed a *software* one.
+
+**The fix and, more importantly, the test.** `build_string()` now has an
+explicit branch per architecture and `raise`s on the fall-through.
+`tests/test_price_build.py` pins that the priced model and the scored model are
+the same thing. And it needed a second assertion, because the obvious one nearly
+failed:
+
+> For the real config on disk, the wrongly-built `MultiScaleOperator` has
+> **1,080,322** parameters against the `SpectralPropagator`'s **1,070,144** —
+> within **0.95%**. Exact equality still catches it, but by a margin that thin,
+> and a different width or layer count could have made the two coincide exactly
+> while the measured cost differed by an order of magnitude.
+
+So the test also asserts **class identity**, which cannot coincide. Recording
+that because it is a failure mode of property tests themselves: a property whose
+values can collide is only as good as the collision it happens to avoid.
+
+That is the **fifth** instrument bug this weekend that a property test caught and
+a recomputation could not: an op count keyed on `numel` that could not tell a
+field from a weight matrix; a `config_key` blind to `modes_a` that pooled two
+architectures into one seed group; five reconstruction bugs in the surface
+metric; and now a cost path that priced the wrong class. The rule from turn 13
+held on its first use.
+
+### H21 — written before the run
+
+**Hypothesis.** What binds `sp_m4_ma64` at 0.0889 is the bandwidth of the
+*multiplicative* term. Widening `modes` from 4 to the full spectrum (64, which
+with the two-corner layout covers all 128 rows) should move the error the way
+widening `modes_a` from 32 to 64 did, because it is the same mistake being
+corrected on the other side of the same operator.
+
+**Why this is one change and not three:** `modes_a` stays at 64, the epoch
+budget, stride, optimiser and dataset are unchanged. Only the input band moves.
+
+**What I cannot compute for this axis, and why — stated so the absence is not
+read as an oversight.** For `modes_a` I computed an oracle projection floor and
+it turned out tight to 3.8%. **No such bound exists here.** With `ma=64` the
+additive term already spans the whole spectrum, so an oracle over unconstrained
+functions of the recipe would read *zero* by memorising each trajectory — the
+bound is degenerate. What limits this axis is generalisation, not
+representation, and the `m0_ma64` null at 0.32064 is the measurement of exactly
+that. So H21 has to be settled empirically, and pricing comes first.
+
+**Cost first, because that is the H18 lesson.** `runs/arch_cost_h21.json` is
+being measured now for `m32_ma64` and `m64_ma64` against the workload-matched
+denominator. The specific thing being checked: whether `m=64` is *cheaper* than
+`m=16`, the way `ma=64` measured cheaper than `ma=63` (426 vs 510 µs), because
+keeping the whole spectrum needs no sub-slice or mask. If it does not fit under
+511 µs the hypothesis is dead before a GPU hour is spent, which is what should
+have happened to H18.
+
+**Prediction, and it is deliberately not optimistic:** `m64_ma64` lands
+**0.04–0.08**. Reasoning: the `ma` 32→64 step bought 3.35× because `ma` was
+*provably* binding — the model sat 3.8% above a computed floor. `modes` is not
+provably binding; I have an argument and a null, not a bound. And the map stays
+**linear in φ**, which the matched locality comparison above says costs a factor
+of 1.88 on its own. So I expect improvement and I do not expect clause 1.
+
+**Falsifier, stated now:** if `m64_ma64` lands within the seed spread of
+`m4_ma64` (~0.002), then the multiplicative bandwidth is *not* the constraint,
+the linearity is, and the next change is a pointwise nonlinearity inserted
+before the transform — which costs one elementwise ReLU, measured at 13.2 µs
+against the 85 µs of headroom `m4_ma64` leaves under the 511 µs budget.

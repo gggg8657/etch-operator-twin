@@ -57,17 +57,41 @@ from scripts.coverage_verdict import boot_ci, per_traj_both_readings  # noqa: E4
 from scripts.kcurve_report import is_complete  # noqa: E402
 
 
+# Every args.json field that distinguishes one architecture from another. A key
+# that omits one of these MERGES TWO ARCHITECTURES INTO ONE SEED GROUP, and the
+# `len({config_key(c)}) == 1` guard below cannot catch it because the guard calls
+# this same function. That is not hypothetical: the first version of this file
+# had no `specprop` branch, so specprop runs fell through to the multiscale
+# branch, `modes_a` was absent from the key, and `m4_ma4_s1` and `m4_ma16_s1`
+# -- 9,344 and 71,744 parameters -- were pooled and reported as one two-seed
+# arm at 0.76796. `tests/test_report_keys.py` now asserts that changing any
+# field named here changes the key.
+ARCH_FIELDS = {
+    "fno": ("width", "modes", "layers", "stride"),
+    "multiscale": ("width", "modes", "layers", "stride", "width_full",
+                   "scale", "n_local", "act"),
+    "specprop": ("modes", "modes_a", "stride"),
+}
+
+
 def config_key(cfg: dict) -> str:
     """The config's name, derived from args.json rather than the directory name.
 
-    Two families live under runs/ now. Deriving the key from args.json and then
-    asserting it against the directory name (below) catches a run launched with
-    one set of flags into a directory named for another -- which a sweep driver
-    with a copy-pasted line does silently, and which would then merge two
-    architectures into one seed group.
+    Deriving the key from args.json and then asserting it against the directory
+    name catches a run launched with one set of flags into a directory named for
+    another -- which a sweep driver with a copy-pasted line does silently, and
+    which would merge two architectures into one seed group.
     """
-    if cfg.get("arch", "fno") == "fno":
+    arch = cfg.get("arch", "fno")
+    if arch not in ARCH_FIELDS:
+        raise ValueError(f"unknown arch {arch!r}; add it to ARCH_FIELDS")
+    missing = [f for f in ARCH_FIELDS[arch] if cfg.get(f) is None]
+    if missing:
+        raise ValueError(f"{arch} run is missing {missing} in args.json")
+    if arch == "fno":
         return f"w{cfg['width']}m{cfg['modes']}L{cfg['layers']}_K{cfg['stride']}"
+    if arch == "specprop":
+        return f"sp_m{cfg['modes']}ma{cfg['modes_a']}_K{cfg['stride']}"
     sc = cfg["scale"]
     body = "pw" if sc == 0 else f"ms_s{sc}_w{cfg['width']}m{cfg['modes']}L{cfg['layers']}"
     return f"{body}_wf{cfg['width_full']}n{cfg['n_local']}_{cfg['act']}_K{cfg['stride']}"
@@ -112,6 +136,45 @@ def incomplete(root: Path) -> list[dict]:
     return rows
 
 
+def build_string(cfg, cond_dim):
+    """The source line that reconstructs the architecture `cfg` names.
+
+    This MUST stay in lockstep with `eot.operator.build_from_cfg`: that function
+    builds the model a checkpoint is SCORED with, this string builds the model
+    the same config is PRICED with, and a divergence reports one model's cost
+    beside another model's accuracy.
+
+    The previous version was an `if arch == "fno" ... else MultiScaleOperator`,
+    so every `specprop` run was priced as a `MultiScaleOperator` -- and priced
+    without error, because argparse writes its defaults for `width`, `layers`,
+    `scale` and `width_full` into every args.json whether the architecture reads
+    them or not. Nothing published came from it (both scoring runs used
+    `--no-cost`), and it surfaced only because `modes=0` finally made the wrong
+    build crash. So: an explicit branch per architecture and a `raise` on the
+    fall-through, never a default. `tests/test_price_build.py` pins that the
+    string and `build_from_cfg` agree on parameter count for every architecture.
+    """
+    arch = cfg.get("arch", "fno")
+    if arch == "fno":
+        return (f"from eot.operator import EtchOperator\n"
+                f"M = EtchOperator(cond_dim={cond_dim}, width={cfg['width']}, "
+                f"modes={cfg['modes']}, n_layers={cfg['layers']})")
+    if arch == "multiscale":
+        return (f"from eot.operator import MultiScaleOperator\n"
+                f"M = MultiScaleOperator(cond_dim={cond_dim}, "
+                f"width={cfg['width']}, modes={cfg['modes']}, "
+                f"n_layers={cfg['layers']}, width_full={cfg['width_full']}, "
+                f"scale={cfg['scale']}, n_local={cfg.get('n_local', 1)}, "
+                f"act={cfg.get('act', 'gelu')!r})")
+    if arch == "specprop":
+        return (f"from eot.operator import SpectralPropagator\n"
+                f"M = SpectralPropagator(cond_dim={cond_dim}, "
+                f"modes={cfg['modes']}, modes_a={cfg.get('modes_a', 16)}, "
+                f"hermitian_closed={cfg.get('hermitian_closed', False)!r})")
+    raise ValueError(f"cannot price unknown arch {arch!r}; add a branch here "
+                     f"AND to eot.operator.build_from_cfg")
+
+
 def price(cfg, cond_dim, n_apply, rounds, budget_w, budget_c,
           solver_w, solver_c):
     """Per-wafer CPU cost of this config, same protocol as cost_floor.py.
@@ -119,17 +182,7 @@ def price(cfg, cond_dim, n_apply, rounds, budget_w, budget_c,
     Builds whatever architecture args.json names. Pricing an FNO for a
     multiscale run would report a cost the checkpoint never had.
     """
-    if cfg.get("arch", "fno") == "fno":
-        build = (f"from eot.operator import EtchOperator\n"
-                 f"M = EtchOperator(cond_dim={cond_dim}, width={cfg['width']}, "
-                 f"modes={cfg['modes']}, n_layers={cfg['layers']})")
-    else:
-        build = (f"from eot.operator import MultiScaleOperator\n"
-                 f"M = MultiScaleOperator(cond_dim={cond_dim}, "
-                 f"width={cfg['width']}, modes={cfg['modes']}, "
-                 f"n_layers={cfg['layers']}, width_full={cfg['width_full']}, "
-                 f"scale={cfg['scale']}, n_local={cfg.get('n_local', 1)}, "
-                 f"act={cfg.get('act', 'gelu')!r})")
+    build = build_string(cfg, cond_dim)
     spec = dict(build=build, call="M(phi, cond)")
     warm = time_model(spec, n_rep=rounds, n_warm=3)
     colds = [time_model(spec, n_rep=1, n_warm=0) for _ in range(rounds)]

@@ -1,0 +1,227 @@
+{
+  "question": "which candidate surrogate architectures fit the clause-2 budget, measured before any of them is trained",
+  "protocol": {
+    "estimator": "CPU-seconds per wafer on one verified thread, fresh subprocess per config",
+    "rounds": 16,
+    "warm_rollouts_untimed": 3,
+    "budget_warm_s": 0.0005158362045000003,
+    "budget_cold_s": 0.0007389038889999999,
+    "solver_warm_cpu_s": 0.5158362045000002,
+    "solver_cold_cpu_s": 0.7389038889999999,
+    "speedup_target": 1000.0,
+    "budget_provenance": {
+      "paired": true,
+      "measured_in_this_invocation": true,
+      "solver_wafers": 16,
+      "split": "test",
+      "same_wafers_as_accuracy": "the recipes and dt values of the split the operator's accuracy is scored on",
+      "denominators_cpu_s": {
+        "terminal_one_apply": 0.5158362045000002,
+        "all_frames_ten_applies_excl_raster": 1.0038349529999948,
+        "fixed_duration": 0.30790460100000017
+      },
+      "all_frames_raster_excluded_cpu_s": 2.527664835500003,
+      "stored_warm_median_cpu_s": 0.2767124970000001,
+      "drift_vs_stored": 1.112723871665254,
+      "loadavg_1min_at_start": 26.29,
+      "matched_denominator_for_one_application": "terminal_one_apply",
+      "why": "a stride-10 operator emits the terminal state in one application, so the terminal one-apply column is the like-for-like denominator for it. All three are reported per row so the choice is visible rather than adopted."
+    },
+    "no_accuracy_claimed": "cost only. Accuracy for these rows is in runs/shrink.json and runs/multiscale.json."
+  },
+  "models": {
+    "fno_w8m4L2_K10": {
+      "note": "the accuracy-admissible FNO from runs/shrink.json (0.04717 in-distribution terminal at 3 seeds). Reference row: this is the cost the multiscale architecture has to beat by 6.4x.",
+      "params": 10897,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 52.97,
+        "after": 74.6
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0018042080000000293,
+        "per_wafer_cpu_s": 0.0018042080000000293,
+        "min_cpu_s": 0.0017671110000000434,
+        "max_cpu_s": 0.0026869510000000485,
+        "spread_factor": 1.5205332319248663,
+        "over_budget_factor": 3.4976373978031403,
+        "under_budget": false,
+        "speedup_vs_solver": 285.9072814775191,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 285.9072814775191,
+          "all_frames_ten_applies_excl_raster": 556.3853796236235,
+          "fixed_duration": 170.65914850172217
+        },
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          191.97826997961292,
+          291.90933931144536
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.007434832000000058,
+        "per_wafer_cpu_s": 0.007434832000000058,
+        "min_cpu_s": 0.00637137600000004,
+        "max_cpu_s": 0.011985198000000086,
+        "spread_factor": 1.8811004090796102,
+        "over_budget_factor": 10.061974379458245,
+        "under_budget": false,
+        "speedup_vs_solver": 99.38407337247085,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          61.651371049522474,
+          115.97241930157557
+        ],
+        "n": 16
+      }
+    },
+    "specprop_m4_ma64_K10": {
+      "note": "modes=4, modes_a=64. Oracle floor at this modes_a is in runs/spectral_floor_fine.json; ma>=63 is the only band that admits clause 1 at all.",
+      "params": 1070144,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 74.6,
+        "after": 72.0
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0004018070000000318,
+        "per_wafer_cpu_s": 0.0004018070000000318,
+        "min_cpu_s": 0.00036829700000007293,
+        "max_cpu_s": 0.00044128400000009727,
+        "spread_factor": 1.198174299546317,
+        "over_budget_factor": 0.7789429987557835,
+        "under_budget": true,
+        "speedup_vs_solver": 1283.7909854730242,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 1283.7909854730242,
+          "all_frames_ten_applies_excl_raster": 2498.30130634836,
+          "fixed_duration": 766.2997434090889
+        },
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          1168.943819626106,
+          1400.5984422895058
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.0022361124999999427,
+        "per_wafer_cpu_s": 0.0022361124999999427,
+        "min_cpu_s": 0.0018145059999999935,
+        "max_cpu_s": 0.0030254839999999117,
+        "spread_factor": 1.6673871566144849,
+        "over_budget_factor": 3.0262562334408596,
+        "under_budget": false,
+        "speedup_vs_solver": 330.44128548989323,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          244.22667216221322,
+          407.2204164659707
+        ],
+        "n": 16
+      }
+    },
+    "specprop_m32_ma64_K10": {
+      "note": "modes=32, modes_a=64. Widening the MULTIPLICATIVE band, the axis that carries the model's dependence on phi. No oracle floor is computable for this axis: with ma=64 the additive term alone spans the whole spectrum, so an unconstrained oracle over functions of the recipe is degenerate (it would read zero by memorising each trajectory). What bounds it is generalisation, not representation -- which is exactly what the m0_ma64 null measured at 0.31522.",
+      "params": 1332224,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 72.0,
+        "after": 88.5
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.00048222700000000174,
+        "per_wafer_cpu_s": 0.00048222700000000174,
+        "min_cpu_s": 0.00042535200000004547,
+        "max_cpu_s": 0.0006768120000000266,
+        "spread_factor": 1.5911809513061048,
+        "over_budget_factor": 0.9348452004593669,
+        "under_budget": true,
+        "speedup_vs_solver": 1069.695816493059,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 1069.695816493059,
+          "all_frames_ten_applies_excl_raster": 2081.664761616399,
+          "fixed_duration": 638.5055191849463
+        },
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          762.1558194889865,
+          1212.7278218979693
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.0023916005000000906,
+        "per_wafer_cpu_s": 0.0023916005000000906,
+        "min_cpu_s": 0.0019180869999999572,
+        "max_cpu_s": 0.003535552999999969,
+        "spread_factor": 1.8432704043143235,
+        "over_budget_factor": 3.2366868487277527,
+        "under_budget": false,
+        "speedup_vs_solver": 308.9579087309824,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          208.99245153445767,
+          385.22960063856146
+        ],
+        "n": 16
+      }
+    },
+    "specprop_m64_ma64_K10": {
+      "note": "modes=64, modes_a=64. Widening the MULTIPLICATIVE band, the axis that carries the model's dependence on phi. No oracle floor is computable for this axis: with ma=64 the additive term alone spans the whole spectrum, so an unconstrained oracle over functions of the recipe is degenerate (it would read zero by memorising each trajectory). What bounds it is generalisation, not representation -- which is exactly what the m0_ma64 null measured at 0.31522.",
+      "params": 2130944,
+      "applications_per_wafer": 1,
+      "is_a_real_surrogate": true,
+      "loadavg_1min": {
+        "before": 88.5,
+        "after": 200.47
+      },
+      "warm": {
+        "per_apply_cpu_s": 0.0006934195000000143,
+        "per_wafer_cpu_s": 0.0006934195000000143,
+        "min_cpu_s": 0.000597133000000083,
+        "max_cpu_s": 0.0007874660000000144,
+        "spread_factor": 1.318744735259825,
+        "over_budget_factor": 1.3442629539199278,
+        "under_budget": false,
+        "speedup_vs_solver": 743.9020744296773,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 743.9020744296773,
+          "all_frames_ten_applies_excl_raster": 1447.6589611338795,
+          "fixed_duration": 444.0379899901774
+        },
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          655.0583828381044,
+          863.8547936555651
+        ],
+        "n": 16
+      },
+      "cold": {
+        "per_apply_cpu_s": 0.002604401000000034,
+        "per_wafer_cpu_s": 0.002604401000000034,
+        "min_cpu_s": 0.002173881999999905,
+        "max_cpu_s": 0.003506065999999919,
+        "spread_factor": 1.6128133909752564,
+        "over_budget_factor": 3.5246816788645083,
+        "under_budget": false,
+        "speedup_vs_solver": 283.7135636946808,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
+        "speedup_range": [
+          210.7501367629751,
+          339.9006427211929
+        ],
+        "n": 16
+      }
+    }
+  },
+  "components": {}
+}

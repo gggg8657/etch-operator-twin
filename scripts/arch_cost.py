@@ -353,6 +353,39 @@ SPECS.update({
 })
 
 
+# H21: at ma=64 the model is no longer REPRESENTATION-limited (oracle floor
+# 0.00003, measured 0.08823 -- 2900x above its own floor) and it is not
+# OPTIMISATION-limited either (val roll_band moved 0.09146 -> 0.08679 over the
+# last 400 of 800 epochs with the LR annealed to zero). What remains throttled
+# is the MULTIPLICATIVE band: the model's entire dependence on phi runs through
+# the lowest `modes` x `modes` corners of the input spectrum, and `modes` is
+# still 4. The phi-blind null `m0_ma64` reads 0.31522, so that pathway carries a
+# 3.6x improvement while seeing 4 modes of 64.
+#
+# These rows ask the cost question BEFORE the GPU question, which is the lesson
+# from H18: three arms were trained against a bound that took ten minutes to
+# compute afterwards. The specific thing to check is whether m=64 is CHEAPER
+# than m=16, the way ma=64 measured cheaper than ma=63 (426 vs 510 us): keeping
+# the whole spectrum needs no sub-slice or mask, and the h_head's parameter
+# count grows as modes^2 but it runs on a (B, 7) tensor and never touches the
+# grid.
+SPECS.update({
+    f"specprop_m{m}_ma{ma}_K10": dict(
+        build="from eot.operator import SpectralPropagator\n"
+              f"M = SpectralPropagator(cond_dim=7, modes={m}, modes_a={ma})",
+        call="M(phi, cond)", n_apply=1,
+        note=f"modes={m}, modes_a={ma}. Widening the MULTIPLICATIVE band, the "
+             "axis that carries the model's dependence on phi. No oracle floor "
+             "is computable for this axis: with ma=64 the additive term alone "
+             "spans the whole spectrum, so an unconstrained oracle over "
+             "functions of the recipe is degenerate (it would read zero by "
+             "memorising each trajectory). What bounds it is generalisation, "
+             "not representation -- which is exactly what the m0_ma64 null "
+             "measured at 0.31522.")
+    for m, ma in [(32, 64), (64, 64)]
+})
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--rounds", type=int, default=16)
