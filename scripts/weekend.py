@@ -32,6 +32,40 @@ def f(x, n=4):
     return f"{x:.{n}f}" if isinstance(x, (int, float)) else NM
 
 
+def cheapest_rows(ac, shr, target=0.05):
+    """(cheapest surrogate, cheapest surrogate that MEETS clause 1) from the JSONs.
+
+    Both were hand-typed into this script's headline table for one revision,
+    which is exactly what this repo forbids. `runs/arch_cost.json` carries the
+    cost of every candidate and `runs/shrink.json` carries which trained
+    configs meet clause 1, so the join is computed rather than remembered.
+
+    "Meets clause 1" is deliberately strict: the point estimate, every seed, AND
+    the trajectory-bootstrap upper bound must be under target. Only the trained
+    FNO configs can qualify -- the multiscale and pointwise rows have no
+    accuracy yet, and a row with no accuracy can never be the second return
+    value.
+    """
+    models = {k: v for k, v in (ac.get("models") or {}).items()
+              if v.get("warm", {}).get("per_wafer_cpu_s")
+              and v.get("applications_per_wafer") == 1}
+    if not models:
+        return None, None
+    cheap = min(models.items(), key=lambda kv: kv[1]["warm"]["per_wafer_cpu_s"])
+    # Which trained configs meet clause 1, by name as arch_cost spells them.
+    ok = set()
+    for name, row in (shr.get("configs") or {}).items():
+        e = row["in_distribution"]["terminal_step"]
+        if e["met_point"] and e["met_every_seed"] and e.get("met_upper_ci"):
+            c = row["config"]
+            if c["stride"] == 10:
+                ok.add(f"fno_w{c['width']}m{c['modes']}L{c['layers']}_K10")
+    admissible = {k: v for k, v in models.items() if k in ok}
+    best_ok = (min(admissible.items(), key=lambda kv: kv[1]["warm"]["per_wafer_cpu_s"])
+               if admissible else None)
+    return cheap, best_ok
+
+
 def coverage_verdict():
     """The computed verdict, not the point estimates. An earlier version of this
     file reported the in-coverage mean and called the clause met; the terminal-step
@@ -161,6 +195,11 @@ def main():
     gen = read("data/gen_report.json", {})
     genx = read("data/gen_report_crossed.json", {})
 
+    wl = read("runs/bench_workload.json") or {}
+    kc = read("runs/kcurve.json") or {}
+    shr = read("runs/shrink.json") or {}
+    ac = read("runs/arch_cost.json") or {}
+    cheap, best_ok = cheapest_rows(ac, shr)
     k = (ev or {}).get("kpi_clause_rel_l2", {})
     kx = (evx or {}).get("kpi_clause_rel_l2", {})
     ks = (sp or {}).get("kpi_clause", {})
@@ -178,18 +217,53 @@ def main():
          "",
          "> **KPI:** 2D 표면진화 rel-L2 ≤0.05 · 시뮬 대비 ≥1000× 가속 · 역설계 형상오차 ≤5%",
          "",
-         "## Declared UNREACHABLE, 2026-09-10",
+         "## REOPENED — the speedup clause has two readings and they are 40x apart",
          "",
-         (f"Two of three clauses met. The speedup clause is short by a factor of "
-          f"**{ks['shortfall_factor']:.0f}** — {ks['best_value']:.2f}× at the best of four "
-          f"honest rows (`{ks['best_arm'].split('/')[-1]}`, {ks['best_reading']}) against "
-          f"1000× — and that is not a gap an implementation closes. At K=1 the operator is "
-          f"*slower* than the simulator like-for-like. Clause 1 holds in distribution "
-          f"and nowhere else; clause 3 holds as profile targeting, not recipe identification. "
-          f"Every clause verdict in `RESULTS.md` is derived from a run JSON by "
-          f"`scripts/report.py`."
-          if ks else
-          "Two of three clauses met; the speedup clause is not."),
+         (
+          "**The clause-2 verdict now depends on a question nobody has answered, "
+          "and the two answers are 40x apart.** The operator takes log(dt) as a "
+          "conditioning input, so a caller must know the timestep before "
+          "querying it. If the timestep is part of the query, the budget is "
+          f"**{wl['columns']['terminal_one_apply']['median_cpu_s']*1e6/1000:.0f} µs/wafer** "
+          "and the cheapest surrogate measured is within about 2x of it. If the "
+          "query is instead a *target depth*, obtaining dt costs a probe that is "
+          "itself a solver run "
+          f"(**{wl['columns']['dt_probe']['median_cpu_s']*1e3:.1f} ms**, "
+          "`eot/solver.py:326`), and the speedup is bounded by "
+          f"**{wl['ratios']['dt_probe_ceiling']['ceiling_operator_pays']['vs_terminal']:.1f}x** "
+          "however fast the network gets. That is D5 below and it needs a human."
+          if wl else
+          "Clause 2's denominator is being re-measured; see critique_log.md."),
+         "",
+         (
+          "Separately, **the denominator every published speedup in this repo "
+          "divided by was measured on the wrong workload.** "
+          "`runs/speed_symmetric.json` times one solver apply of a fixed "
+          "2.0-minute etch; the dataset's trajectories carry a per-recipe dt "
+          f"whose median is {wl['dt_of_priced_wafers']['median']:.3f}, so the "
+          f"median test wafer etches for "
+          f"{wl['dt_of_priced_wafers']['total_etch_time_median']:.2f} minutes. "
+          "Measured on the test split's own recipes "
+          "(`runs/bench_workload.json`), the like-for-like cost of producing "
+          "what a one-application operator produces is "
+          f"**{wl['columns']['terminal_one_apply']['median_cpu_s']*1e3:.0f} ms**, "
+          "against the "
+          f"{wl['columns']['fixed_duration_one_apply']['median_cpu_s']*1e3:.0f} ms "
+          "the fixed-duration reading gives on the same wafers. All three "
+          "readings are reported side by side and the old one is not deleted — "
+          "`tests/test_workload.py` fails if it ever is."
+          if wl else ""),
+         "",
+         (
+          "Clause 1 is **met in distribution at one application per wafer**, "
+          "now at 8 seeds rather than 2: "
+          f"`K10_sm` reads **{kc['arms']['K10_sm']['in_distribution']['terminal_step']['point']:.5f}** "
+          f"(seed range {kc['arms']['K10_sm']['in_distribution']['terminal_step']['seed_range']:.5f}, "
+          f"bootstrap upper {kc['arms']['K10_sm']['in_distribution']['terminal_step']['hi']:.5f}), "
+          "and it still fails on the crossed-dt split everywhere. Clause 3 is "
+          "met as profile targeting. Every verdict in `RESULTS.md` is derived "
+          "from a run JSON by `scripts/report.py`."
+          if kc.get("arms", {}).get("K10_sm") else ""),
          "",
          "## Headline: Friday vs now",
          "",
@@ -205,10 +279,33 @@ def main():
           f"outside coverage **{f(cvd['out_pt'])}** — NOT MET |" if (cov and cvd) else
           f"| rel-L2 ≤ 0.05 | repo did not exist | **{f(k.get('value'))}** in-distribution "
           f"({'MET' if k.get('met') else 'NOT MET' if k else NM}) |"),
-         f"| ≥1000× speedup | repo did not exist | "
-         f"**{f(ks.get('best_value'), 1) + '×' if ks else NM}** like-for-like, CPU-seconds, "
-         f"one-time cost paid on both sides or neither "
-         f"({'MET' if ks and ks.get('met') else 'NOT MET' if ks else NM}) |",
+         # Two rows, because there is no single denominator: see D5. The old
+         # fixed-duration reading stays, labelled as superseded, so the
+         # correction is visible rather than substituted.
+         (f"| ≥1000× speedup, **dt given** | repo did not exist | "
+          f"**{cheap[1]['warm']['speedup_vs_each_denominator']['terminal_one_apply']:.0f}×** "
+          f"at the cheapest surrogate measured (`{cheap[0]}`, "
+          f"{cheap[1]['params']:,} params, "
+          f"{cheap[1]['warm']['per_wafer_cpu_s']*1e6:.0f} µs/wafer, "
+          f"**accuracy not yet measured**)"
+          + (f", **{best_ok[1]['warm']['speedup_vs_each_denominator']['terminal_one_apply']:.0f}×** "
+             f"at the cheapest one that MEETS clause 1 (`{best_ok[0]}`, "
+             f"{best_ok[1]['warm']['per_wafer_cpu_s']*1e6:.0f} µs/wafer)"
+             if best_ok else ", and no measured-accurate row is priced")
+          + f". Denominator {wl['columns']['terminal_one_apply']['median_cpu_s']*1e3:.0f} ms "
+          f"= one solver apply of 10·dt, the same output. **Measured at load "
+          f"{ac['protocol']['budget_provenance'].get('loadavg_1min_at_start', 0):.0f}, "
+          f"so a lower bound; NOT MET, and not a verdict** |"
+          if (wl and cheap) else f"| ≥1000× speedup | repo did not exist | {NM} |"),
+         (f"| ≥1000× speedup, **target depth given** | repo did not exist | "
+          f"capped at **{wl['ratios']['dt_probe_ceiling']['ceiling_operator_pays']['vs_terminal']:.1f}×** "
+          f"for any architecture, because the surrogate must probe for dt "
+          f"({wl['columns']['dt_probe']['median_cpu_s']*1e3:.1f} ms) and the solver "
+          f"need not — **UNREACHABLE** |" if wl else ""),
+         (f"| — superseded reading | repo did not exist | "
+          f"{f(ks.get('best_value'), 1) + '×' if ks else NM} against a "
+          f"fixed-2.0-minute denominator, which is not the workload the "
+          f"operator is scored on. Kept for the record |" if ks else ""),
          f"| shape error ≤ 5% | repo did not exist | "
          f"**{f(kd.get('value')) if kd else NM}** "
          f"({'MET' if kd.get('met') else 'NOT MET' if kd else NM}) |",
@@ -291,9 +388,66 @@ def main():
           "6. **An unguarded `simulate()`.** Fine under adaptive dt, but inverse design "
           "proposes arbitrary recipes and one verification run sat >13 min before being "
           "killed. Now stops at the window with `steps_ok` False.",
+          ("7. **`torch.compile`, as the escape from per-operation overhead.** "
+           "The clause-2 cost is dispatch and allocation, not arithmetic — the "
+           "spectral body costs 645 µs on 8x32x32 tensors carrying ~0.1 MFLOP, "
+           "80x what the arithmetic implies — so fusing it looked like the fix. "
+           "Measured: **2.0-3.3x SLOWER** on one CPU thread at every size, "
+           "including a 26.2M-parameter control that should be "
+           "arithmetic-bound. Rules out `torch.compile` specifically; says "
+           "nothing about ONNX Runtime or oneDNN graph fusion, neither "
+           "measured."),
+          ("8. **A coarse-grid spectral body, on the argument that it is "
+           "representationally free.** The accuracy-admissible FNO truncates to "
+           "`modes=4` of 64, so a 4x downsample provably discards no mode it can "
+           "carry, and the pixel count says 16x cheaper. Measured: **2.26x**. "
+           "Rules out reasoning about this cost from arithmetic — and located "
+           "the money instead: one erf-based GELU at 128x128 costs 152.7 µs "
+           "against a ReLU's 13.2 µs, **55% of the whole budget for one "
+           "activation**, which was never a considered choice anywhere in this "
+           "repo."),
+          ("9. **Buying accuracy back with a wider pointwise path.** "
+           "`pw_wf32_n3` is **more expensive than the FNO it was built to "
+           "undercut**: width and depth at full resolution cost linearly where "
+           "spectral modes do not. Rules out the pointwise family as anything "
+           "but tiny — and 'tiny' here means 1,217 parameters."),
           ""]
 
     L += ["## Decisions that need a human", "",
+          ("**D5 — NEW, and it is the one that decides clause 2. Is the timestep "
+           "part of the query, or is the target depth?** The operator takes "
+           "log(dt) as a conditioning input. The dataset's dt was chosen by "
+           "`choose_dt`, which calls `probe_rate` — a real solver run, measured "
+           f"at **{(read('runs/bench_workload.json') or {}).get('columns',{}).get('dt_probe',{}).get('median_cpu_s',0)*1e3:.1f} ms**."),
+          ("- *Option A (recommended, and what every number in this repo "
+           "assumes):* **dt is part of the query.** The caller says 'advance "
+           "this recipe by 10 steps of 0.34 min', neither side probes, and the "
+           "budget is 511 µs/wafer. The KPI says 표면진화 — given a recipe and a "
+           "duration, predict the surface — and log(dt) is an input exactly as "
+           "ion flux is. The adaptive dt was a *dataset construction* device: "
+           "the etch rate spans ~20x across the recipe box, so one global "
+           "timestep leaves most of the box static enough for a do-nothing "
+           "predictor to pass clause 1 (`eot/solver.py:339`). It was never part "
+           "of the query."),
+          ("- *Option B:* **target depth is the query.** A process engineer asks "
+           "for a depth, not a timestep. Then the surrogate must probe to learn "
+           "dt while the solver can simply integrate until the depth is reached "
+           "— so only the surrogate pays, and clause 2 is capped at "
+           "**12.8x** for a terminal query and **24.3x** for an all-frames one, "
+           "*no matter how fast the network is*. Under this reading clause 2 is "
+           "`UNREACHABLE` by a factor of 78 and no architecture changes that."),
+          ("- *Option C:* **dissolve the question — condition the operator on "
+           "target_depth instead of log(dt).** Then a depth query needs no "
+           "probe by construction. The dataset already stores `target_depth` "
+           "for train/val/test with no gaps, so this is testable on existing "
+           "data with no regeneration. Two known costs: the crossed-dt split "
+           "stores `target_depth` as NaN for all 209 trajectories (independent-dt "
+           "generation never computed one), so the split clause 1 already fails "
+           "on could not be evaluated at all without deriving achieved depth "
+           "from the stored SDFs; and the model must then learn the rate law "
+           "internally, which may cost accuracy. **Unmeasured, and no number is "
+           "claimed for it.** This is the route I would take first."),
+          "",
           "**D1 — which speedup number goes on the board.** The grid contains a batched-H100-"
           "vs-1-thread-CPU figure and a like-for-like CPU-1-thread figure. The catalog says "
           "\"시뮬 대비 ≥1000× 가속\" without naming hardware.",

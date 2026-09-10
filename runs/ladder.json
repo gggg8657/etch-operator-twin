@@ -1,0 +1,220 @@
+{
+  "hypothesis": "H7: shrinking the FNO costs accuracy. The decision rule, written before the sweep ran: if the smallest arm already misses rel-L2 <= 0.05 badly, the frontier is closed below 1000x for this family; if it holds, capacity is cheap here and the cost-admissible architectures are worth building.",
+  "protocol": {
+    "accuracy": "band rel-L2, coverage_verdict.per_traj_both_readings; terminal-step reading is the cross-stride-comparable one",
+    "cost": "CPU-seconds on one verified thread, fresh subprocess per config, cost_floor.time_model; PER WAFER = per_apply * applications_per_wafer",
+    "budget_source": "runs/speed_symmetric.json: solver marginal_warm 0.2767 and cold_single_wafer 0.7389 CPU-s, / 1000",
+    "budget_warm_s": 0.0002767124970000001,
+    "budget_cold_s": 0.0007389038889999999,
+    "accuracy_target": 0.05,
+    "speedup_target": 1000.0,
+    "seeds_caveat": "3 seeds per config is a screen. No row here is a verdict, and every row carries its seed range."
+  },
+  "crossed_coverage_rule": {
+    "disp_lo_um": 0.07555290407071312,
+    "disp_hi_um": 0.2987453897955747,
+    "n_in_coverage": 121,
+    "n_total": 209
+  },
+  "configs": {
+    "pw_wf32n3_gelu_K10": {
+      "config": {
+        "arch": "multiscale",
+        "width": 8,
+        "modes": 4,
+        "layers": 2,
+        "stride": 10,
+        "width_full": 32,
+        "scale": 0,
+        "n_local": 3,
+        "act": "gelu"
+      },
+      "params_trained": 3881,
+      "epochs": [
+        800
+      ],
+      "applications_per_wafer": 1,
+      "runs": [
+        "runs/ladder/pw_wf32_n3_gelu_s1"
+      ],
+      "seeds": [
+        1
+      ],
+      "n_seeds": 1,
+      "verdict_strength": "screen",
+      "in_distribution": {
+        "terminal_step": {
+          "per_seed": [
+            0.05052366587519646
+          ],
+          "point": 0.05052366587519646,
+          "seed_range": null,
+          "lo": 0.04779884496405721,
+          "hi": 0.05378088116645813,
+          "n": 250,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.05052366587519646
+      },
+      "crossed_in_coverage": {
+        "n_trajectories": 121,
+        "terminal_step": {
+          "per_seed": [
+            0.06830189087666756
+          ],
+          "point": 0.06830189087666756,
+          "seed_range": null,
+          "lo": 0.06011045250256569,
+          "hi": 0.07822697553398811,
+          "n": 121,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.06830189087666756
+      }
+    },
+    "pw_wf32n3_relu_K10": {
+      "config": {
+        "arch": "multiscale",
+        "width": 8,
+        "modes": 4,
+        "layers": 2,
+        "stride": 10,
+        "width_full": 32,
+        "scale": 0,
+        "n_local": 3,
+        "act": "relu"
+      },
+      "params_trained": 3881,
+      "epochs": [
+        800
+      ],
+      "applications_per_wafer": 1,
+      "runs": [
+        "runs/ladder/pw_wf32_n3_relu_s1"
+      ],
+      "seeds": [
+        1
+      ],
+      "n_seeds": 1,
+      "verdict_strength": "screen",
+      "in_distribution": {
+        "terminal_step": {
+          "per_seed": [
+            0.051571471899747846
+          ],
+          "point": 0.051571471899747846,
+          "seed_range": null,
+          "lo": 0.048399969588778916,
+          "hi": 0.055167534158937624,
+          "n": 250,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.051571471899747846
+      },
+      "crossed_in_coverage": {
+        "n_trajectories": 121,
+        "terminal_step": {
+          "per_seed": [
+            0.07149106017814195
+          ],
+          "point": 0.07149106017814195,
+          "seed_range": null,
+          "lo": 0.06178646657215662,
+          "hi": 0.0830264661907534,
+          "n": 121,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.07149106017814195
+      }
+    },
+    "pw_wf8n1_relu_K10": {
+      "config": {
+        "arch": "multiscale",
+        "width": 8,
+        "modes": 4,
+        "layers": 2,
+        "stride": 10,
+        "width_full": 8,
+        "scale": 0,
+        "n_local": 1,
+        "act": "relu"
+      },
+      "params_trained": 1217,
+      "epochs": [
+        800
+      ],
+      "applications_per_wafer": 1,
+      "runs": [
+        "runs/ladder/pw_wf8_n1_relu_s1"
+      ],
+      "seeds": [
+        1
+      ],
+      "n_seeds": 1,
+      "verdict_strength": "screen",
+      "in_distribution": {
+        "terminal_step": {
+          "per_seed": [
+            0.2610255284905434
+          ],
+          "point": 0.2610255284905434,
+          "seed_range": null,
+          "lo": 0.2557060234248638,
+          "hi": 0.2663933268666267,
+          "n": 250,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.2610255284905434
+      },
+      "crossed_in_coverage": {
+        "n_trajectories": 121,
+        "terminal_step": {
+          "per_seed": [
+            0.32520017446565236
+          ],
+          "point": 0.32520017446565236,
+          "seed_range": null,
+          "lo": 0.3073697463786307,
+          "hi": 0.3441580687364763,
+          "n": 121,
+          "met_point": false,
+          "met_every_seed": false,
+          "met_upper_ci": false
+        },
+        "mean_over_emitted_states_NOT_COMPARABLE_ACROSS_K": 0.32520017446565236
+      }
+    }
+  },
+  "incomplete": [
+    {
+      "run": "runs/ladder/ms_s4_w8L2_wf16_s1",
+      "epoch_lines": 214,
+      "epochs_requested": 800,
+      "has_checkpoint": true
+    },
+    {
+      "run": "runs/ladder/ms_s8_w16L4_wf16_s1",
+      "epoch_lines": 149,
+      "epochs_requested": 800,
+      "has_checkpoint": true
+    },
+    {
+      "run": "runs/ladder/ms_s8_w8L2_wf16_s1",
+      "epoch_lines": 264,
+      "epochs_requested": 800,
+      "has_checkpoint": true
+    }
+  ],
+  "joint_pass_configs": [],
+  "verdict": "no config in this sweep meets both clauses"
+}

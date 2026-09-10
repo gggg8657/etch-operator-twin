@@ -163,6 +163,46 @@ print(json.dumps({{"wall": wall[{n_discard}:], "cpu": cpu[{n_discard}:]}}))
     return _child(body)
 
 
+def solver_dt_probe(rows, grid_delta, n_discard=1):
+    """What it costs to CHOOSE dt, which may be a hard ceiling on clause 2.
+
+    The operator takes `log_dt` as a conditioning input, so a caller must know
+    dt before it can be queried. The dataset's dt came from
+    `eot.solver.choose_dt`, which calls `probe_rate` -- and `probe_rate` is
+    itself a solver run: `build_domain`, a `make_process(rec, dom, 0.1).apply()`
+    and two `surface_polyline` extractions (eot/solver.py:326-337).
+
+    So there are two readings of clause 2 and they differ by more than any
+    architecture choice:
+
+    * **dt is part of the query** ("advance this recipe by 10 steps of 0.34
+      min"). Neither side probes; the solver is simply run with the given dt.
+      This is the natural reading of a surrogate replacing a solver for a fixed
+      query, and it is the reading the rest of this file measures.
+    * **target depth is the query and dt must be found.** Then BOTH sides pay
+      the probe, and the operator's total is probe + one forward pass. The
+      speedup is then bounded by (probe + solver) / (probe + operator), which
+      tends to solver/probe as the network gets faster -- **a ceiling no
+      architecture can beat.**
+
+    Measuring the probe is what makes the second reading a number instead of an
+    objection, so it is measured here whichever reading is adopted.
+    """
+    recs = "\n".join(f"JOBS.append({_rec_literal(r)})" for r in rows)
+    body = f'''
+from eot import solver as S
+JOBS = []
+{recs}
+wall, cpu = [], []
+for rec in JOBS:
+    w0 = time.perf_counter(); c0 = time.process_time()
+    S.probe_rate(rec, {grid_delta})
+    wall.append(time.perf_counter() - w0); cpu.append(time.process_time() - c0)
+print(json.dumps({{"wall": wall[{n_discard}:], "cpu": cpu[{n_discard}:]}}))
+'''
+    return _child(body)
+
+
 def _stats(cpu, wall=None):
     out = {"median_cpu_s": float(np.median(cpu)), "min_cpu_s": float(np.min(cpu)),
            "max_cpu_s": float(np.max(cpu)),
@@ -197,6 +237,7 @@ def main():
     allf = solver_allframes(rows, dts, n_steps, grid_delta, n)
     fixed = solver_fixed_duration(rows, a.fixed_total, grid_delta)
     dom = solver_domain_build(rows, grid_delta)
+    probe = solver_dt_probe(rows, grid_delta)
 
     allf_no_raster = [c - r for c, r in zip(allf["cpu"], allf["cpu_raster"])]
 
@@ -249,6 +290,16 @@ def main():
                         "dataset's, and this column exists so the correction "
                         "is a measured difference rather than an assertion",
             },
+            "dt_probe": {
+                **_stats(probe["cpu"], probe["wall"]),
+                "output": "the etch rate, from which choose_dt computes dt",
+                "note": "eot.solver.probe_rate: build_domain + one apply of "
+                        "0.1 min + two polyline extractions. Paid by BOTH sides "
+                        "only under the reading where target depth is the query "
+                        "and dt must be found; under the reading where dt is "
+                        "part of the query, neither side pays it. See the "
+                        "docstring of solver_dt_probe.",
+            },
             "domain_build": {
                 **_stats(dom["cpu"], dom["wall"]),
                 "output": "the initial level set",
@@ -277,6 +328,47 @@ def main():
         "all_frames_vs_terminal":
             r["all_frames_ten_applies"]["median_cpu_s"]
             / r["terminal_one_apply"]["median_cpu_s"],
+        "dt_probe_ceiling": {
+            "what": "the operator takes log(dt) as a conditioning input, so a "
+                    "caller must know dt before querying it. If the query is a "
+                    "TARGET DEPTH rather than a timestep, obtaining dt costs a "
+                    "probe -- itself a solver run -- and that bounds the "
+                    "speedup no matter how fast the network is.",
+            "probe_cpu_s": r["dt_probe"]["median_cpu_s"],
+            # FIRST FORMULATION, and it was too kind to the operator. Charging
+            # the probe to both sides assumes the solver also needs a timestep
+            # chosen in advance. It does not: given a target depth the solver
+            # can simply integrate and stop when the depth is reached. The probe
+            # is a cost the SURROGATE incurs because its interface demands dt.
+            "ceiling_both_sides_pay_SUPERSEDED": {
+                "vs_terminal": (r["dt_probe"]["median_cpu_s"]
+                                + r["terminal_one_apply"]["median_cpu_s"])
+                / r["dt_probe"]["median_cpu_s"],
+                "why_superseded": "assumes the solver needs dt in advance, "
+                                  "which it does not for a target-depth query",
+            },
+            # THE HONEST FORMULATION: only the surrogate pays the probe.
+            "ceiling_operator_pays": {
+                "vs_terminal": r["terminal_one_apply"]["median_cpu_s"]
+                / r["dt_probe"]["median_cpu_s"],
+                "vs_all_frames_excl_raster":
+                    r["all_frames_ten_applies"]["median_cpu_s_excluding_raster"]
+                    / r["dt_probe"]["median_cpu_s"],
+                "note": "supremum as the network cost goes to zero. With the "
+                        "cheapest surrogate measured to date the achieved value "
+                        "is slightly lower still.",
+            },
+            "reading_used_elsewhere": "dt is part of the query, so no probe is "
+                                      "charged to either side. Stated, not "
+                                      "assumed -- see WEEKEND.md, which puts "
+                                      "the choice to a human.",
+            "route_that_would_dissolve_the_ceiling_UNMEASURED":
+                "condition the operator on target_depth instead of log_dt. The "
+                "dataset already stores target_depth per trajectory, so this is "
+                "testable on existing data with no regeneration. It removes the "
+                "probe by construction rather than pricing it. No accuracy is "
+                "claimed for it here.",
+        },
         "budget_per_wafer_at_1000x": {
             k: r[k]["median_cpu_s"] / 1000.0
             for k in ("terminal_one_apply", "all_frames_ten_applies",

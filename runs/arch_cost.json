@@ -4,23 +4,28 @@
     "estimator": "CPU-seconds per wafer on one verified thread, fresh subprocess per config",
     "rounds": 16,
     "warm_rollouts_untimed": 3,
-    "budget_warm_s": 0.0003520743949999998,
+    "budget_warm_s": 0.0005154632589999999,
     "budget_cold_s": 0.0007389038889999999,
-    "solver_warm_cpu_s": 0.3520743949999998,
+    "solver_warm_cpu_s": 0.5154632589999999,
     "solver_cold_cpu_s": 0.7389038889999999,
     "speedup_target": 1000.0,
     "budget_provenance": {
       "paired": true,
-      "warm_source": "re-timed in this invocation by bench_symmetric.solver_warm",
-      "warm_median_cpu_s": 0.3520743949999998,
-      "warm_n": 16,
-      "warm_spread_factor": 15.737038500443157,
+      "measured_in_this_invocation": true,
+      "solver_wafers": 16,
+      "split": "test",
+      "same_wafers_as_accuracy": "the recipes and dt values of the split the operator's accuracy is scored on",
+      "denominators_cpu_s": {
+        "terminal_one_apply": 0.5154632589999999,
+        "all_frames_ten_applies_excl_raster": 1.032048222500002,
+        "fixed_duration": 0.32382085400000005
+      },
+      "all_frames_raster_excluded_cpu_s": 2.912579788000002,
       "stored_warm_median_cpu_s": 0.2767124970000001,
-      "drift_vs_stored": 1.2723472875892543,
-      "loadavg_1min_at_start": 58.76,
-      "cold_source": "runs/speed_symmetric.json",
-      "cold_is_paired": false,
-      "why_cold_unpaired": "cold_single_wafer is dominated by ViennaPS init, which load does not perturb the way it perturbs small tensor ops; re-timing it per invocation costs more than the whole ladder. Cold ratios in this file are unpaired."
+      "drift_vs_stored": 1.170242968824064,
+      "loadavg_1min_at_start": 396.09,
+      "matched_denominator_for_one_application": "terminal_one_apply",
+      "why": "a stride-10 operator emits the terminal state in one application, so the terminal one-apply column is the like-for-like denominator for it. All three are reported per row so the choice is visible rather than adopted."
     },
     "no_accuracy_claimed": "cost only. Accuracy for these rows is in runs/shrink.json and runs/multiscale.json."
   },
@@ -31,38 +36,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": true,
       "loadavg_1min": {
-        "before": 50.89,
-        "after": 47.62
+        "before": 335.79,
+        "after": 333.4
       },
       "warm": {
-        "per_apply_cpu_s": 0.0029855884999999693,
-        "per_wafer_cpu_s": 0.0029855884999999693,
-        "min_cpu_s": 0.0025406570000001683,
-        "max_cpu_s": 0.004251472999999839,
-        "spread_factor": 1.6733754300559098,
-        "over_budget_factor": 8.4799932696042,
+        "per_apply_cpu_s": 0.002758494499999875,
+        "per_wafer_cpu_s": 0.002758494499999875,
+        "min_cpu_s": 0.0021522900000001677,
+        "max_cpu_s": 0.0037520179999999126,
+        "spread_factor": 1.743267868177439,
+        "over_budget_factor": 5.351486166737396,
         "under_budget": false,
-        "speedup_vs_solver": 117.92462189615328,
+        "speedup_vs_solver": 186.86397924665908,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 186.86397924665908,
+          "all_frames_ten_applies_excl_raster": 374.1345949756466,
+          "fixed_duration": 117.39042945346264
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          82.8123323375247,
-          138.57612223923832
+          137.38293872790905,
+          239.49526272015376
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.0071008100000000685,
-        "per_wafer_cpu_s": 0.0071008100000000685,
-        "min_cpu_s": 0.006710520000000053,
-        "max_cpu_s": 0.012225217999999982,
-        "spread_factor": 1.821798906791111,
-        "over_budget_factor": 9.609923706870719,
+        "per_apply_cpu_s": 0.00874964300000003,
+        "per_wafer_cpu_s": 0.00874964300000003,
+        "min_cpu_s": 0.008353137999999927,
+        "max_cpu_s": 0.009146148000000132,
+        "spread_factor": 1.0949355798982625,
+        "over_budget_factor": 11.84138171453044,
         "under_budget": false,
-        "speedup_vs_solver": 104.05909875070489,
+        "speedup_vs_solver": 84.44960428671175,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          60.44095810806817,
-          110.11127140668593
+          80.7885340364041,
+          88.45824036428064
         ],
-        "n": 3
+        "n": 2
       }
     },
     "multiscale_s4_w8m4L2_wf8_K10": {
@@ -71,38 +84,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": true,
       "loadavg_1min": {
-        "before": 47.62,
-        "after": 44.77
+        "before": 333.4,
+        "after": 335.05
       },
       "warm": {
-        "per_apply_cpu_s": 0.0027787120000001275,
-        "per_wafer_cpu_s": 0.0027787120000001275,
-        "min_cpu_s": 0.0026871980000000573,
-        "max_cpu_s": 0.0030262969999999,
-        "spread_factor": 1.1261905523894538,
-        "over_budget_factor": 7.892400127535912,
+        "per_apply_cpu_s": 0.0022115779999999363,
+        "per_wafer_cpu_s": 0.0022115779999999363,
+        "min_cpu_s": 0.001929813000000058,
+        "max_cpu_s": 0.002444871000000015,
+        "spread_factor": 1.266895289854479,
+        "over_budget_factor": 4.290466801242834,
         "under_budget": false,
-        "speedup_vs_solver": 126.70416905385792,
+        "speedup_vs_solver": 233.07487187881898,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 233.07487187881898,
+          "all_frames_ten_applies_excl_raster": 466.65694020289214,
+          "fixed_duration": 146.4207249303481
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          116.33834848331523,
-          131.01914894250157
+          210.83454259958776,
+          267.1052889580412
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.004149304999999881,
-        "per_wafer_cpu_s": 0.004149304999999881,
-        "min_cpu_s": 0.0040209270000000075,
-        "max_cpu_s": 0.00428683700000021,
-        "spread_factor": 1.0661315164389211,
-        "over_budget_factor": 5.615486752431861,
+        "per_apply_cpu_s": 0.005513264000000073,
+        "per_wafer_cpu_s": 0.005513264000000073,
+        "min_cpu_s": 0.005495849999999969,
+        "max_cpu_s": 0.005530678000000178,
+        "spread_factor": 1.006337145300583,
+        "over_budget_factor": 7.461408827420685,
         "under_budget": false,
-        "speedup_vs_solver": 178.07895274028328,
+        "speedup_vs_solver": 134.02294702375764,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          172.3657533514719,
-          183.7645620027418
+          133.6009597738245,
+          134.44760846820859
         ],
-        "n": 3
+        "n": 2
       }
     },
     "multiscale_s2_w8m4L2_wf8_K10": {
@@ -111,38 +132,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": true,
       "loadavg_1min": {
-        "before": 44.77,
-        "after": 42.7
+        "before": 335.05,
+        "after": 345.54
       },
       "warm": {
-        "per_apply_cpu_s": 0.0016334729999999964,
-        "per_wafer_cpu_s": 0.0016334729999999964,
-        "min_cpu_s": 0.0016023609999999966,
-        "max_cpu_s": 0.0016768690000000808,
-        "spread_factor": 1.0464988850827526,
-        "over_budget_factor": 4.639567725451882,
+        "per_apply_cpu_s": 0.002073496499999994,
+        "per_wafer_cpu_s": 0.002073496499999994,
+        "min_cpu_s": 0.001717697000000129,
+        "max_cpu_s": 0.0026362250000000476,
+        "spread_factor": 1.534743904192561,
+        "over_budget_factor": 4.022588349017508,
         "under_budget": false,
-        "speedup_vs_solver": 215.53732140047651,
+        "speedup_vs_solver": 248.5961558169987,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 248.5961558169987,
+          "all_frames_ten_applies_excl_raster": 497.73328409283795,
+          "fixed_duration": 156.17140130210058
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          209.95939158036964,
-          219.72226920150987
+          195.53082874185267,
+          300.089747493278
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.004577658999999956,
-        "per_wafer_cpu_s": 0.004577658999999956,
-        "min_cpu_s": 0.004387665999999957,
-        "max_cpu_s": 0.006379320000000188,
-        "spread_factor": 1.453921059624924,
-        "over_budget_factor": 6.195202201730402,
+        "per_apply_cpu_s": 0.005825686500000038,
+        "per_wafer_cpu_s": 0.005825686500000038,
+        "min_cpu_s": 0.005624757000000091,
+        "max_cpu_s": 0.006026615999999985,
+        "spread_factor": 1.0714446864104328,
+        "over_budget_factor": 7.884227687425311,
         "under_budget": false,
-        "speedup_vs_solver": 161.41523189036295,
+        "speedup_vs_solver": 126.83550496580877,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          115.82800188734507,
-          168.40477123828643
+          122.60676455908288,
+          131.36636640480432
         ],
-        "n": 3
+        "n": 2
       }
     },
     "multiscale_s8_w16m4L4_wf8_K10": {
@@ -151,38 +180,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": true,
       "loadavg_1min": {
-        "before": 42.7,
-        "after": 40.32
+        "before": 345.54,
+        "after": 341.81
       },
       "warm": {
-        "per_apply_cpu_s": 0.0016785925000000201,
-        "per_wafer_cpu_s": 0.0016785925000000201,
-        "min_cpu_s": 0.001649625000000099,
-        "max_cpu_s": 0.0017640110000000098,
-        "spread_factor": 1.0693406077138161,
-        "over_budget_factor": 4.767721038049419,
+        "per_apply_cpu_s": 0.002676569999999878,
+        "per_wafer_cpu_s": 0.002676569999999878,
+        "min_cpu_s": 0.0022167690000001183,
+        "max_cpu_s": 0.003016856999999984,
+        "spread_factor": 1.3609252926217494,
+        "over_budget_factor": 5.1925524336932005,
         "under_budget": false,
-        "speedup_vs_solver": 209.74381513082872,
+        "speedup_vs_solver": 192.58351509582164,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 192.58351509582164,
+          "all_frames_ten_applies_excl_raster": 385.5861130103263,
+          "fixed_duration": 120.98351771110592
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          199.58741470432886,
-          213.42692733195648
+          170.86101827166573,
+          232.52908128901674
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.005302315000000002,
-        "per_wafer_cpu_s": 0.005302315000000002,
-        "min_cpu_s": 0.004539944000000018,
-        "max_cpu_s": 0.006838303000000101,
-        "spread_factor": 1.5062527202978877,
-        "over_budget_factor": 7.1759197358886855,
+        "per_apply_cpu_s": 0.00600951999999999,
+        "per_wafer_cpu_s": 0.00600951999999999,
+        "min_cpu_s": 0.0059001010000001575,
+        "max_cpu_s": 0.006118938999999823,
+        "spread_factor": 1.037090551500671,
+        "over_budget_factor": 8.133019854764889,
         "under_budget": false,
-        "speedup_vs_solver": 139.35495891888726,
+        "speedup_vs_solver": 122.95555868022755,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          108.05369241462232,
-          162.7561681377561
+          120.75686471135295,
+          125.23580342098893
         ],
-        "n": 3
+        "n": 2
       }
     },
     "multiscale_s4_w8m4L2_wf8_K1": {
@@ -191,38 +228,46 @@
       "applications_per_wafer": 10,
       "is_a_real_surrogate": true,
       "loadavg_1min": {
-        "before": 40.32,
-        "after": 38.3
+        "before": 341.81,
+        "after": 338.3
       },
       "warm": {
-        "per_apply_cpu_s": 0.0013166660000000219,
-        "per_wafer_cpu_s": 0.013166660000000219,
-        "min_cpu_s": 0.0012931780000000614,
-        "max_cpu_s": 0.0013787189999998617,
-        "spread_factor": 1.0661478930199835,
-        "over_budget_factor": 37.397380175858075,
+        "per_apply_cpu_s": 0.002045206499999952,
+        "per_wafer_cpu_s": 0.02045206499999952,
+        "min_cpu_s": 0.001615850999999946,
+        "max_cpu_s": 0.0022395909999999297,
+        "spread_factor": 1.386013314346437,
+        "over_budget_factor": 39.6770567890262,
         "under_budget": false,
-        "speedup_vs_solver": 26.739841007513977,
+        "speedup_vs_solver": 25.203482337847646,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 25.203482337847646,
+          "all_frames_ten_applies_excl_raster": 50.461810213297596,
+          "fixed_duration": 15.833161785864052
+        },
+        "matched_denominator": "all_frames_ten_applies_excl_raster",
         "speedup_range": [
-          25.536341705600282,
-          27.22551690486407
+          23.015955100731162,
+          31.900420212013184
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.0041244489999998635,
-        "per_wafer_cpu_s": 0.041244489999998635,
-        "min_cpu_s": 0.00387420599999988,
-        "max_cpu_s": 0.004434985999999919,
-        "spread_factor": 1.1447470784981635,
-        "over_budget_factor": 55.81847736086099,
+        "per_apply_cpu_s": 0.005339988500000059,
+        "per_wafer_cpu_s": 0.05339988500000059,
+        "min_cpu_s": 0.005147859000000032,
+        "max_cpu_s": 0.005532118000000086,
+        "spread_factor": 1.07464442984939,
+        "over_budget_factor": 72.26905392563253,
         "under_budget": false,
-        "speedup_vs_solver": 17.91521458987672,
+        "speedup_vs_solver": 13.83718127857376,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "all_frames_ten_applies_excl_raster",
         "speedup_range": [
-          16.66079417161663,
-          19.072395453417364
+          13.356618369311509,
+          14.353615532204655
         ],
-        "n": 3
+        "n": 2
       }
     },
     "fno_w8m4L2_K10_compiled": {
@@ -231,38 +276,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": true,
       "loadavg_1min": {
-        "before": 38.3,
-        "after": 38.22
+        "before": 338.3,
+        "after": 324.48
       },
       "warm": {
-        "per_apply_cpu_s": 0.00633460500000016,
-        "per_wafer_cpu_s": 0.00633460500000016,
-        "min_cpu_s": 0.006266075999999288,
-        "max_cpu_s": 0.0064698710000001824,
-        "spread_factor": 1.032523544240593,
-        "over_budget_factor": 17.992234283325725,
+        "per_apply_cpu_s": 0.006733554499999794,
+        "per_wafer_cpu_s": 0.006733554499999794,
+        "min_cpu_s": 0.005818894999999991,
+        "max_cpu_s": 0.006803098999999868,
+        "spread_factor": 1.1691393297180785,
+        "over_budget_factor": 13.063112418648242,
         "under_budget": false,
-        "speedup_vs_solver": 55.579534161954996,
+        "speedup_vs_solver": 76.55143490707852,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 76.55143490707852,
+          "all_frames_ten_applies_excl_raster": 153.26945411966793,
+          "fixed_duration": 48.090626429177924
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          54.41752934486482,
-          56.187380267976295
+          75.76888988386173,
+          88.58438913230101
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.9790328489999998,
-        "per_wafer_cpu_s": 0.9790328489999998,
-        "min_cpu_s": 0.648635686,
-        "max_cpu_s": 1.0296285330000003,
-        "spread_factor": 1.587375710623483,
-        "over_budget_factor": 1324.97996501951,
+        "per_apply_cpu_s": 0.824505415,
+        "per_wafer_cpu_s": 0.824505415,
+        "min_cpu_s": 0.7680643419999997,
+        "max_cpu_s": 0.8809464880000002,
+        "spread_factor": 1.146969648019411,
+        "over_budget_factor": 1115.849337477232,
         "under_budget": false,
-        "speedup_vs_solver": 0.7547283931838737,
+        "speedup_vs_solver": 0.8961783337711614,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          0.7176412320733536,
-          1.1391662607351516
+          0.8387613766161013,
+          0.9620338409096463
         ],
-        "n": 3
+        "n": 2
       }
     },
     "multiscale_s4_w8m4L2_wf8_K10_compiled": {
@@ -271,38 +324,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": true,
       "loadavg_1min": {
-        "before": 38.22,
-        "after": 45.57
+        "before": 324.48,
+        "after": 320.9
       },
       "warm": {
-        "per_apply_cpu_s": 0.0028008629999998202,
-        "per_wafer_cpu_s": 0.0028008629999998202,
-        "min_cpu_s": 0.00275145599999993,
-        "max_cpu_s": 0.0029400769999998744,
-        "spread_factor": 1.0685531587639232,
-        "over_budget_factor": 7.95531580761453,
+        "per_apply_cpu_s": 0.0023452529999996585,
+        "per_wafer_cpu_s": 0.0023452529999996585,
+        "min_cpu_s": 0.0022991179999998224,
+        "max_cpu_s": 0.0024075149999998047,
+        "spread_factor": 1.0471472103650141,
+        "over_budget_factor": 4.549796632546529,
         "under_budget": false,
-        "speedup_vs_solver": 125.70211217043547,
+        "speedup_vs_solver": 219.79004354757245,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 219.79004354757245,
+          "all_frames_ten_applies_excl_raster": 440.05837429912776,
+          "fixed_duration": 138.0750196247685
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          119.7500592671603,
-          127.95930409209116
+          214.10593869614175,
+          224.20043642824757
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 1.102431513,
-        "per_wafer_cpu_s": 1.102431513,
-        "min_cpu_s": 1.1007371789999998,
-        "max_cpu_s": 1.116144003,
-        "spread_factor": 1.0139968234869627,
-        "over_budget_factor": 1491.9822853984197,
+        "per_apply_cpu_s": 0.8354710620000001,
+        "per_wafer_cpu_s": 0.8354710620000001,
+        "min_cpu_s": 0.8319899900000003,
+        "max_cpu_s": 0.8389521339999999,
+        "spread_factor": 1.0083680622167097,
+        "over_budget_factor": 1130.689761466393,
         "under_budget": false,
-        "speedup_vs_solver": 0.6702492447709991,
+        "speedup_vs_solver": 0.8844158973396015,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          0.6620148359118136,
-          0.6712809407158219
+          0.8807461821177035,
+          0.8881163209667939
         ],
-        "n": 3
+        "n": 2
       }
     },
     "multiscale_s8_w16m4L4_wf8_K10_compiled": {
@@ -311,38 +372,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": true,
       "loadavg_1min": {
-        "before": 45.57,
-        "after": 39.16
+        "before": 320.9,
+        "after": 342.81
       },
       "warm": {
-        "per_apply_cpu_s": 0.0036377945000003464,
-        "per_wafer_cpu_s": 0.0036377945000003464,
-        "min_cpu_s": 0.0036152249999998887,
-        "max_cpu_s": 0.0037986870000006334,
-        "spread_factor": 1.0507470489390702,
-        "over_budget_factor": 10.332459706421844,
+        "per_apply_cpu_s": 0.0030474764999994797,
+        "per_wafer_cpu_s": 0.0030474764999994797,
+        "min_cpu_s": 0.0027094229999997665,
+        "max_cpu_s": 0.0032475260000000006,
+        "spread_factor": 1.1986042784756312,
+        "over_budget_factor": 5.912111962958509,
         "under_budget": false,
-        "speedup_vs_solver": 96.7823759698263,
+        "speedup_vs_solver": 169.1442933194359,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 169.1442933194359,
+          "all_frames_ten_applies_excl_raster": 338.6566631441385,
+          "fixed_duration": 106.25868780286093
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          92.68318105701815,
-          97.38657898194737
+          158.72490597457875,
+          190.24835140177237
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.8740346239999996,
-        "per_wafer_cpu_s": 0.8740346239999996,
-        "min_cpu_s": 0.810966589,
-        "max_cpu_s": 1.1855123090000004,
-        "spread_factor": 1.4618509875503642,
-        "over_budget_factor": 1182.8799888749804,
+        "per_apply_cpu_s": 0.9701845344999998,
+        "per_wafer_cpu_s": 0.9701845344999998,
+        "min_cpu_s": 0.9551174069999999,
+        "max_cpu_s": 0.9852516619999996,
+        "spread_factor": 1.0315503149446836,
+        "over_budget_factor": 1313.005045639975,
         "under_budget": false,
-        "speedup_vs_solver": 0.8453942998486982,
+        "speedup_vs_solver": 0.7616116962540596,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          0.6232781249005148,
-          0.9111397424043569
+          0.7499646207143371,
+          0.7736262406952447
         ],
-        "n": 3
+        "n": 2
       }
     },
     "fno_w64m20L4_DEPLOYED_compiled": {
@@ -351,38 +420,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": true,
       "loadavg_1min": {
-        "before": 39.16,
-        "after": 217.0
+        "before": 342.81,
+        "after": 332.15
       },
       "warm": {
-        "per_apply_cpu_s": 0.21025714800000017,
-        "per_wafer_cpu_s": 0.21025714800000017,
-        "min_cpu_s": 0.20461220799999946,
-        "max_cpu_s": 0.23746524899999955,
-        "spread_factor": 1.1605624675141581,
-        "over_budget_factor": 597.1952263100538,
+        "per_apply_cpu_s": 0.15838749799999974,
+        "per_wafer_cpu_s": 0.15838749799999974,
+        "min_cpu_s": 0.12343604399999997,
+        "max_cpu_s": 0.19002652199999925,
+        "spread_factor": 1.5394735268735549,
+        "over_budget_factor": 307.27213867244757,
         "under_budget": false,
-        "speedup_vs_solver": 1.6744942959085487,
+        "speedup_vs_solver": 3.254444103915328,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 3.254444103915328,
+          "all_frames_ten_applies_excl_raster": 6.515970234595181,
+          "fixed_duration": 2.044484937820033
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          1.4826354444813965,
-          1.7206910498712802
+          2.7125858726183596,
+          4.175954140267166
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 1.2818861379999995,
-        "per_wafer_cpu_s": 1.2818861379999995,
-        "min_cpu_s": 1.163945455,
-        "max_cpu_s": 1.3220480810000002,
-        "spread_factor": 1.1358333634285296,
-        "over_budget_factor": 1734.8482760523132,
+        "per_apply_cpu_s": 1.1202796325,
+        "per_wafer_cpu_s": 1.1202796325,
+        "min_cpu_s": 1.058708573,
+        "max_cpu_s": 1.1818506919999998,
+        "spread_factor": 1.1163135183188884,
+        "over_budget_factor": 1516.1371447322294,
         "under_budget": false,
-        "speedup_vs_solver": 0.5764192833482378,
+        "speedup_vs_solver": 0.6595709388655693,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          0.5589084842066344,
-          0.6348269034651628
+          0.6252091689768203,
+          0.6979294471057427
         ],
-        "n": 3
+        "n": 2
       }
     },
     "pw_wf8_n1_relu_K10": {
@@ -391,38 +468,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": true,
       "loadavg_1min": {
-        "before": 217.0,
-        "after": 230.85
+        "before": 332.15,
+        "after": 333.82
       },
       "warm": {
-        "per_apply_cpu_s": 0.001045742500000002,
-        "per_wafer_cpu_s": 0.001045742500000002,
-        "min_cpu_s": 0.0007523099999999783,
-        "max_cpu_s": 0.0011222050000001538,
-        "spread_factor": 1.4916789621302204,
-        "over_budget_factor": 2.970231618235125,
+        "per_apply_cpu_s": 0.0010862215000000397,
+        "per_wafer_cpu_s": 0.0010862215000000397,
+        "min_cpu_s": 0.0010669540000001199,
+        "max_cpu_s": 0.0011179789999999912,
+        "spread_factor": 1.047823055164389,
+        "over_budget_factor": 2.107272402124862,
         "under_budget": false,
-        "speedup_vs_solver": 336.67408085642415,
+        "speedup_vs_solver": 474.5470965175897,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 474.5470965175897,
+          "all_frames_ten_applies_excl_raster": 950.1268594848881,
+          "fixed_duration": 298.1167782077488
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          313.73447364781975,
-          467.9911140354508
+          461.06703167054474,
+          483.11666576060634
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.002798544000000014,
-        "per_wafer_cpu_s": 0.002798544000000014,
-        "min_cpu_s": 0.0027398659999999797,
-        "max_cpu_s": 0.0028313709999998604,
-        "spread_factor": 1.0333976187156164,
-        "over_budget_factor": 3.787426269724254,
+        "per_apply_cpu_s": 0.003162204000000002,
+        "per_wafer_cpu_s": 0.003162204000000002,
+        "min_cpu_s": 0.00304521499999999,
+        "max_cpu_s": 0.0032791930000000136,
+        "spread_factor": 1.076834640575468,
+        "over_budget_factor": 4.279587706974435,
         "under_budget": false,
-        "speedup_vs_solver": 264.03154247351347,
+        "speedup_vs_solver": 233.66736902489515,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          260.97035287853,
-          269.68614122004703
+          225.33101558828557,
+          242.64424318151669
         ],
-        "n": 3
+        "n": 2
       }
     },
     "pw_wf16_n2_relu_K10": {
@@ -431,38 +516,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": true,
       "loadavg_1min": {
-        "before": 230.85,
-        "after": 244.8
+        "before": 333.82,
+        "after": 332.0
       },
       "warm": {
-        "per_apply_cpu_s": 0.0021439540000000035,
-        "per_wafer_cpu_s": 0.0021439540000000035,
-        "min_cpu_s": 0.0015783110000000544,
-        "max_cpu_s": 0.002186261000000078,
-        "spread_factor": 1.3851902445082134,
-        "over_budget_factor": 6.089491398543778,
+        "per_apply_cpu_s": 0.0022251459999999,
+        "per_wafer_cpu_s": 0.0022251459999999,
+        "min_cpu_s": 0.0021834110000000795,
+        "max_cpu_s": 0.0030406599999999173,
+        "spread_factor": 1.3926191633182239,
+        "over_budget_factor": 4.316788754870113,
         "under_budget": false,
-        "speedup_vs_solver": 164.2173269575743,
+        "speedup_vs_solver": 231.6536798034929,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 231.6536798034929,
+          "all_frames_ten_applies_excl_raster": 463.8114633826492,
+          "fixed_duration": 145.527913224577
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          161.03950763426107,
-          223.07035495538437
+          169.52347812646397,
+          236.08164427127147
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.004567317000000015,
-        "per_wafer_cpu_s": 0.004567317000000015,
-        "min_cpu_s": 0.004247254000000034,
-        "max_cpu_s": 0.004763233000000033,
-        "spread_factor": 1.1214853173368007,
-        "over_budget_factor": 6.181205794140862,
+        "per_apply_cpu_s": 0.004967530000000053,
+        "per_wafer_cpu_s": 0.004967530000000053,
+        "min_cpu_s": 0.004790905000000123,
+        "max_cpu_s": 0.005144154999999984,
+        "spread_factor": 1.0737334595446688,
+        "over_budget_factor": 6.722836452685193,
         "under_budget": false,
-        "speedup_vs_solver": 161.7807323205281,
+        "speedup_vs_solver": 148.7467391238688,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          155.12654724217663,
-          173.97214506125465
+          143.63950716881632,
+          154.2305449596644
         ],
-        "n": 3
+        "n": 2
       }
     },
     "pw_wf32_n3_relu_K10": {
@@ -471,38 +564,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": true,
       "loadavg_1min": {
-        "before": 244.8,
-        "after": 252.9
+        "before": 332.0,
+        "after": 351.06
       },
       "warm": {
-        "per_apply_cpu_s": 0.0056430619999999765,
-        "per_wafer_cpu_s": 0.0056430619999999765,
-        "min_cpu_s": 0.005190825999999982,
-        "max_cpu_s": 0.005884221999999939,
-        "spread_factor": 1.1335810524182393,
-        "over_budget_factor": 16.028038619508187,
+        "per_apply_cpu_s": 0.005884305499999853,
+        "per_wafer_cpu_s": 0.005884305499999853,
+        "min_cpu_s": 0.005156262000000078,
+        "max_cpu_s": 0.005928366000000018,
+        "spread_factor": 1.149741033329945,
+        "over_budget_factor": 11.415567253843507,
         "under_budget": false,
-        "speedup_vs_solver": 62.39066574140091,
+        "speedup_vs_solver": 87.59967663133955,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 87.59967663133955,
+          "all_frames_ten_applies_excl_raster": 175.3899797520757,
+          "fixed_duration": 55.031278372614764
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          59.83363561062167,
-          67.82627562549796
+          86.94862277396474,
+          99.96839939475382
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.009480009000000011,
-        "per_wafer_cpu_s": 0.009480009000000011,
-        "min_cpu_s": 0.00903350199999986,
-        "max_cpu_s": 0.00948717500000007,
-        "spread_factor": 1.0502211656122085,
-        "over_budget_factor": 12.829826911358985,
+        "per_apply_cpu_s": 0.009554084000000018,
+        "per_wafer_cpu_s": 0.009554084000000018,
+        "min_cpu_s": 0.009552127999999938,
+        "max_cpu_s": 0.009556040000000099,
+        "spread_factor": 1.000409542250707,
+        "over_budget_factor": 12.930076755895948,
         "under_budget": false,
-        "speedup_vs_solver": 77.94337420987671,
+        "speedup_vs_solver": 77.33906138987248,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          77.884500812939,
-          81.79595122688978
+          77.3232310664242,
+          77.35489819650708
         ],
-        "n": 3
+        "n": 2
       }
     },
     "pw_wf64_n4_relu_K10": {
@@ -511,38 +612,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": true,
       "loadavg_1min": {
-        "before": 252.9,
-        "after": 274.14
+        "before": 351.06,
+        "after": 368.91
       },
       "warm": {
-        "per_apply_cpu_s": 0.01622689849999992,
-        "per_wafer_cpu_s": 0.01622689849999992,
-        "min_cpu_s": 0.014914907999999949,
-        "max_cpu_s": 0.01670044500000012,
-        "spread_factor": 1.1197149187913311,
-        "over_budget_factor": 46.089402496878336,
+        "per_apply_cpu_s": 0.013648738500000035,
+        "per_wafer_cpu_s": 0.013648738500000035,
+        "min_cpu_s": 0.01257267399999984,
+        "max_cpu_s": 0.01374927799999992,
+        "spread_factor": 1.0935842287806155,
+        "over_budget_factor": 26.478586517453493,
         "under_budget": false,
-        "speedup_vs_solver": 21.6969616837131,
+        "speedup_vs_solver": 37.7663663934948,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 37.7663663934948,
+          "all_frames_ten_applies_excl_raster": 75.61491653605931,
+          "fixed_duration": 23.72533212501648
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          21.081737342926928,
-          23.6055358169156
+          37.4902055947958,
+          40.99869757221148
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.019029564,
-        "per_wafer_cpu_s": 0.019029564,
-        "min_cpu_s": 0.018620630000000027,
-        "max_cpu_s": 0.01930049300000003,
-        "spread_factor": 1.036511278082428,
-        "over_budget_factor": 25.753774318002,
+        "per_apply_cpu_s": 0.019135947500000028,
+        "per_wafer_cpu_s": 0.019135947500000028,
+        "min_cpu_s": 0.018761186000000096,
+        "max_cpu_s": 0.01951070899999996,
+        "spread_factor": 1.0399507259295793,
+        "over_budget_factor": 25.897749064357722,
         "under_budget": false,
-        "speedup_vs_solver": 38.829260039799124,
+        "speedup_vs_solver": 38.613394450418454,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          38.28419766272285,
-          39.682002649749165
+          37.87170876260834,
+          39.384711019868156
         ],
-        "n": 3
+        "n": 2
       }
     },
     "pw_wf32_n3_gelu_K10": {
@@ -551,38 +660,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": true,
       "loadavg_1min": {
-        "before": 274.14,
-        "after": 281.42
+        "before": 368.91,
+        "after": 383.97
       },
       "warm": {
-        "per_apply_cpu_s": 0.00624390549999998,
-        "per_wafer_cpu_s": 0.00624390549999998,
-        "min_cpu_s": 0.0049202749999999185,
-        "max_cpu_s": 0.006724101999999954,
-        "spread_factor": 1.366611012595854,
-        "over_budget_factor": 17.73461969593098,
+        "per_apply_cpu_s": 0.006380032499999966,
+        "per_wafer_cpu_s": 0.006380032499999966,
+        "min_cpu_s": 0.006222576000000091,
+        "max_cpu_s": 0.006564057999999928,
+        "spread_factor": 1.0548779155127768,
+        "over_budget_factor": 12.377278862468774,
         "under_budget": false,
-        "speedup_vs_solver": 56.386887181428506,
+        "speedup_vs_solver": 80.79320269920296,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 80.79320269920296,
+          "all_frames_ten_applies_excl_raster": 161.7622202551488,
+          "fixed_duration": 50.75536119917913
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          52.36006161120135,
-          71.55583681806517
+          78.52813899572574,
+          82.83759957290877
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.009981726999999996,
-        "per_wafer_cpu_s": 0.009981726999999996,
-        "min_cpu_s": 0.009973041999999932,
-        "max_cpu_s": 0.010023349000000126,
-        "spread_factor": 1.0050442984196992,
-        "over_budget_factor": 13.508829969089522,
+        "per_apply_cpu_s": 0.009672754000000006,
+        "per_wafer_cpu_s": 0.009672754000000006,
+        "min_cpu_s": 0.009353406000000009,
+        "max_cpu_s": 0.009992102000000003,
+        "spread_factor": 1.0682848579437259,
+        "over_budget_factor": 13.0906795105527,
         "under_budget": false,
-        "speedup_vs_solver": 74.02565598117442,
+        "speedup_vs_solver": 76.39022857399242,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          73.71826412509338,
-          74.09012104832256
+          73.94879365723045,
+          78.99837652722434
         ],
-        "n": 3
+        "n": 2
       }
     },
     "ms_s8_w8m4L2_wf16_relu_K10": {
@@ -591,38 +708,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": true,
       "loadavg_1min": {
-        "before": 281.42,
-        "after": 300.29
+        "before": 383.97,
+        "after": 384.37
       },
       "warm": {
-        "per_apply_cpu_s": 0.003033351999999989,
-        "per_wafer_cpu_s": 0.003033351999999989,
-        "min_cpu_s": 0.002076552999999981,
-        "max_cpu_s": 0.003106660000000039,
-        "spread_factor": 1.4960658360273333,
-        "over_budget_factor": 8.615656358651105,
+        "per_apply_cpu_s": 0.0029349800000001425,
+        "per_wafer_cpu_s": 0.0029349800000001425,
+        "min_cpu_s": 0.0019705750000000855,
+        "max_cpu_s": 0.0031028429999999663,
+        "spread_factor": 1.574587620364529,
+        "over_budget_factor": 5.693868474145008,
         "under_budget": false,
-        "speedup_vs_solver": 116.06776760494697,
+        "speedup_vs_solver": 175.62752011937897,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 175.62752011937897,
+          "all_frames_ten_applies_excl_raster": 351.63722495551997,
+          "fixed_duration": 110.331536841813
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          113.3289111135417,
-          169.5475121511481
+          166.12611691922714,
+          261.5801271202454
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.006933545999999957,
-        "per_wafer_cpu_s": 0.006933545999999957,
-        "min_cpu_s": 0.006753640000000116,
-        "max_cpu_s": 0.007159337999999904,
-        "spread_factor": 1.0600710135571012,
-        "over_budget_factor": 9.383555971512768,
+        "per_apply_cpu_s": 0.006822431499999948,
+        "per_wafer_cpu_s": 0.006822431499999948,
+        "min_cpu_s": 0.006786226999999867,
+        "max_cpu_s": 0.006858636000000029,
+        "spread_factor": 1.010669993797756,
+        "over_budget_factor": 9.23317849799536,
         "under_budget": false,
-        "speedup_vs_solver": 106.56940748644409,
+        "speedup_vs_solver": 108.30506528354378,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          103.2084096322886,
-          109.40824340651666
+          107.73335820708327,
+          108.88287247096426
         ],
-        "n": 3
+        "n": 2
       }
     },
     "ms_s8_w16m4L4_wf16_relu_K10": {
@@ -631,38 +756,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": true,
       "loadavg_1min": {
-        "before": 300.29,
-        "after": 327.92
+        "before": 384.37,
+        "after": 378.82
       },
       "warm": {
-        "per_apply_cpu_s": 0.003552246500000078,
-        "per_wafer_cpu_s": 0.003552246500000078,
-        "min_cpu_s": 0.0024083560000001114,
-        "max_cpu_s": 0.003866463000000042,
-        "spread_factor": 1.6054366547137813,
-        "over_budget_factor": 10.089476969775323,
+        "per_apply_cpu_s": 0.0035862090000000624,
+        "per_wafer_cpu_s": 0.0035862090000000624,
+        "min_cpu_s": 0.0025022130000000864,
+        "max_cpu_s": 0.003871806000000033,
+        "spread_factor": 1.54735268340461,
+        "over_budget_factor": 6.957254348170842,
         "under_budget": false,
-        "speedup_vs_solver": 99.113165429255,
+        "speedup_vs_solver": 143.73486291512594,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 143.73486291512594,
+          "all_frames_ten_applies_excl_raster": 287.7825086323703,
+          "fixed_duration": 90.2961467109124
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          91.05851911682485,
-          146.18868431410618
+          133.13251206284497,
+          206.00294978883977
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.007967167000000108,
-        "per_wafer_cpu_s": 0.007967167000000108,
-        "min_cpu_s": 0.007570191999999976,
-        "max_cpu_s": 0.008915626000000065,
-        "spread_factor": 1.1777278568364045,
-        "over_budget_factor": 10.782413137360155,
+        "per_apply_cpu_s": 0.007050943000000087,
+        "per_wafer_cpu_s": 0.007050943000000087,
+        "min_cpu_s": 0.006925252000000048,
+        "max_cpu_s": 0.007176634000000126,
+        "spread_factor": 1.0362993288908586,
+        "over_budget_factor": 9.542435904001703,
         "under_budget": false,
-        "speedup_vs_solver": 92.74361752427053,
+        "speedup_vs_solver": 104.79504500319898,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          82.87739851357544,
-          97.6070209315698
+          102.959672877283,
+          106.6970399055507
         ],
-        "n": 3
+        "n": 2
       }
     },
     "ms_s16_w16m4L4_wf16_relu_K10": {
@@ -671,38 +804,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": true,
       "loadavg_1min": {
-        "before": 327.92,
-        "after": 322.0
+        "before": 378.82,
+        "after": 382.04
       },
       "warm": {
-        "per_apply_cpu_s": 0.0036278989999999345,
-        "per_wafer_cpu_s": 0.0036278989999999345,
-        "min_cpu_s": 0.002642565000000152,
-        "max_cpu_s": 0.003957702000000118,
-        "spread_factor": 1.4976744186046098,
-        "over_budget_factor": 10.304353430756976,
+        "per_apply_cpu_s": 0.003727584499999992,
+        "per_wafer_cpu_s": 0.003727584499999992,
+        "min_cpu_s": 0.0024166409999999416,
+        "max_cpu_s": 0.0038320030000000838,
+        "spread_factor": 1.5856732547367094,
+        "over_budget_factor": 7.231523168560094,
         "under_budget": false,
-        "speedup_vs_solver": 97.04636071732045,
+        "speedup_vs_solver": 138.28345380232184,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 138.28345380232184,
+          "all_frames_ten_applies_excl_raster": 276.86782754354846,
+          "fixed_duration": 86.87149922422972
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          88.95929885574742,
-          133.23206619325524
+          134.51535893891227,
+          213.29740702074173
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.007772312999999809,
-        "per_wafer_cpu_s": 0.007772312999999809,
-        "min_cpu_s": 0.007590123000000171,
-        "max_cpu_s": 0.008816170000000012,
-        "spread_factor": 1.161531901393405,
-        "over_budget_factor": 10.51870631039514,
+        "per_apply_cpu_s": 0.007680142999999973,
+        "per_wafer_cpu_s": 0.007680142999999973,
+        "min_cpu_s": 0.007581422999999976,
+        "max_cpu_s": 0.007778862999999969,
+        "spread_factor": 1.026042604402893,
+        "over_budget_factor": 10.393967489322517,
         "under_budget": false,
-        "speedup_vs_solver": 95.068725230188,
+        "speedup_vs_solver": 96.20965247652323,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          83.8123458372512,
-          97.350713420584
+          94.98867495159676,
+          97.46242743611619
         ],
-        "n": 3
+        "n": 2
       }
     },
     "ms_s4_w8m4L2_wf16_relu_K10": {
@@ -711,38 +852,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": true,
       "loadavg_1min": {
-        "before": 322.0,
-        "after": 319.15
+        "before": 382.04,
+        "after": 383.55
       },
       "warm": {
-        "per_apply_cpu_s": 0.0030246310000000554,
-        "per_wafer_cpu_s": 0.0030246310000000554,
-        "min_cpu_s": 0.0021025159999998877,
-        "max_cpu_s": 0.0032460450000000307,
-        "spread_factor": 1.543885991830837,
-        "over_budget_factor": 8.590886025665277,
+        "per_apply_cpu_s": 0.002926217999999925,
+        "per_wafer_cpu_s": 0.002926217999999925,
+        "min_cpu_s": 0.002137341999999931,
+        "max_cpu_s": 0.0032415539999999243,
+        "spread_factor": 1.516628597575881,
+        "over_budget_factor": 5.6768701724285755,
         "under_budget": false,
-        "speedup_vs_solver": 116.40242892438562,
+        "speedup_vs_solver": 176.15340312991484,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 176.15340312991484,
+          "all_frames_ten_applies_excl_raster": 352.6901353556121,
+          "fixed_duration": 110.66190352188673
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          108.46257368582275,
-          167.4538481514617
+          159.01732903416445,
+          241.1702287233473
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.0070012550000000395,
-        "per_wafer_cpu_s": 0.0070012550000000395,
-        "min_cpu_s": 0.00635813800000018,
-        "max_cpu_s": 0.007018784,
-        "spread_factor": 1.1039055773875626,
-        "over_budget_factor": 9.475190351853787,
+        "per_apply_cpu_s": 0.006582336999999994,
+        "per_wafer_cpu_s": 0.006582336999999994,
+        "min_cpu_s": 0.006095697000000122,
+        "max_cpu_s": 0.007068976999999865,
+        "spread_factor": 1.1596667288416278,
+        "over_budget_factor": 8.908245169623129,
         "under_budget": false,
-        "speedup_vs_solver": 105.53877683358137,
+        "speedup_vs_solver": 112.25555437225421,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          105.27519994916497,
-          116.21388038447405
+          104.52769743062031,
+          121.21729295271486
         ],
-        "n": 3
+        "n": 2
       }
     }
   },
@@ -753,38 +902,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": false,
       "loadavg_1min": {
-        "before": 319.15,
-        "after": 326.43
+        "before": 383.55,
+        "after": 384.55
       },
       "warm": {
-        "per_apply_cpu_s": 4.133350000001812e-05,
-        "per_wafer_cpu_s": 4.133350000001812e-05,
-        "min_cpu_s": 3.9316000000066964e-05,
-        "max_cpu_s": 5.490099999994058e-05,
-        "spread_factor": 1.3964034998435007,
-        "over_budget_factor": 0.1173999035062409,
+        "per_apply_cpu_s": 3.713849999997798e-05,
+        "per_wafer_cpu_s": 3.713849999997798e-05,
+        "min_cpu_s": 3.570299999999804e-05,
+        "max_cpu_s": 4.8784999999940126e-05,
+        "spread_factor": 1.3664117861228133,
+        "over_budget_factor": 0.07204878204515831,
         "under_budget": true,
-        "speedup_vs_solver": 8517.894564937533,
+        "speedup_vs_solver": 13879.485143457747,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 13879.485143457747,
+          "all_frames_ten_applies_excl_raster": 27789.173566531066,
+          "fixed_duration": 8719.276599760142
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          6412.895848898579,
-          8954.990207533832
+          10566.01945271359,
+          14437.533512590768
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.0005360150000000008,
-        "per_wafer_cpu_s": 0.0005360150000000008,
-        "min_cpu_s": 0.0005008819999998693,
-        "max_cpu_s": 0.0005411499999998792,
-        "spread_factor": 1.0803941846583036,
-        "over_budget_factor": 0.7254191079240631,
+        "per_apply_cpu_s": 0.0005637689999999917,
+        "per_wafer_cpu_s": 0.0005637689999999917,
+        "min_cpu_s": 0.0005266950000000215,
+        "max_cpu_s": 0.000600842999999962,
+        "spread_factor": 1.1407797681769098,
+        "over_budget_factor": 0.7629801499122869,
         "under_budget": true,
-        "speedup_vs_solver": 1378.5134539145338,
+        "speedup_vs_solver": 1310.6500871811163,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          1365.4326693156515,
-          1475.2055154710945
+          1229.7786426737878,
+          1402.9065948983184
         ],
-        "n": 3
+        "n": 2
       }
     },
     "fullres_local_path_only": {
@@ -793,38 +950,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": false,
       "loadavg_1min": {
-        "before": 326.43,
-        "after": 325.99
+        "before": 384.55,
+        "after": 382.83
       },
       "warm": {
-        "per_apply_cpu_s": 0.0010292244999999811,
-        "per_wafer_cpu_s": 0.0010292244999999811,
-        "min_cpu_s": 0.000831908999999964,
-        "max_cpu_s": 0.0015144999999998632,
-        "spread_factor": 1.820511618458183,
-        "over_budget_factor": 2.923315397588006,
+        "per_apply_cpu_s": 0.0007783949999999873,
+        "per_wafer_cpu_s": 0.0007783949999999873,
+        "min_cpu_s": 0.0006482420000000211,
+        "max_cpu_s": 0.0011093149999998886,
+        "spread_factor": 1.7112667799986,
+        "over_budget_factor": 1.510088229198092,
         "under_budget": false,
-        "speedup_vs_solver": 342.07735532918844,
+        "speedup_vs_solver": 662.212962570428,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 662.212962570428,
+          "all_frames_ten_applies_excl_raster": 1325.866973066398,
+          "fixed_duration": 416.01096358533306
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          232.4690623968515,
-          423.2126290255485
+          464.66806903363937,
+          795.1710302633633
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.002260614999999966,
-        "per_wafer_cpu_s": 0.002260614999999966,
-        "min_cpu_s": 0.002160321999999937,
-        "max_cpu_s": 0.002668231000000132,
-        "spread_factor": 1.2351080070471947,
-        "over_budget_factor": 3.059416838446179,
+        "per_apply_cpu_s": 0.002683993500000037,
+        "per_wafer_cpu_s": 0.002683993500000037,
+        "min_cpu_s": 0.002603554000000008,
+        "max_cpu_s": 0.002764433000000066,
+        "spread_factor": 1.0617920734503903,
+        "over_budget_factor": 3.632398665044836,
         "under_budget": false,
-        "speedup_vs_solver": 326.8596771232656,
+        "speedup_vs_solver": 275.3001782604875,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          276.926506363191,
-          342.0341453727831
+          267.2894908286735,
+          283.8058626784763
         ],
-        "n": 3
+        "n": 2
       }
     },
     "coarse_body_only": {
@@ -833,38 +998,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": false,
       "loadavg_1min": {
-        "before": 325.99,
-        "after": 332.0
+        "before": 382.83,
+        "after": 386.2
       },
       "warm": {
-        "per_apply_cpu_s": 0.0010105084999999514,
-        "per_wafer_cpu_s": 0.0010105084999999514,
-        "min_cpu_s": 0.0007727440000000474,
-        "max_cpu_s": 0.001162052000000191,
-        "spread_factor": 1.5037994471650635,
-        "over_budget_factor": 2.870156178213278,
+        "per_apply_cpu_s": 0.0010082919999998552,
+        "per_wafer_cpu_s": 0.0010082919999998552,
+        "min_cpu_s": 0.000829501999999982,
+        "max_cpu_s": 0.0010778909999999975,
+        "spread_factor": 1.2994435215346327,
+        "over_budget_factor": 1.9560889789816336,
         "under_budget": false,
-        "speedup_vs_solver": 348.41309598090146,
+        "speedup_vs_solver": 511.2241880329051,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 511.2241880329051,
+          "all_frames_ten_applies_excl_raster": 1023.560855883167,
+          "fixed_duration": 321.15781341124057
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          302.9764545820169,
-          455.615824904468
+          478.21464229685665,
+          621.4129188356521
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.003933485000000125,
-        "per_wafer_cpu_s": 0.003933485000000125,
-        "min_cpu_s": 0.003356248000000006,
-        "max_cpu_s": 0.004311026999999967,
-        "spread_factor": 1.2844780838602985,
-        "over_budget_factor": 5.323405463900767,
+        "per_apply_cpu_s": 0.003959380499999998,
+        "per_wafer_cpu_s": 0.003959380499999998,
+        "min_cpu_s": 0.003845876999999831,
+        "max_cpu_s": 0.004072884000000165,
+        "spread_factor": 1.0590260686965143,
+        "over_budget_factor": 5.358451293792012,
         "under_budget": false,
-        "speedup_vs_solver": 187.84967757598577,
+        "speedup_vs_solver": 186.6210860512144,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          171.39857602376546,
-          220.15771450738998
+          181.42031273170804,
+          192.12884057395294
         ],
-        "n": 3
+        "n": 2
       }
     },
     "fullres_fno_body_only": {
@@ -873,38 +1046,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": false,
       "loadavg_1min": {
-        "before": 332.0,
-        "after": 355.77
+        "before": 386.2,
+        "after": 376.42
       },
       "warm": {
-        "per_apply_cpu_s": 0.0029834044999998977,
-        "per_wafer_cpu_s": 0.0029834044999998977,
-        "min_cpu_s": 0.0022007899999998415,
-        "max_cpu_s": 0.004025288000000016,
-        "spread_factor": 1.8290195793330148,
-        "over_budget_factor": 8.473790035199519,
+        "per_apply_cpu_s": 0.0026317274999999585,
+        "per_wafer_cpu_s": 0.0026317274999999585,
+        "min_cpu_s": 0.00227047800000002,
+        "max_cpu_s": 0.00276922199999996,
+        "spread_factor": 1.2196647578174884,
+        "over_budget_factor": 5.105557872554325,
         "under_budget": false,
-        "speedup_vs_solver": 118.01094856564436,
+        "speedup_vs_solver": 195.86498184177808,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 195.86498184177808,
+          "all_frames_ten_applies_excl_raster": 392.156187333232,
+          "fixed_duration": 123.04497863095824
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          87.46564096780116,
-          159.97636984902022
+          186.14009963809593,
+          227.02851954522146
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.009033195999999855,
-        "per_wafer_cpu_s": 0.009033195999999855,
-        "min_cpu_s": 0.008776082000000018,
-        "max_cpu_s": 0.00919992199999986,
-        "spread_factor": 1.048294899705796,
-        "over_budget_factor": 12.225129863946156,
+        "per_apply_cpu_s": 0.00916906400000006,
+        "per_wafer_cpu_s": 0.00916906400000006,
+        "min_cpu_s": 0.008959952999999965,
+        "max_cpu_s": 0.009378175000000155,
+        "spread_factor": 1.0466768073448813,
+        "over_budget_factor": 12.40900763482118,
         "under_budget": false,
-        "speedup_vs_solver": 81.79872206913387,
+        "speedup_vs_solver": 80.58662138250918,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          80.31632105141883,
-          84.1951897213356
+          78.78973137097438,
+          82.46738448293232
         ],
-        "n": 3
+        "n": 2
       }
     },
     "gelu_only_w8_fullres": {
@@ -913,38 +1094,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": false,
       "loadavg_1min": {
-        "before": 355.77,
-        "after": 364.36
+        "before": 376.42,
+        "after": 372.94
       },
       "warm": {
-        "per_apply_cpu_s": 0.00012792600000011145,
-        "per_wafer_cpu_s": 0.00012792600000011145,
-        "min_cpu_s": 9.192199999996653e-05,
-        "max_cpu_s": 0.00013728200000007185,
-        "spread_factor": 1.4934618480899222,
-        "over_budget_factor": 0.36334934268682484,
+        "per_apply_cpu_s": 0.00012251399999996249,
+        "per_wafer_cpu_s": 0.00012251399999996249,
+        "min_cpu_s": 0.00012175400000002945,
+        "max_cpu_s": 0.00012879400000009866,
+        "spread_factor": 1.057821508944819,
+        "over_budget_factor": 0.23767746364239417,
         "under_budget": true,
-        "speedup_vs_solver": 2752.17231055214,
+        "speedup_vs_solver": 4207.382495063076,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 4207.382495063076,
+          "all_frames_ten_applies_excl_raster": 8423.920715186166,
+          "fixed_duration": 2643.1334704613287
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          2564.607122563887,
-          3830.142892888841
+          4002.23037563555,
+          4233.645375099588
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.0005316699999999841,
-        "per_wafer_cpu_s": 0.0005316699999999841,
-        "min_cpu_s": 0.0005050340000001263,
-        "max_cpu_s": 0.0005565869999999418,
-        "spread_factor": 1.102078275917666,
-        "over_budget_factor": 0.719538776172261,
+        "per_apply_cpu_s": 0.0005540264999999156,
+        "per_wafer_cpu_s": 0.0005540264999999156,
+        "min_cpu_s": 0.0005043009999998738,
+        "max_cpu_s": 0.0006037519999999574,
+        "spread_factor": 1.1972056371097985,
+        "over_budget_factor": 0.7497950792351503,
         "under_budget": true,
-        "speedup_vs_solver": 1389.7791656479058,
+        "speedup_vs_solver": 1333.6977364803172,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          1327.5622481302603,
-          1463.0775135927781
+          1223.8533189124873,
+          1465.204092397566
         ],
-        "n": 3
+        "n": 2
       }
     },
     "relu_only_w8_fullres": {
@@ -953,38 +1142,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": false,
       "loadavg_1min": {
-        "before": 364.36,
-        "after": 355.68
+        "before": 372.94,
+        "after": 376.55
       },
       "warm": {
-        "per_apply_cpu_s": 2.056650000004101e-05,
-        "per_wafer_cpu_s": 2.056650000004101e-05,
-        "min_cpu_s": 1.989599999996372e-05,
-        "max_cpu_s": 2.87450000000522e-05,
-        "spread_factor": 1.4447627663904612,
-        "over_budget_factor": 0.05841521079668694,
+        "per_apply_cpu_s": 2.057300000002371e-05,
+        "per_wafer_cpu_s": 2.057300000002371e-05,
+        "min_cpu_s": 1.9852999999958598e-05,
+        "max_cpu_s": 2.7922999999985265e-05,
+        "spread_factor": 1.4064876844831258,
+        "over_budget_factor": 0.03991167098880216,
         "under_budget": true,
-        "speedup_vs_solver": 17118.82892078369,
+        "speedup_vs_solver": 25055.32780826354,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 25055.32780826354,
+          "all_frames_ten_applies_excl_raster": 50165.17875364859,
+          "fixed_duration": 15740.089145949878
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          12248.196034070637,
-          17695.737585476567
+          18460.16756796447,
+          25963.998337836845
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.0004243680000000083,
-        "per_wafer_cpu_s": 0.0004243680000000083,
-        "min_cpu_s": 0.00039572999999992753,
-        "max_cpu_s": 0.0004686289999999982,
-        "spread_factor": 1.1842139842824249,
-        "over_budget_factor": 0.5743209723450358,
+        "per_apply_cpu_s": 0.00044619300000003914,
+        "per_wafer_cpu_s": 0.00044619300000003914,
+        "min_cpu_s": 0.0004178030000001609,
+        "max_cpu_s": 0.0004745829999999174,
+        "spread_factor": 1.135901369783689,
+        "over_budget_factor": 0.6038579667024045,
         "under_budget": true,
-        "speedup_vs_solver": 1741.1866328280773,
+        "speedup_vs_solver": 1656.018559233191,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          1576.7353044732672,
-          1867.1919970690503
+          1556.9539764385336,
+          1768.5461545266917
         ],
-        "n": 3
+        "n": 2
       }
     },
     "fullres_1x1_linear_no_act": {
@@ -993,38 +1190,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": false,
       "loadavg_1min": {
-        "before": 355.68,
-        "after": 340.62
+        "before": 376.55,
+        "after": 381.07
       },
       "warm": {
-        "per_apply_cpu_s": 0.00010293650000003929,
-        "per_wafer_cpu_s": 0.00010293650000003929,
-        "min_cpu_s": 9.774299999998348e-05,
-        "max_cpu_s": 0.0001146730000001206,
-        "spread_factor": 1.1732093346852457,
-        "over_budget_factor": 0.29237144609746285,
+        "per_apply_cpu_s": 0.00010280249999994329,
+        "per_wafer_cpu_s": 0.00010280249999994329,
+        "min_cpu_s": 9.995200000001425e-05,
+        "max_cpu_s": 0.0001252460000000788,
+        "spread_factor": 1.2530614695059723,
+        "over_budget_factor": 0.19943710478876886,
         "under_budget": true,
-        "speedup_vs_solver": 3420.306645357725,
+        "speedup_vs_solver": 5014.112098443951,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 5014.112098443951,
+          "all_frames_ten_applies_excl_raster": 10039.13545390989,
+          "fixed_duration": 3149.9317039972634
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          3070.246657884851,
-          3602.042038816686
+          4115.606558290689,
+          5157.108001840147
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.0015578800000000115,
-        "per_wafer_cpu_s": 0.0015578800000000115,
-        "min_cpu_s": 0.0011553829999999543,
-        "max_cpu_s": 0.0017401449999998597,
-        "spread_factor": 1.506119615746405,
-        "over_budget_factor": 2.108366220819839,
+        "per_apply_cpu_s": 0.0016221770000000024,
+        "per_wafer_cpu_s": 0.0016221770000000024,
+        "min_cpu_s": 0.001549370999999855,
+        "max_cpu_s": 0.0016949830000001498,
+        "spread_factor": 1.0939813640505136,
+        "over_budget_factor": 2.1953829505423035,
         "under_budget": false,
-        "speedup_vs_solver": 474.30090186663574,
+        "speedup_vs_solver": 455.50139658002723,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          424.6220223027733,
-          639.5315570681144
+          435.9358701532314,
+          476.9057178687797
         ],
-        "n": 3
+        "n": 2
       }
     },
     "fullres_1x1_plus_gelu": {
@@ -1033,38 +1238,46 @@
       "applications_per_wafer": 1,
       "is_a_real_surrogate": false,
       "loadavg_1min": {
-        "before": 340.62,
-        "after": 334.16
+        "before": 381.07,
+        "after": 373.14
       },
       "warm": {
-        "per_apply_cpu_s": 0.00019583349999996447,
-        "per_wafer_cpu_s": 0.00019583349999996447,
-        "min_cpu_s": 0.00018318999999999974,
-        "max_cpu_s": 0.00025393199999990124,
-        "spread_factor": 1.3861673672138304,
-        "over_budget_factor": 0.5562276120646734,
+        "per_apply_cpu_s": 0.00012332999999997707,
+        "per_wafer_cpu_s": 0.00012332999999997707,
+        "min_cpu_s": 0.00011476999999993076,
+        "max_cpu_s": 0.00019292900000000834,
+        "spread_factor": 1.6810054892404351,
+        "over_budget_factor": 0.23926050566482196,
         "under_budget": true,
-        "speedup_vs_solver": 1797.825167808693,
+        "speedup_vs_solver": 4179.544790400517,
+        "speedup_vs_each_denominator": {
+          "terminal_one_apply": 4179.544790400517,
+          "all_frames_ten_applies_excl_raster": 8368.184727967193,
+          "fixed_duration": 2625.6454552830637
+        },
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          1386.4908518821446,
-          1921.9083738195334
+          2671.7769697659637,
+          4491.271752202761
         ],
         "n": 16
       },
       "cold": {
-        "per_apply_cpu_s": 0.0021017789999999703,
-        "per_wafer_cpu_s": 0.0021017789999999703,
-        "min_cpu_s": 0.0019111510000000553,
-        "max_cpu_s": 0.0023446700000000487,
-        "spread_factor": 1.2268366026546207,
-        "over_budget_factor": 2.844455187324059,
+        "per_apply_cpu_s": 0.0025384990000000274,
+        "per_wafer_cpu_s": 0.0025384990000000274,
+        "min_cpu_s": 0.002532683000000091,
+        "max_cpu_s": 0.0025443149999999637,
+        "spread_factor": 1.0045927579566303,
+        "over_budget_factor": 3.435492812787223,
         "under_budget": false,
-        "speedup_vs_solver": 351.56117222600966,
+        "speedup_vs_solver": 291.0790545909185,
+        "speedup_vs_each_denominator": null,
+        "matched_denominator": "terminal_one_apply",
         "speedup_range": [
-          315.14195558436137,
-          386.6276861430512
+          290.4136826611526,
+          291.7474824129089
         ],
-        "n": 3
+        "n": 2
       }
     }
   }

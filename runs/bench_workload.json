@@ -2,7 +2,7 @@
   "question": "what does the simulator cost to produce exactly what the operator produces, on the wafers the operator is scored on",
   "protocol": {
     "split": "test",
-    "wafers_priced": 32,
+    "wafers_priced": 16,
     "warmup_wafers_discarded": 1,
     "same_wafers": "every column replays the recipes and dt values stored in the split, in order, so a difference between columns is not a difference in geometry",
     "estimator": "CPU-seconds, one verified thread, one long-lived process per column",
@@ -29,75 +29,69 @@
       0.16748285293579102,
       0.46322840452194214,
       0.21126270294189453,
-      0.23324114084243774,
-      0.7360403537750244,
-      0.4499370753765106,
-      0.8708205223083496,
-      0.6627810597419739,
-      0.1838528960943222,
-      0.40452811121940613,
-      0.1569553166627884,
-      0.5232267379760742,
-      0.670342743396759,
-      0.5568951964378357,
-      0.31008607149124146,
-      0.12030544131994247,
-      0.3427460491657257,
-      0.7565760612487793,
-      0.275746613740921,
-      0.08919928222894669
+      0.23324114084243774
     ],
-    "median": 0.34439241886138916,
-    "total_etch_time_median": 3.4439241886138916
+    "median": 0.26203516125679016,
+    "total_etch_time_median": 2.620351552963257
   },
   "columns": {
     "terminal_one_apply": {
-      "median_cpu_s": 0.45275215550000025,
-      "min_cpu_s": 0.2593814619999999,
-      "max_cpu_s": 0.7836005580000007,
-      "spread_factor": 3.0210353197870443,
-      "n": 32,
-      "cpu_over_wall_median": 0.9884121120139082,
+      "median_cpu_s": 0.5109123745000002,
+      "min_cpu_s": 0.254507598,
+      "max_cpu_s": 0.7591141339999998,
+      "spread_factor": 2.982677688074365,
+      "n": 16,
+      "cpu_over_wall_median": 0.9933733352328837,
       "matches_operator_at_stride": 10,
       "output": "terminal surface only, 1 apply of 10*dt",
       "note": "the matched denominator for a stride-10 operator, which emits the terminal state in one application"
     },
     "all_frames_ten_applies": {
-      "median_cpu_s": 3.8948325705,
-      "min_cpu_s": 3.075405527000001,
-      "max_cpu_s": 4.926524927999992,
-      "spread_factor": 1.6019106699095136,
-      "n": 32,
-      "cpu_over_wall_median": 0.9873508624880579,
+      "median_cpu_s": 3.866100886,
+      "min_cpu_s": 2.9247416709999996,
+      "max_cpu_s": 4.412668882,
+      "spread_factor": 1.5087379941118912,
+      "n": 16,
+      "cpu_over_wall_median": 0.9716535797618953,
       "matches_operator_at_stride": 1,
       "output": "10 states, rasterised to 128x128 fields",
-      "cpu_raster_median_s": 2.8994991415000095,
-      "median_cpu_s_excluding_raster": 0.9643461119999763,
+      "cpu_raster_median_s": 2.8640965055000014,
+      "median_cpu_s_excluding_raster": 0.9696414345000104,
       "note": "the matched denominator for a stride-1 operator. eot.solver.simulate excludes rasterisation from its timing; the operator's output IS the field, so the figure including it is the like-for-like one and both are given"
     },
     "fixed_duration_one_apply": {
-      "median_cpu_s": 0.2158815569999999,
-      "min_cpu_s": 0.09674259600000035,
-      "max_cpu_s": 1.1663183989999997,
-      "spread_factor": 12.055893135222416,
-      "n": 32,
-      "cpu_over_wall_median": 0.9952924737124127,
+      "median_cpu_s": 0.3255987539999998,
+      "min_cpu_s": 0.10445006100000054,
+      "max_cpu_s": 0.8928560330000002,
+      "spread_factor": 8.548161910599513,
+      "n": 16,
+      "cpu_over_wall_median": 0.9837761756574308,
       "output": "terminal surface only, 1 apply of 2.0",
       "note": "what speed_symmetric.json measures, on these wafers. Its duration is the benchmark's choice, not the dataset's, and this column exists so the correction is a measured difference rather than an assertion"
     },
+    "dt_probe": {
+      "median_cpu_s": 0.03988437000000006,
+      "min_cpu_s": 0.030221971000000014,
+      "max_cpu_s": 0.051899792000000056,
+      "spread_factor": 1.717286804358327,
+      "n": 16,
+      "cpu_over_wall_median": 1.00004872431776,
+      "output": "the etch rate, from which choose_dt computes dt",
+      "note": "eot.solver.probe_rate: build_domain + one apply of 0.1 min + two polyline extractions. Paid by BOTH sides only under the reading where target depth is the query and dt must be found; under the reading where dt is part of the query, neither side pays it. See the docstring of solver_dt_probe."
+    },
     "domain_build": {
-      "median_cpu_s": 0.0007060810000000042,
-      "min_cpu_s": 0.000653639999999997,
-      "max_cpu_s": 0.0007862750000000029,
-      "spread_factor": 1.2029175081084489,
-      "n": 32,
-      "cpu_over_wall_median": 1.0002483470151473,
+      "median_cpu_s": 0.0007135149999999979,
+      "min_cpu_s": 0.0006545319999999993,
+      "max_cpu_s": 0.0007750779999999985,
+      "spread_factor": 1.1841712857430948,
+      "n": 16,
+      "cpu_over_wall_median": 1.0003312835669331,
       "output": "the initial level set",
       "note": "excluded from every reading above and from bench_symmetric. The operator is handed the initial field, so if this is material its exclusion is a bias against the operator"
     }
   },
   "dataset_recorded_solver_s": {
-    "median": 17.74007797241211,
+    "median": 18.468854904174805,
     "values": [
       14.443552017211914,
       20.57349967956543,
@@ -114,33 +108,32 @@
       17.712051391601562,
       14.592353820800781,
       17.74367904663086,
-      20.049489974975586,
-      21.581806182861328,
-      16.546459197998047,
-      19.913732528686523,
-      17.29916000366211,
-      16.00365447998047,
-      17.172075271606445,
-      17.73647689819336,
-      18.564054489135742,
-      20.292163848876953,
-      14.60774040222168,
-      18.731098175048828,
-      20.33502197265625,
-      17.679906845092773,
-      17.28692626953125,
-      15.307889938354492,
-      15.17352294921875
+      20.049489974975586
     ],
     "what_it_is": "Trajectory.seconds as stored at generation: the sum of ten apply() calls, wall-clock, measured while 8 generation workers shared this box. Not comparable to the CPU-second columns above and not used as a denominator anywhere; recorded because it is the number that exposed the mismatch."
   },
   "ratios": {
-    "terminal_vs_fixed_duration": 2.0972248013756936,
-    "all_frames_vs_terminal": 8.602571016362612,
+    "terminal_vs_fixed_duration": 1.5691472041075454,
+    "all_frames_vs_terminal": 7.567052745166968,
+    "dt_probe_ceiling": {
+      "what": "the operator takes log(dt) as a conditioning input, so a caller must know dt before querying it. If the query is a TARGET DEPTH rather than a timestep, obtaining dt costs a probe -- itself a solver run -- and that bounds the speedup no matter how fast the network is.",
+      "probe_cpu_s": 0.03988437000000006,
+      "ceiling_both_sides_pay_SUPERSEDED": {
+        "vs_terminal": 13.80983940576219,
+        "why_superseded": "assumes the solver needs dt in advance, which it does not for a target-depth query"
+      },
+      "ceiling_operator_pays": {
+        "vs_terminal": 12.809839405762192,
+        "vs_all_frames_excl_raster": 24.311313792846896,
+        "note": "supremum as the network cost goes to zero. With the cheapest surrogate measured to date the achieved value is slightly lower still."
+      },
+      "reading_used_elsewhere": "dt is part of the query, so no probe is charged to either side. Stated, not assumed -- see WEEKEND.md, which puts the choice to a human.",
+      "route_that_would_dissolve_the_ceiling_UNMEASURED": "condition the operator on target_depth instead of log_dt. The dataset already stores target_depth per trajectory, so this is testable on existing data with no regeneration. It removes the probe by construction rather than pricing it. No accuracy is claimed for it here."
+    },
     "budget_per_wafer_at_1000x": {
-      "terminal_one_apply": 0.00045275215550000025,
-      "all_frames_ten_applies": 0.0038948325705,
-      "fixed_duration_one_apply": 0.0002158815569999999
+      "terminal_one_apply": 0.0005109123745000001,
+      "all_frames_ten_applies": 0.003866100886,
+      "fixed_duration_one_apply": 0.00032559875399999983
     }
   }
 }

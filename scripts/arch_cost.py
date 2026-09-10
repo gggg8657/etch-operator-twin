@@ -32,6 +32,8 @@ sys.path.insert(0, str(ROOT))
 
 from eot import runlock  # noqa: E402
 from scripts.bench_symmetric import solver_warm  # noqa: E402
+from scripts.bench_workload import (solver_allframes,  # noqa: E402
+                                    solver_fixed_duration, solver_terminal)
 from scripts.cost_floor import time_model  # noqa: E402
 
 # n_apply is the stride the row is meant to be deployed at: 10 dataset
@@ -322,6 +324,15 @@ def main():
     ap.add_argument("--out", default="runs/arch_cost.json")
     ap.add_argument("--target", type=float, default=1000.0)
     ap.add_argument("--only", nargs="*", default=None)
+    ap.add_argument("--data", default="data")
+    ap.add_argument("--split", default="test",
+                    help="the split whose recipes and dt values the solver is "
+                         "timed on. Defaults to the split accuracy is scored on.")
+    ap.add_argument("--solver-wafers", type=int, default=16,
+                    help="wafers per solver denominator. Solver cost varies ~4x "
+                         "across recipes, so a small count gives an unstable "
+                         "median: the fixed-duration column read a 12x spread "
+                         "at 32 wafers.")
     ap.add_argument("--stored-budget", action="store_true",
                     help="use the solver cost stored in --sym instead of "
                          "re-timing it here. Leaves every ratio unpaired; only "
@@ -359,44 +370,77 @@ def main():
     # silently change the denominator.
     cfg = sym["protocol"]
     n_steps = int(cfg["n_steps_per_wafer"])
-    dt = float(cfg["dt"])
+    fixed_total = n_steps * float(cfg["dt"])
     grid_delta = float(cfg["grid_delta"])
     seed = int(cfg.get("recipe_seed", sym.get("recipe_seed", 0)))
-    budget_provenance = {}
+
+    # THREE DENOMINATORS, ALL MEASURED HERE, because there is not one honest
+    # denominator -- there is one per output. See runs/bench_workload.json for
+    # the derivation; the short version:
+    #
+    #   terminal_one_apply    one apply of 10*dt per wafer, terminal state only.
+    #                         The MATCHED denominator for a stride-10 operator,
+    #                         which emits exactly that in one application.
+    #   all_frames_ten_applies  ten applies of dt, all ten states. The matched
+    #                         denominator for a stride-1 operator. Rasterisation
+    #                         is EXCLUDED: it is 76% of that column and it is our
+    #                         own unoptimised numpy, so charging the solver for
+    #                         it would inflate the denominator with our slow code.
+    #   fixed_duration        one apply at 10*0.2 = 2.0 minutes, the duration
+    #                         speed_symmetric.json chose. Kept because it is what
+    #                         every published number in this repo divided by, so
+    #                         the correction stays visible as a difference.
+    #
+    # The dataset's own dt has median 0.344, i.e. a 3.44-minute etch, so the
+    # fixed 2.0 understates the median wafer by 2.10x. Adopting the matched
+    # denominator SILENTLY would be the protocol-loosening the rules forbid;
+    # every row below therefore carries its speedup against all three.
+    gen = json.loads((Path(a.data) / "gen_report.json").read_text())
+    dset = np.load(Path(a.data) / f"{a.split}.npz")
+    n_take = a.solver_wafers + 1                    # one discarded as warm-up
+    rows, dts = dset["recipe"][:n_take], dset["dt"][:n_take]
+
+    loadavg = float(Path("/proc/loadavg").read_text().split()[0])
     if a.stored_budget:
-        solver_w = sym["solver"]["marginal_warm"]["median_cpu"]
-        solver_c = sym["solver"]["cold_single_wafer"]["median_cpu"]
+        dens = {"fixed_duration": sym["solver"]["marginal_warm"]["median_cpu"]}
         budget_provenance = {"paired": False, "source": a.sym,
                              "why": "--stored-budget was passed; the ratios in "
                                     "this file are NOT paired and are only "
                                     "comparable to the load at which --sym ran"}
+        matched_key = "fixed_duration"
     else:
-        loadavg = float(Path("/proc/loadavg").read_text().split()[0])
-        sw = solver_warm(a.rounds, n_steps, dt, grid_delta, seed)
-        solver_w = float(np.median(sw["cpu"]))
-        # No cold solver row is re-timed: cold_single_wafer is dominated by
-        # ViennaPS's one-time init, which is not what load perturbs, and one
-        # cold wafer per round would cost more wall-clock than the whole ladder.
-        # The cold budget stays stored and is labelled as unpaired.
-        solver_c = sym["solver"]["cold_single_wafer"]["median_cpu"]
+        term = solver_terminal(rows, dts, gen["steps"], gen["grid_delta"])
+        allf = solver_allframes(rows, dts, gen["steps"], gen["grid_delta"],
+                                gen["grid_n"])
+        fixd = solver_fixed_duration(rows, fixed_total, gen["grid_delta"])
+        allf_no_raster = [c - r for c, r in zip(allf["cpu"], allf["cpu_raster"])]
+        dens = {
+            "terminal_one_apply": float(np.median(term["cpu"])),
+            "all_frames_ten_applies_excl_raster": float(np.median(allf_no_raster)),
+            "fixed_duration": float(np.median(fixd["cpu"])),
+        }
+        matched_key = "terminal_one_apply"
         budget_provenance = {
             "paired": True,
-            "warm_source": "re-timed in this invocation by "
-                           "bench_symmetric.solver_warm",
-            "warm_median_cpu_s": solver_w,
-            "warm_n": len(sw["cpu"]),
-            "warm_spread_factor": float(np.max(sw["cpu"]) / np.min(sw["cpu"])),
+            "measured_in_this_invocation": True,
+            "solver_wafers": a.solver_wafers,
+            "split": a.split,
+            "same_wafers_as_accuracy": "the recipes and dt values of the split "
+                                       "the operator's accuracy is scored on",
+            "denominators_cpu_s": dens,
+            "all_frames_raster_excluded_cpu_s": float(np.median(allf["cpu_raster"])),
             "stored_warm_median_cpu_s": sym["solver"]["marginal_warm"]["median_cpu"],
-            "drift_vs_stored": solver_w / sym["solver"]["marginal_warm"]["median_cpu"],
+            "drift_vs_stored": dens["fixed_duration"]
+            / sym["solver"]["marginal_warm"]["median_cpu"],
             "loadavg_1min_at_start": loadavg,
-            "cold_source": a.sym,
-            "cold_is_paired": False,
-            "why_cold_unpaired": "cold_single_wafer is dominated by ViennaPS "
-                                 "init, which load does not perturb the way it "
-                                 "perturbs small tensor ops; re-timing it per "
-                                 "invocation costs more than the whole ladder. "
-                                 "Cold ratios in this file are unpaired.",
+            "matched_denominator_for_one_application": matched_key,
+            "why": "a stride-10 operator emits the terminal state in one "
+                   "application, so the terminal one-apply column is the "
+                   "like-for-like denominator for it. All three are reported "
+                   "per row so the choice is visible rather than adopted.",
         }
+    solver_w = dens[matched_key]
+    solver_c = sym["solver"]["cold_single_wafer"]["median_cpu"]
     budget_w, budget_c = solver_w / a.target, solver_c / a.target
 
     res = {
@@ -455,6 +499,11 @@ def main():
                 "over_budget_factor": pw / budget,
                 "under_budget": bool(pw <= budget),
                 "speedup_vs_solver": solver / pw,
+                "speedup_vs_each_denominator": {
+                    k: v / pw for k, v in dens.items()
+                } if tag == "warm" else None,
+                "matched_denominator": matched_key if spec["n_apply"] == 1
+                else "all_frames_ten_applies_excl_raster",
                 # The between-invocation spread on this harness reaches 2x
                 # (runs/cnn_cost.json), so the interval is what a reader needs.
                 "speedup_range": [solver / (float(np.max(cpu)) * spec["n_apply"]),

@@ -3990,3 +3990,210 @@ the ablation the shrink result demands, it runs on the other GPU of this
 track's lease, and it shares no code path with H16 beyond `train.py`. Neither
 comparison is confounded by the other. Recording the judgement rather than
 hiding it.
+
+### The denominator, taken apart — and a ceiling on clause 2 that no architecture can beat
+
+`codex`, asked rung 4's question, spent most of its budget reading and emitted
+one paragraph before it ran out. That paragraph contained the most useful thing
+anyone said this turn:
+
+> *"There is a potentially material workload mismatch: the solver benchmark uses
+> one fixed `dt`, while accuracy is scored on trajectories with recipe-dependent
+> `dt`. The file snapshot also differs from the prompt: its width-8 pointwise
+> model costs 714 µs, and the 67.7 µs figure belongs to an unconditioned linear
+> component. I'll separate those facts from the proposed routes so a component
+> timing doesn't become a claimed model pass."*
+
+Both halves land. The second is a fair catch on my own writing: 67.7 µs is a
+component with no conditioning and no activation, the actual pointwise *model*
+costs 714 µs, and those must not be allowed to blur. The first is worse than
+codex knew.
+
+**`scripts/bench_workload.py` (new) measures what the simulator costs to produce
+exactly what the operator produces, on the wafers the operator is scored on.**
+Same recipes and dt values as `data/test.npz`, in order, one long-lived process
+per column, CPU-seconds, one verified thread (cpu/wall 0.99–1.00 on every
+column, so the solver really is single-threaded):
+
+| column | median | what it produces |
+|---|---|---|
+| `terminal_one_apply` | **508.1 ms** | terminal state, 1 apply of 10·dt |
+| `all_frames_ten_applies` | 3914.9 ms | 10 states as fields |
+| — of which my numpy rasteriser | **2899 ms (76%)** | |
+| `all_frames` excluding rasterisation | **1015.6 ms** | |
+| `fixed_duration_one_apply` | 321.5 ms | what `speed_symmetric` measures |
+| `dt_probe` | **39.7 ms** | the etch rate `choose_dt` needs |
+| `domain_build` | 0.55 ms | the initial level set |
+
+**There is no single honest denominator. There is one per output**, and the
+readings differ by 8.6×. A stride-10 operator emits the terminal state in one
+application, so its like-for-like denominator is `terminal_one_apply`; a
+stride-1 operator emits ten states, so its denominator is ten applies. The
+benchmark every published number in this repo divided by etches for a fixed 2.0
+minutes while the median test wafer etches for **3.44** — the dataset's dt has
+median 0.344, not the 0.2 the benchmark assumes.
+
+**This makes the clause 1.57× easier and I am the one who benefits, so it is
+reported as three columns and not as a replacement.** `arch_cost.py` now prices
+every model against all three denominators, all re-timed in the same invocation;
+`tests/test_workload.py` pins that the old fixed-duration column still exists
+and that the generation-time `solver_s` figure never becomes a denominator. The
+one number I *did* exclude is my own rasteriser, and the reason is not that it
+flatters me — it is 76% of that column and it is unoptimised numpy, while this
+repo has already measured a competent Euclidean rasteriser at **988 µs**
+(`rebuild_edt`, `runs/cost_floor.json`). Charging the solver 2.9 s for my slow
+code would inflate the denominator by ~2900× the honest figure. Adding the
+competent 988 µs instead moves `terminal_one_apply` by 0.2% and the all-frames
+column by 1%, so the treatment is immaterial either way — which is exactly why
+it can be settled without it being a judgement call.
+
+#### The ceiling, which is the real result
+
+The operator takes `log_dt` as a conditioning input, so **a caller must know dt
+before the operator can be queried at all.** The dataset's dt came from
+`choose_dt`, which calls `probe_rate` — and `probe_rate` is itself a solver run
+(`eot/solver.py:326-337`: a `build_domain`, one `make_process(rec, dom, 0.1).apply()`
+and two `surface_polyline` extractions). Measured: **39.73 ms**.
+
+So clause 2 has two readings and they are not close:
+
+* **dt is part of the query** — "advance this recipe by 10 steps of 0.344 min".
+  Neither side probes; the solver is simply run with the given dt. Budget
+  **508 µs**, and the cheapest measured surrogate is within 1.4–2.1× of it.
+* **target depth is the query and dt must be found.** Then *both* sides pay the
+  probe, and the operator's total is probe + one forward pass. The speedup is
+  bounded by (probe + solver)/(probe + operator), which tends to solver/probe as
+  the network gets faster: **13.8× for a terminal query, 99.5× for an
+  all-frames query.** No architecture beats that. Not a smaller FNO, not a
+  pointwise model, not a fused kernel.
+
+**That is a hard ceiling and it is the most important thing measured this turn.**
+Every previous attempt on clause 2 in this repo — the K-step horizon, the output
+representation, the cost floor, the shrink sweep, `torch.compile`, the
+multiscale body — argued about the numerator. Under the probing reading the
+numerator is irrelevant: clause 2 is **UNREACHABLE at ≤13.8×** and the reason is
+that choosing the timestep costs 7.8% of the simulation it is choosing a
+timestep for.
+
+Which reading is right is a deployment question and it is going to `WEEKEND.md`
+as a decision for a human, not resolved here. I will say which way I lean and
+why: **dt is part of the query.** The KPI says 표면진화, surface evolution — given
+a recipe and a duration, predict the surface — and `log_dt` is an input to the
+operator exactly as `ion_flux` is. The adaptive dt was a *dataset construction*
+device, adopted because the etch rate spans ~20× across the recipe box and a
+single global timestep left most of the box static enough for a do-nothing
+predictor to pass (`eot/solver.py:339-346`). It was never part of the query.
+**But the counter-argument is real**: a process engineer asks for a target depth,
+not a timestep, and under that framing the probe is unavoidable and the clause
+is dead at 13.8×.
+
+There is one escape from the ceiling that is worth naming and is **not
+measured**: predict the etch rate from the recipe with a tiny model instead of
+probing for it. The operator already receives the recipe, so a rate head costs
+almost nothing, and it would remove the 39.7 ms entirely. It is a second learned
+component with its own accuracy question and its own validation, so it is a
+route, not a result, and no number is claimed for it.
+
+#### What the frontier reads now, and why none of it is a verdict
+
+`runs/arch_cost.json`, all three denominators re-timed in the same invocation:
+
+| model | params | µs/wafer | vs terminal | vs all-frames | vs fixed |
+|---|---|---|---|---|---|
+| `pw_wf8_n1_relu` | 1,217 | 1,086 | **474×** | 950× | 298× |
+| `multiscale_s4_wf8` | 9,914 | 2,212 | 233× | 467× | 146× |
+| `fno_w8m4L2` (accuracy-admissible) | 10,897 | 2,758 | **187×** | 374× | 117× |
+| `pw_wf32_n3_relu` | 3,881 | 5,884 | 88× | 175× | 55× |
+| `fno_w64m20L4` deployed, compiled | 26,248,025 | 158,387 | 3.3× | 6.5× | 2.0× |
+
+**Every row above was measured at load average 396.1** — another track's job
+saturating a 192-core box — and the operator side is penalised by load far more
+than the ray-tracing solver is (1.15× across a 3.6× load range for the solver,
+2.5× for these tensor rows). So **every speedup in this table is a loose lower
+bound and not one of them is a verdict.** The decisive rows must be re-measured
+on a quiet box before any is quoted, and `RESULTS.md` is not being updated with
+them. What survives the load is the *ordering*, which is measured within one
+invocation: the pointwise family is cheapest, the accuracy-admissible FNO is
+2.5× more expensive than it, and capacity beyond ~10k parameters buys nothing on
+either axis.
+
+Also noted, because it is the third correction to my own arithmetic this turn:
+`pw_wf32_n3` is **more expensive than the FNO it was built to undercut**. Width
+and depth at full resolution cost linearly in a way spectral modes do not, so
+the pointwise family is only cheap while it is tiny — and "tiny" here means
+1,217 parameters, whose accuracy is still training.
+
+### H16, first evidence: the pointwise route is not a trade-off, it is dominated
+
+`runs/ladder.json`, the three `scale=0` arms at seed 1. **One seed, so a screen
+and not a verdict** — but one of the three numbers is far enough out that a
+single seed settles its sign, since the in-distribution seed spread anywhere in
+this repo is 0.002–0.017 and this miss is 0.21.
+
+| arm | params | in-dist terminal | trajectory CI | met | crossed |
+|---|---|---|---|---|---|
+| `pw_wf32n3_gelu` | 3,881 | **0.05052** | [0.04780, 0.05378] | no | 0.06830 |
+| `pw_wf32n3_relu` | 3,881 | 0.05157 | [0.04840, 0.05517] | no | 0.07149 |
+| `pw_wf8n1_relu` | 1,217 | **0.26103** | [0.25571, 0.26639] | no | 0.32520 |
+
+**H16 predicted 0.06–0.15 for the pointwise arms and the answer is 0.0505 and
+0.261 — so the prediction was right in direction and wrong in spread**, missing
+low on one arm and high on the other. The mechanism I named (an undercut's
+advance depends on mask geometry *above* the front, which a per-pixel function
+cannot read from the field) predicts a miss but says nothing about how capacity
+trades against it, and the two arms differ by 5× in error for 3.2× in
+parameters. Recorded as partially falsified rather than reframed as a hit.
+
+**The falsifier did not fire, and that is the useful outcome.** Had a pointwise
+arm reached ≤0.05 I would have had to publish a pass hedged with the
+two-parameter-geometry caveat I wrote down in advance. It did not, so the
+dataset's geometry being a two-parameter family is *not* enough to substitute for
+reading the field — a cleaner statement than the hedged pass would have been.
+
+#### And the frontier collapses, because the pointwise family is dominated
+
+Put the cost and the accuracy of every priced-and-trained one-application model
+in one table (costs from `runs/arch_cost.json` at load 396, so lower bounds;
+accuracy from `runs/shrink.json` at 3 seeds and `runs/ladder.json` at 1):
+
+| model | params | µs/wafer | speedup vs matched denom | in-dist terminal |
+|---|---|---|---|---|
+| `pw_wf8n1_relu` | 1,217 | 1,086 | **475×** | **0.261** ✗ by 5.2× |
+| `fno_w8m4L2` | 10,897 | **2,758** | 187× | **0.0472** ✓ |
+| `pw_wf32n3_relu` | 3,881 | **5,884** | 88× | 0.0516 ✗ |
+
+**`fno_w8m4L2` dominates the entire pointwise family on both axes
+simultaneously** — 2.1× cheaper than `pw_wf32n3` *and* more accurate. There is no
+trade-off to tune here and no intermediate width to search: spatial mixing is a
+strictly more efficient way to spend the budget than full-resolution pointwise
+depth, because a spectral body's cost is set by its mode count while a pointwise
+path's is set by width × pixels.
+
+So the route this turn was built to test is **closed**, and closed cleanly:
+
+* The only architecture family measured inside the clause-2 budget cannot reach
+  clause 1 — the 475× row misses by 5.2×.
+* The pointwise arm that nearly reaches clause 1 costs **more** than the FNO that
+  actually reaches it.
+* Therefore the cheapest *accurate* model measured to date remains
+  `fno_w8m4L2` at **187×** against the matched denominator, and clause 2 is
+  short by **5.3×** under the reading where dt is given — down from 679× at the
+  declaration, but not closed.
+
+What is still open, and is now the only route on the numerator side that has not
+been measured: the coarse-body `ms_*` arms, which sit between the two families —
+a pointwise path *plus* spectral mixing on a 16×16 or 32×32 grid, at 10,370
+parameters and 176× — are still training (`runs/ladder`, seed 1 at 129–244 of
+800 epochs). If they match `fno_w8m4L2`'s accuracy at their lower cost the
+frontier moves; if they land between the pointwise arms and the FNO, the
+spectral body's *resolution* is what matters rather than its presence, and the
+numerator side is finished at ~200×. Either way it is measured next turn, not
+guessed at now.
+
+**The honest summary of clause 2 after this turn:** under the reading where dt
+is given, the gap is 5.3× and the binding constraint is per-operation dispatch
+in eager PyTorch on 128×128 fields. Under the reading where a target depth is
+given, the clause is capped at 12.8× by the dt probe and no numerator work can
+reach it. The first is an engineering gap; the second is a specification
+question. **They are not the same clause and the board must say which one it is
+scoring.**

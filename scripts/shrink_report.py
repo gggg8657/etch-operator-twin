@@ -44,6 +44,10 @@ import torch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+# Set from argv in main(); module-level so the collectors stay single-purpose.
+SUBDIR = ["shrink"]
+GLOB = ["w*_K*_s*"]
+
 from eot import runlock  # noqa: E402
 from eot.data import TrajDataset  # noqa: E402
 from eot.operator import build_from_cfg  # noqa: E402
@@ -51,6 +55,22 @@ from scripts.analyse_confound import per_step_displacement  # noqa: E402
 from scripts.cost_floor import time_model  # noqa: E402
 from scripts.coverage_verdict import boot_ci, per_traj_both_readings  # noqa: E402
 from scripts.kcurve_report import is_complete  # noqa: E402
+
+
+def config_key(cfg: dict) -> str:
+    """The config's name, derived from args.json rather than the directory name.
+
+    Two families live under runs/ now. Deriving the key from args.json and then
+    asserting it against the directory name (below) catches a run launched with
+    one set of flags into a directory named for another -- which a sweep driver
+    with a copy-pasted line does silently, and which would then merge two
+    architectures into one seed group.
+    """
+    if cfg.get("arch", "fno") == "fno":
+        return f"w{cfg['width']}m{cfg['modes']}L{cfg['layers']}_K{cfg['stride']}"
+    sc = cfg["scale"]
+    body = "pw" if sc == 0 else f"ms_s{sc}_w{cfg['width']}m{cfg['modes']}L{cfg['layers']}"
+    return f"{body}_wf{cfg['width_full']}n{cfg['n_local']}_{cfg['act']}_K{cfg['stride']}"
 
 
 def shrink_arms(root: Path) -> dict:
@@ -63,20 +83,21 @@ def shrink_arms(root: Path) -> dict:
     runs.
     """
     out: dict[str, list[Path]] = {}
-    for p in sorted((root / "shrink").glob("w*_K*_s*")):
+    for p in sorted((root / SUBDIR[0]).glob(GLOB[0])):
         if not is_complete(p):
             continue
         cfg = json.loads((p / "args.json").read_text())
-        key = f"w{cfg['width']}m{cfg['modes']}L{cfg['layers']}_K{cfg['stride']}"
-        assert p.name.startswith(key + "_s"), \
-            f"{p.name} does not match its own args.json config {key}"
+        key = config_key(cfg)
+        if cfg.get("arch", "fno") == "fno":
+            assert p.name.startswith(key + "_s"), \
+                f"{p.name} does not match its own args.json config {key}"
         out.setdefault(key, []).append(p)
     return out
 
 
 def incomplete(root: Path) -> list[dict]:
     rows = []
-    for p in sorted((root / "shrink").glob("w*_K*_s*")):
+    for p in sorted((root / SUBDIR[0]).glob(GLOB[0])):
         if is_complete(p) or not (p / "args.json").exists():
             continue
         cfg = json.loads((p / "args.json").read_text())
@@ -91,15 +112,25 @@ def incomplete(root: Path) -> list[dict]:
     return rows
 
 
-def price(width, modes, layers, cond_dim, n_apply, rounds, budget_w, budget_c,
+def price(cfg, cond_dim, n_apply, rounds, budget_w, budget_c,
           solver_w, solver_c):
-    """Per-wafer CPU cost of this config, same protocol as cost_floor.py."""
-    spec = dict(
-        build=f"from eot.operator import EtchOperator\n"
-              f"M = EtchOperator(cond_dim={cond_dim}, width={width}, "
-              f"modes={modes}, n_layers={layers})",
-        call="M(phi, cond)",
-    )
+    """Per-wafer CPU cost of this config, same protocol as cost_floor.py.
+
+    Builds whatever architecture args.json names. Pricing an FNO for a
+    multiscale run would report a cost the checkpoint never had.
+    """
+    if cfg.get("arch", "fno") == "fno":
+        build = (f"from eot.operator import EtchOperator\n"
+                 f"M = EtchOperator(cond_dim={cond_dim}, width={cfg['width']}, "
+                 f"modes={cfg['modes']}, n_layers={cfg['layers']})")
+    else:
+        build = (f"from eot.operator import MultiScaleOperator\n"
+                 f"M = MultiScaleOperator(cond_dim={cond_dim}, "
+                 f"width={cfg['width']}, modes={cfg['modes']}, "
+                 f"n_layers={cfg['layers']}, width_full={cfg['width_full']}, "
+                 f"scale={cfg['scale']}, n_local={cfg.get('n_local', 1)}, "
+                 f"act={cfg.get('act', 'gelu')!r})")
+    spec = dict(build=build, call="M(phi, cond)")
     warm = time_model(spec, n_rep=rounds, n_warm=3)
     colds = [time_model(spec, n_rep=1, n_warm=0) for _ in range(rounds)]
     cold_cpu = [c for r in colds for c in r["cpu"]]
@@ -131,10 +162,14 @@ def main():
     ap.add_argument("--rounds", type=int, default=12)
     ap.add_argument("--sym", default="runs/speed_symmetric.json")
     ap.add_argument("--out", default="runs/shrink.json")
+    ap.add_argument("--subdir", default="shrink",
+                    help="directory under --runs-root holding the arms")
+    ap.add_argument("--glob", default="w*_K*_s*")
     ap.add_argument("--no-cost", action="store_true",
                     help="skip the CPU pricing (accuracy only)")
     a = ap.parse_args()
 
+    SUBDIR[0], GLOB[0] = a.subdir, a.glob
     runlock.acquire(a.out, what="shrink_report")
 
     root, data = Path(a.runs_root), Path(a.data)
@@ -163,8 +198,7 @@ def main():
     for key, runs in sorted(found.items()):
         cfgs = [json.loads((r / "args.json").read_text()) for r in runs]
         K = cfgs[0]["stride"]
-        assert len({(c["width"], c["modes"], c["layers"], c["stride"])
-                    for c in cfgs}) == 1, f"{key} mixes configs"
+        assert len({config_key(c) for c in cfgs}) == 1, f"{key} mixes configs"
         ds_in = TrajDataset(data / "test.npz", norm, stride=K)
         ds_cr = TrajDataset(data / "test_crossed.npz", norm, stride=K)
         acc = {"in": {"mean": [], "term": []}, "crossed": {"mean": [], "term": []}}
@@ -182,8 +216,9 @@ def main():
         n_apply = len(ds_in.times)
 
         row = {
-            "config": {"width": cfgs[0]["width"], "modes": cfgs[0]["modes"],
-                       "layers": cfgs[0]["layers"], "stride": K},
+            "config": {k: cfgs[0].get(k) for k in
+                       ("arch", "width", "modes", "layers", "stride",
+                        "width_full", "scale", "n_local", "act")},
             "params_trained": cfgs[0]["params"],
             "epochs": sorted({int(c["epochs"]) for c in cfgs}),
             "applications_per_wafer": n_apply,
@@ -219,9 +254,8 @@ def main():
             e["met_every_seed"] = bool(max(e["per_seed"]) <= a.target)
             e["met_upper_ci"] = bool(e.get("hi", 1.0) <= a.target)
         if not a.no_cost:
-            row["cost"] = price(cfgs[0]["width"], cfgs[0]["modes"], cfgs[0]["layers"],
-                                cond_dim, n_apply, a.rounds, budget_w, budget_c,
-                                solver_w, solver_c)
+            row["cost"] = price(cfgs[0], cond_dim, n_apply, a.rounds,
+                                budget_w, budget_c, solver_w, solver_c)
             row["clause2_met_warm"] = bool(
                 row["cost"]["warm"]["speedup_vs_solver"] >= a.speedup_target)
             row["joint_met"] = bool(row["clause2_met_warm"]
