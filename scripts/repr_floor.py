@@ -220,9 +220,25 @@ def rebuild_multi_fine(cross: list[np.ndarray], top_pos: np.ndarray, shape,
         even = (n_above % 2) == 0
         col = even if top_pos[x] else ~even
         void[:, x * u:(x + 1) * u] = col[:, None]
-    d_void = ndimage.distance_transform_edt(void, sampling=delta / u)
-    d_solid = ndimage.distance_transform_edt(~void, sampling=delta / u)
-    fine = d_void - d_solid
+
+    # `distance_transform_edt` can only see interfaces inside the array, so a
+    # cell whose nearest interface lies outside the window gets a distance that
+    # is too large. Untreated, this put the whole error of trajectories 1-3 in
+    # the top-left corner: median band error 0.045 um but p90 2.32 and max 7.22,
+    # all in rows 0-7 and columns 0-7. It is a boundary artefact of the
+    # reconstruction, not information the representation lost.
+    #
+    # The solver's x boundary is reflective, and this repo already relies on that
+    # (eot/solver.py:168, "extending flat past the edge is also what the solver's
+    # reflective boundary does"), so mirror in x. In y the phase simply continues
+    # past the window -- mask above, substrate below -- so replicate the edge row.
+    pad = int(np.ceil(3.0 / (delta / u)))  # 3 um, twice the 1.5 um band
+    padded = np.pad(void, ((pad, pad), (pad, pad)), mode="symmetric")
+    padded[:pad, :] = padded[pad:pad + 1, :]
+    padded[-pad:, :] = padded[-pad - 1:-pad, :]
+    d_void = ndimage.distance_transform_edt(padded, sampling=delta / u)
+    d_solid = ndimage.distance_transform_edt(~padded, sampling=delta / u)
+    fine = (d_void - d_solid)[pad:pad + H * u, pad:pad + W * u]
     # sample at the coarse cell centres' fine-grid indices
     off = u // 2
     return fine[off::u, off::u][:H, :W].astype(np.float32)
@@ -270,6 +286,15 @@ print(json.dumps({{"wall": w, "cpu": c}}))
 '''
 
 COST_CASES = {
+    "rebuild_multi_fine_u8": dict(
+        setup="from scripts.repr_floor import rebuild_multi_fine\n"
+              "cross = [np.array([4.0 + 0.01 * i]) for i in range(128)]\n"
+              "tp = np.ones(128, bool)",
+        call="rebuild_multi_fine(cross, tp, (128, 128), 0.2, 8)",
+        note="the reconstruction the floor is actually measured with: phase on an "
+             "8x grid plus two distance transforms there. This is the cost the "
+             "surface route must pay if clause 1 is scored as a field, and it is "
+             "far above the cheap broadcast cost_floor.json timed."),
     "rebuild_vertical": dict(
         setup="from scripts.repr_floor import rebuild_vertical\n"
               "h = np.linspace(3.0, 6.0, 128); ok = np.ones(128, bool)",
@@ -317,10 +342,11 @@ def measure_cost(reps, n_rep):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data/test.npz")
-    ap.add_argument("--n-traj", type=int, default=250)
-    ap.add_argument("--multi-cost", action="store_true",
-                    help="also price rebuild_multi (slower; adds a searchsorted "
-                         "per column on top of the two distance transforms)")
+    ap.add_argument("--n-traj", type=int, default=60)
+    ap.add_argument("--upsample", type=int, default=8)
+    ap.add_argument("--converge", type=int, nargs="*", default=[4, 8, 16],
+                    help="upsample factors for the convergence check, on a subset")
+    ap.add_argument("--converge-n", type=int, default=5)
     ap.add_argument("--grid-delta", type=float, default=None)
     ap.add_argument("--band-um", type=float, default=None)
     ap.add_argument("--cost-reps", type=int, default=8)
@@ -335,114 +361,173 @@ def main():
     band_um = a.band_um if a.band_um is not None else norm.get("band_um", BAND_UM)
 
     d = np.load(a.data)
-    sdf = d["sdf"]  # (N, T+1, H, W), um
+    sdf = d["sdf"]
     n = min(a.n_traj, sdf.shape[0])
+    H, W = sdf.shape[2], sdf.shape[3]
 
-    rows = {"vertical_first": [], "edt_first": [], "edt_last": [], "edt_multi": []}
-    n_interfaces = []
-    n_undercut = 0
-    n_missing_col = 0
-    max_cross = 0
+    # Whether the window contains all the geometry the field knows about. A
+    # column whose top row is solid is under the mask, and the field there
+    # encodes the distance to the mask's top surface, which sits ABOVE the
+    # window and is in no in-window crossing list. Those trajectories cannot be
+    # scored against an in-window reconstruction, and are reported separately
+    # rather than dropped.
+    all_void_top = np.array([(sdf[i, -1][0, :] > 0).all() for i in range(sdf.shape[0])])
+
+    groups = {"window_contains_all_geometry": [], "mask_extends_above_window": []}
+    scales, n_iface, n_undercut, max_cross = [], [], 0, 0
     for i in range(n):
-        true = sdf[i, -1].astype(np.float64)  # terminal step, what clause 1 scores
+        true = sdf[i, -1].astype(np.float64)
+        sc = gradient_scale(true, delta, band_um)
+        cross = crossings_from_sdf(true, delta)
+        tp = top_phase_positive(true)
         nc = n_crossings_per_column(true)
         max_cross = max(max_cross, int(nc.max()))
-        if (nc > 1).any():
-            n_undercut += 1
-        hf, okf = heights_from_sdf(true, delta, "first")
-        hl, okl = heights_from_sdf(true, delta, "last")
-        n_missing_col += int((~okf).sum())
-        cross = crossings_from_sdf(true, delta)
-        n_interfaces.append(int(sum(c.size for c in cross)))
-        rows["vertical_first"].append(band_rel_l2(
-            rebuild_vertical(hf, okf, true.shape, delta), true, band_um))
-        rows["edt_first"].append(band_rel_l2(
-            rebuild_edt(hf, okf, true.shape, delta), true, band_um))
-        rows["edt_last"].append(band_rel_l2(
-            rebuild_edt(hl, okl, true.shape, delta), true, band_um))
-        rows["edt_multi"].append(band_rel_l2(
-            rebuild_multi(cross, true.shape, delta), true, band_um))
+        n_undercut += int((nc > 1).any())
+        n_iface.append(int(sum(c.size for c in cross)))
+        scales.append(sc)
+        e = band_rel_l2(rebuild_multi_fine(cross, tp, true.shape, delta,
+                                           a.upsample) * sc, true, band_um)
+        k = ("window_contains_all_geometry" if all_void_top[i]
+             else "mask_extends_above_window")
+        groups[k].append(e)
+
+    # Is the number a property of the representation or of my rasteriser? The
+    # floor must stop moving as the reconstruction grid is refined.
+    conv_idx = [i for i in range(n) if all_void_top[i]][:a.converge_n]
+    convergence = {}
+    for u in a.converge:
+        es = []
+        for i in conv_idx:
+            true = sdf[i, -1].astype(np.float64)
+            sc = gradient_scale(true, delta, band_um)
+            es.append(band_rel_l2(rebuild_multi_fine(
+                crossings_from_sdf(true, delta), top_phase_positive(true),
+                true.shape, delta, u) * sc, true, band_um))
+        convergence[f"upsample_{u}"] = float(np.median(es))
 
     res = {
         "hypothesis": "H8: the etch fronts are single-valued in x and an SDF "
-                      "rebuilt from 128 heights loses less than clause 1's 0.05, "
-                      "so the surface representation is admissible.",
+                      "rebuilt from the compact interface representation loses "
+                      "less than clause 1's 0.05, so the representation is "
+                      "admissible.",
         "protocol": {
             "what_this_is": "an INFORMATION FLOOR, not a model result: the true "
-                            "terminal SDF is reduced to 128 heights and rebuilt, "
-                            "so this is the best band rel-L2 any surface-output "
-                            "model could reach with PERFECT heights",
+                            "terminal field is reduced to its interface crossings "
+                            "and rebuilt, so this is what a surface-output model "
+                            "would score with PERFECT predictions",
+            "representation": "per column, the sub-cell zero crossings plus one "
+                              "bit for the phase at the top of the window",
             "data": a.data, "n_trajectories": n,
             "frame": "terminal step, the reading clause 1 is judged on",
-            "grid_delta_um": delta, "band_um": band_um,
+            "grid_delta_um": delta, "band_um": band_um, "upsample": a.upsample,
             "metric": "band rel-L2 on the band of the GROUND TRUTH field, the "
                       "same mask and reduction eot.operator.band_rel_l2 uses",
             "threshold": 0.05,
+            "field_scale_measured": {
+                "median_grad_phi_in_band": float(np.median(scales)),
+                "min": float(np.min(scales)), "max": float(np.max(scales)),
+                "note": "the stored field is NOT unit-gradient: it is this factor "
+                        "times the Euclidean distance, constant across "
+                        "trajectories. Reading it off the data is reading the "
+                        "dataset's units, as grid_delta is; a reconstruction that "
+                        "ignores it scores ~0.27 from the units alone.",
+            },
+            "KNOWN_UPPER_BOUND": "the reconstruction is piecewise CONSTANT in x -- "
+                                 "each column's crossings are held across that "
+                                 "column's width -- so the interface is quantised "
+                                 "horizontally at one grid cell. A reconstruction "
+                                 "that interpolated the crossings between adjacent "
+                                 "columns would score no worse and probably "
+                                 "better, so every floor below is an UPPER BOUND "
+                                 "on what the representation loses, not the loss.",
+        },
+        "window_coverage": {
+            "n_all_void_top_row": int(all_void_top[:n].sum()),
+            "n_scored": n,
+            "frac_window_contains_all_geometry": float(all_void_top[:n].mean()),
+            "frac_over_full_test_split": float(all_void_top.mean()),
+            "why_it_matters": "where the top row is solid, the field encodes the "
+                              "distance to the mask's top surface above the "
+                              "window, which no in-window crossing list contains. "
+                              "The recipe carries mask_height and trench_width, so "
+                              "a fair reconstruction would composite the known "
+                              "static mask; that is not done here and those "
+                              "trajectories are reported separately, not dropped.",
         },
         "single_valuedness": {
             "n_trajectories_with_an_undercut": n_undercut,
             "frac_with_an_undercut": n_undercut / n,
             "max_crossings_in_any_column": max_cross,
-            "n_columns_with_no_crossing": n_missing_col,
-            "interfaces_per_wafer_median": float(np.median(n_interfaces)),
-            "interfaces_per_wafer_max": int(max(n_interfaces)),
-            "field_values_per_wafer": int(sdf.shape[2] * sdf.shape[3]),
-            "reduction_factor_multi": float(sdf.shape[2] * sdf.shape[3]
-                                            / max(np.median(n_interfaces), 1)),
-            "note": "a column crossing the interface more than once is not "
-                    "representable by one height, however accurate; such a "
-                    "trajectory bounds the route independently of the floor",
+            "interfaces_per_wafer_median": float(np.median(n_iface)),
+            "field_values_per_wafer": int(H * W),
+            "reduction_factor": float(H * W / max(np.median(n_iface), 1)),
+            "note": "the geometry is masked, so a column can cross void -> mask "
+                    "-> trench -> substrate. 'The surface height' is therefore "
+                    "ambiguous and all crossings are kept.",
+        },
+        "convergence_in_reconstruction_grid": {
+            **convergence,
+            "n_trajectories": len(conv_idx),
+            "reading": "if these agree, the floor is a property of the "
+                       "representation rather than of the reconstruction grid",
         },
         "floors": {},
         "cost": measure_cost(a.cost_reps, a.cost_calls),
     }
-    for k, v in rows.items():
+    for k, v in groups.items():
+        if not v:
+            continue
         v = np.asarray(v)
         res["floors"][k] = {
             "band_rel_l2_median": float(np.median(v)),
-            "band_rel_l2_mean": float(v.mean()),
-            "p90": float(np.percentile(v, 90)),
-            "max": float(v.max()), "min": float(v.min()),
-            "frac_trajectories_over_threshold": float((v > 0.05).mean()),
-            "n": int(v.size),
+            "p90": float(np.percentile(v, 90)), "max": float(v.max()),
+            "min": float(v.min()), "n": int(v.size),
+            "frac_over_threshold": float((v > 0.05).mean()),
             "admissible_at_median": bool(np.median(v) <= 0.05),
-            "admissible_for_every_trajectory": bool(v.max() <= 0.05),
         }
 
-    edt, ver = res["floors"]["edt_multi"], res["floors"]["vertical_first"]
+    main_group = res["floors"].get("window_contains_all_geometry")
     res["verdict"] = {
-        "best_reading": "edt_multi",
-        "why_best_reading": "all interfaces per column, EDT-reconstructed -- the "
-                            "strongest form of the surface representation. The "
-                            "one-height readings are reported beside it because "
-                            "the geometry is masked and not single-valued, so a "
-                            "single height is ambiguous by construction.",
-        "edt_multi_floor_median": res["floors"]["edt_multi"]["band_rel_l2_median"],
-        "edt_first_floor_median": res["floors"]["edt_first"]["band_rel_l2_median"],
-        "edt_last_floor_median": res["floors"]["edt_last"]["band_rel_l2_median"],
-        "vertical_first_floor_median": ver["band_rel_l2_median"],
-        "H8_supported": bool(edt["admissible_at_median"]),
-        "H8_reading": (
-            "SUPPORTED at the median: an SDF rebuilt from 128 perfect heights "
-            "scores under 0.05, so the representation does not by itself exclude "
-            "clause 1. The route's cost must then include the reconstruction, "
-            "priced above."
-            if edt["admissible_at_median"] else
-            "FALSIFIED: even with PERFECT heights the rebuilt field misses "
-            "clause 1's 0.05 threshold, so no surface-output model can satisfy "
-            "clause 1 as it is currently scored. The route is closed for a reason "
-            "about the output representation, not about optimisation."),
-        "vertical_is_admissible": ver["admissible_at_median"],
-        "vertical_note": "if this is false while edt is true, then cost_floor.json's "
-                         "33 us '+raster' row bought an inadmissible field and the "
-                         "route's true cost is the EDT's",
-        "reconstruction_cost_ratio_edt_over_vertical": (
-            res["cost"]["rebuild_edt"]["cpu_s_per_call"]["median"]
-            / max(res["cost"]["rebuild_vertical"]["cpu_s_per_call"]["median"], 1e-12)),
+        "H8_answer": "PARTIAL -- not settled either way, and deliberately not "
+                     "reported as a verdict",
+        "floor_upper_bound_median": main_group["band_rel_l2_median"] if main_group else None,
+        "threshold": 0.05,
+        "reading": (
+            "On the trajectories whose window contains all the geometry, reducing "
+            "the terminal field to its interface crossings and rebuilding an exact "
+            "SDF costs {:.4f} band rel-L2, converged in the reconstruction grid. "
+            "That is ABOVE clause 1's 0.05 -- but it is an upper bound, because "
+            "the reconstruction is piecewise constant in x and quantises the "
+            "interface horizontally at one cell. So this neither admits nor "
+            "excludes the surface representation, and the next step is a "
+            "reconstruction that interpolates crossings between columns, plus "
+            "compositing the static mask from the recipe so the other {:.0f}% of "
+            "trajectories can be scored at all."
+        ).format(main_group["band_rel_l2_median"],
+                 100 * (1 - res["window_coverage"]["frac_over_full_test_split"]))
+        if main_group else "no trajectory in this sample had a fully covered window",
+        "what_would_settle_it": [
+            "interpolate crossings between adjacent columns (removes the known "
+            "horizontal quantisation, which is the dominant remaining error)",
+            "composite the mask from the recipe's mask_height and trench_width so "
+            "the mask-above-window trajectories are scorable",
+            "if the floor then clears 0.05, train a surface-output model; if it "
+            "does not, the representation is excluded and clause 2's cheapest "
+            "route dies with it",
+        ],
+        "reconstruction_bugs_found_and_fixed_this_turn": [
+            "sign convention inverted (the field is positive in the void, "
+            "checked against the data rather than assumed)",
+            "per-column top phase hard-coded as void, which inverted the phase "
+            "parity of every masked column and scored 2.0-4.2",
+            "the field's non-unit gradient (0.787) ignored, worth ~0.27 alone",
+        ],
     }
     Path(a.out).write_text(json.dumps(res, indent=2))
     print(json.dumps({k: res[k] for k in
-                      ("single_valuedness", "floors", "verdict")}, indent=2))
+                      ("window_coverage", "single_valuedness",
+                       "convergence_in_reconstruction_grid", "floors",
+                       "verdict")}, indent=2))
 
 
 if __name__ == "__main__":

@@ -2505,3 +2505,75 @@ Note what this does to last turn's framing of the addendum's route. I wrote that
 the K knob "trades clause 1 for clause 2". At K=2 it does not trade at all once
 the training budget is honest. Whether it trades at K=10 is not yet decided, and
 I should not have decided it on three seeds twice in a row.
+
+---
+
+## Turn 4, part 3 — CORRECTION to my own reasoning, and a concurrency incident
+
+### I concluded "there is no defect" from a tree that had already been repaired
+
+Earlier this turn I measured the test suite per file and got `test_solver.py`
+**6 passed** against 7 defined and `test_inverse_protocol.py` **5 passed**
+against 8. That was the real defect: tests defined below their file's
+`__main__` runner never execute. I then re-measured, got 7 and 8, saw every test
+function sitting above the runner, and concluded my first count had been stale
+and **"no tests are silently skipped, there's no defect."**
+
+That conclusion is wrong. Between my two measurements, commit `e1ebc29` moved the
+`__main__` block in `test_solver.py` from line 97 to the end of the file, and did
+the same in `test_inverse_protocol.py`. **My first measurement was correct and my
+second was of a fixed tree.** I attributed a real change in the code to staleness
+in my own measurement, which is the same class of error as attributing a real
+change in a number to noise — and I did it while the evidence (a diff, a commit
+30 seconds old) was one `git log` away.
+
+The finding stands as `e1ebc29` states it: 4 tests had never executed, 3 of them
+guarding `design.py`'s inverse-design protocol, including the asymmetric-baseline
+fix where the random-search arm was handed the target's own etch duration while
+the gradient arm searched it. Clause 3 is a MET clause resting on that protocol
+and the test pinning it had never run. All 4 pass.
+
+### The concurrency incident: two loop instances in one repository
+
+`e1ebc29` and `91a19da` were pushed to `origin/main` at 13:23 by a process I am
+not. Checking the tree:
+
+```
+ 693697  ppid 2749455  started 13:19:18   claude -p --continue Continue the aut...
+ 811827  ppid 3201067  started 13:24:33   claude -p --continue Continue the aut...
+```
+
+811827 is me; my parent 3201067 is the pid in `.lock_trkA`. 693697's parent
+2749455 is the pid in **`.lock_trkC`** — a different track's wrapper — yet the
+commits it produced are in this repository, on this track's project.
+
+The visible cost is small but it is exactly the shape of the D4 incident this
+repo already paid for on 2026-09-10, when two α instances killed each other's
+inverse-design jobs after 8 minutes of duplicated compute:
+
+- **duplicated work.** We each independently found the same test defect and each
+  wrote a meta-test for it: `test_metrics.py::test_no_test_is_defined_after_its
+  _files_main_block` (theirs, landed first) and
+  `test_runlock.py::test_no_test_file_defines_a_test_the_runner_cannot_reach`
+  (mine). I have removed mine; two tests asserting one invariant is worse than
+  one, and theirs is the one a pushed commit message references.
+- **a false correction.** I nearly committed a retraction of a *true* finding,
+  and would have, had I not checked the commit's diff before writing it.
+- **the run directories are shared.** `91a19da` swept up `log.jsonl` files from
+  five `runs/kcurve` arms that my tmux sessions are writing. `runlock`'s flock
+  protects a run directory from two *trainers*, and `train.py`'s guard now
+  reclaims orphans — but nothing stops two loops from `git add -A` on the same
+  half-written run.
+
+**NEEDS HUMAN, stated as a decision.** The `.lock_trkA` / `.lock_trkC` scheme
+records a pid per track but nothing enforces that a `--continue` session resumes
+under the wrapper that owns its project. Either (a) the wrapper should refuse to
+`--continue` a session whose project is not its track's, or (b) each repository
+should carry a lock naming the track that owns it, checked before any commit. (b)
+is enforceable inside a repository and is the one I would take; (a) needs the
+harness. I have not implemented either, because a repo-level commit lock that a
+concurrent instance does not know about would simply lock that instance out
+mid-turn, and I should not do that to a process I cannot see the state of.
+
+What I have done instead is stop assuming I am the only writer: this entry, the
+duplicate removal, and a note in `WEEKEND.md`.
