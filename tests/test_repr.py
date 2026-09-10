@@ -153,6 +153,35 @@ def test_the_polyline_reports_the_joins_it_could_not_make():
     assert segs.shape == (1, 2, 2), segs.shape
 
 
+def test_the_kdtree_reconstruction_stays_inside_its_error_bound():
+    """`rebuild_kdtree` takes the distance to the nearest *sample* of a segment
+    rather than to the segment, which can only overestimate and by at most
+    `sample_um / 2`. That bound is the whole licence for using it, so it is
+    checked against the exhaustive version rather than asserted.
+
+    Comparing the two reconstructions rather than either against the truth
+    isolates the approximation from every other error in this pipeline, of which
+    there have been five.
+    """
+    from scripts.repr_floor import rebuild_kdtree, rebuild_polyline
+
+    # a sloped front, so the segments are not axis-aligned and sampling matters
+    ys = np.arange(H, dtype=np.float64)[:, None] * DELTA
+    xs = np.arange(W, dtype=np.float64)[None, :] * DELTA
+    true = (4.0 + 0.35 * xs) - ys
+    cross = crossings_from_sdf(true, DELTA)
+    tp = top_phase_positive(true)
+
+    exact, _ = rebuild_polyline(cross, tp, true.shape, DELTA, 1.5)
+    fast, _ = rebuild_kdtree(cross, tp, true.shape, DELTA)
+
+    band = np.abs(true) < 1.5
+    diff = np.abs(fast[band]) - np.abs(exact[band])
+    bound = DELTA / 4.0 / 2.0
+    assert diff.max() <= bound + 1e-9, (diff.max(), bound)
+    assert diff.min() >= -1e-9, f"the tree must never UNDERestimate, got {diff.min()}"
+
+
 if __name__ == "__main__":
     n = 0
     for k, v in sorted(globals().items()):

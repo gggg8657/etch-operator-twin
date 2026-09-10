@@ -3100,3 +3100,58 @@ which swept my working tree with `git add -A`. The work is preserved and the
 attribution is not; that is the same shared-tree hazard as `91a19da` in the other
 direction, and it is a further argument for the repo-level ownership lock still
 recorded as needing a human.
+
+### H10 answered: part 1 falsified, part 2 confirmed, and the result is now implementation-independent
+
+`runs/repr_floor_kd.json`, CPU-seconds per call, median of 8 separate processes.
+The ceiling is `solver_warm / reconstruction_cost` — the best the whole route
+could do **with a free model**:
+
+| reconstruction | cost | × the 277 µs budget | ceiling | Euclidean? | multi-interface? |
+|---|---|---|---|---|---|
+| `rebuild_vertical` | **43 µs** | 0.2× | 6411× | **no** | **no** |
+| `rebuild_edt` | **988 µs** | 3.6× | **280×** | yes | **no** |
+| `rebuild_kdtree` | **13,561 µs** | 49.0× | **20.4×** | yes | yes |
+| `rebuild_polyline` | 27,068 µs | 97.8× | 10.2× | yes | yes |
+| `rebuild_multi_fine` u=8 | 105,385 µs | 380.8× | 2.6× | yes | yes |
+
+**Part 1 is falsified. The k-d tree is faster and nowhere near 1–3 ms.** It
+halves the exhaustive scan (13.6 ms against 27.1 ms) and matches it to four
+decimal places in band rel-L2, but the peer's estimate sits **4.5–13.6× below
+what the algorithm it described actually delivers**. So the estimate was
+optimistic not only relative to my implementation but relative to the method
+itself. I am recording this as a falsified prediction of *mine* as much as of the
+peer's: I wrote H10 expecting the tree to reach 1–3 ms.
+
+The approximation is verified rather than argued: `max |kdtree − exhaustive|` in
+the band is **0.0096–0.0200 µm** against the `sample_um/2 = 0.0250 µm` bound, and
+`test_repr.py::test_the_kdtree_reconstruction_stays_inside_its_error_bound` pins
+both the bound and its one-sidedness (a nearest-sample distance may only ever
+overestimate).
+
+**Part 2 is confirmed, and this is what makes the negative result stop depending
+on anyone's implementation.** Five reconstruction algorithms now span **2,400×**
+in cost, from a 43 µs broadcast to a 105 ms upsampled distance transform, and
+**every one that computes a Euclidean signed distance caps the route below
+1000×**. The best fully admissible one — Euclidean *and* able to express the
+undercut the peer measured in 249/250 trajectories — caps at **20.4×**.
+
+The arithmetic behind it is not about algorithms at all. To clear 1000× the
+*entire* per-wafer cost must fall under 277 µs, so a reconstruction costing
+anything comparable to that leaves nothing for the model. `rebuild_edt` is the
+cheapest Euclidean reconstruction measured, at 988 µs, and it is **already 3.6×
+over the whole budget while still being unable to represent an undercut.** The
+only row under budget computes signed *vertical* distance, which is not the
+quantity clause 1 compares against, and is single-height besides.
+
+So the "you never optimised it" objection is now closed by measurement rather
+than by assertion, which is what it cost a turn to buy. **Clause 2's
+output-representation route is dead on cost, and no longer for a reason anyone
+can attribute to how I wrote the code.**
+
+What remains genuinely open is unchanged and is not about clause 2: the same
+surfaces reconstruct to 0.08–0.32 as a *field* while satisfying clause 3's
+contour metric at 0.0061, so it is clause 1's choice of a field metric that makes
+compact representations expensive. I am not touching that metric — rewriting it
+after seeing which representation it excludes is the one thing the rules forbid —
+but it is the honest location of the constraint and belongs in the discussion.
