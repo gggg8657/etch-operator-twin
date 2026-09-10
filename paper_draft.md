@@ -52,11 +52,11 @@ Held-out test split, 250 trajectories × 10 autoregressive steps, model `runs/se
 
 **MET** — 3.9× of headroom against ≤0.05, beating every null by two orders of magnitude. The full-window reading is 5× more flattering than the band reading on identical predictions: the loose reading of this clause is not a weaker test, it is a different one.
 
-Across converged seeds [1, 2, 5, 6]: 0.0129, 0.0119, 0.0131, 0.0126, range **0.00114** — two orders of magnitude below the threshold, so the in-distribution verdict is not seed-sensitive.
+Across converged seeds [1, 2, 3, 4, 5, 6, 7]: 0.0129, 0.0119, 0.0123, 0.0126, 0.0131, 0.0126, 0.0125, range **0.00114** — two orders of magnitude below the threshold, so the in-distribution verdict is not seed-sensitive.
 
-**The qualification that must travel with the number.** On the crossed-dt split — same recipe box, timestep drawn *independently of the recipe* — the same architecture scores **0.1524** (terminal 0.2972), a **miss**, and a factor of 11.8 worse.
+**The qualification that must travel with the number.** On the crossed-dt split — same recipe box, timestep drawn *independently of the recipe* — the same architecture scores **0.2497** (terminal 0.4962), a **miss**, and a factor of 19.3 worse.
 
-**The conditioning is load-bearing.** An identical architecture trained with the recipe hidden scores 0.4054 against 0.0126 conditioned — a factor of **32.1**. Stronger than beating the recipe-blind *null*, because the blind model may fit everything except the recipe.
+**The conditioning is load-bearing.** An identical architecture trained with the recipe hidden scores 0.4054 against 0.0126 conditioned — a factor of **32.3**. Stronger than beating the recipe-blind *null*, because the blind model may fit everything except the recipe.
 
 ### 4.2 Clause 2 — speedup
 
@@ -79,13 +79,48 @@ The operator's advantage is not that it does less arithmetic — on one CPU core
 
 ### 4.3 Clause 3 — inverse-design shape error
 
-**Protocol: total etch time pinned to the target (optimistic bound).**
+**Protocol: total etch time pinned to the target (a constraint, and measured worse than searching it).**
+
+| method | area error (mean) | median | p90 | max |
+|---|---|---|---|---|
+| true recipe re-simulated (tripwire) | 0.0023 | 0.0021 | 0.0034 | 0.0039 |
+| **gradient design, scored in ViennaPS** | 0.0098 | 0.0061 | 0.0131 | 0.0587 |
+| gradient design, surrogate's own opinion | 0.0113 | 0.0074 | 0.0163 | 0.0618 |
+| random search over the operator (see 4.3.1 for its budget) | 0.0232 | 0.0179 | 0.0435 | 0.0738 |
+
+**MET** at ≤0.05 on the mean. 95% of targets individually under 5%, p90 0.0131. Surrogate-reality gap -0.0015. Determinism tripwire (true recipe re-simulated) max 3.94e-03.
+
+**Protocol: total etch time searched.**
+
+| method | area error (mean) | median | p90 | max |
+|---|---|---|---|---|
+| true recipe re-simulated (tripwire) | 0.0024 | 0.0024 | 0.0030 | 0.0038 |
+| **gradient design, scored in ViennaPS** | 0.0061 | 0.0060 | 0.0081 | 0.0098 |
+| gradient design, surrogate's own opinion | 0.0072 | 0.0068 | 0.0106 | 0.0130 |
+| random search over the operator (see 4.3.1 for its budget) | 0.0233 | 0.0178 | 0.0432 | 0.0727 |
+
+**MET** at ≤0.05 on the mean. 100% of targets individually under 5%, p90 0.0081. Surrogate-reality gap -0.0011. Determinism tripwire (true recipe re-simulated) max 3.79e-03.
+
+#### 4.3.1 The baseline, as a curve rather than a point
 
 `[not measured]`
 
-**Protocol: total etch time searched (honest).**
+#### 4.3.2 Whether the searched-duration arm was warm-started
 
-`[not measured]`
+The published searched-duration arm initialised its duration parameter at the target's own dt, which `gen_data` had obtained by probing the true recipe's etch rate. The arm was labelled honest and was warm-started at the answer; an adversarial review found it. The optimiser does leave that start — the recovered duration is 23.1% from the true value on average — but that is an argument, not a measurement.
+
+Independent initialisations: `[not measured]` — queued, and this section fills from `runs/design_Tfree_dtinit_*.json` when they land. Until then the searched-duration number should be read as warm-started.
+
+#### 4.3.3 What a matched profile does not certify
+
+Shape error is the clause. Recipe recovery is a different quantity and it is not met, which matters because the two are easy to conflate when selling a process twin.
+
+| protocol | shape error | recipe distance (RMS, fraction of box) | beyond 10% of box | duration rel. error | corr with shape error |
+|---|---|---|---|---|---|
+| T pinned | 0.0098 | 0.167 | 65% | 0.000 | 0.476 |
+| T searched | 0.0061 | 0.177 | 90% | 0.231 | 0.216 |
+
+The forward map is degenerate over (rate × time): distinct processes reach the same profile, so matching a profile does not identify the process that produced it. The weak correlation is the mechanical form of that statement — a small shape error carries almost no information about whether the recipe is right. The deliverable is profile targeting, not recipe identification, and breaking the degeneracy would need extra observables (depth and sidewall angle and duration) rather than a better optimiser.
 
 ### 4.4 What the surrogate is worth, in simulator calls
 
@@ -95,7 +130,9 @@ The operator's advantage is not that it does less arithmetic — on one CPU core
 
 - **Single process chemistry.** Everything is `SF6O2Etching` on a trench. No claim is made about another chemistry or a hole geometry.
 - **The band width is a choice.** 1.5 µm is about ten grid cells; sensitivity to it is `[not measured]`.
-- **Inverse-design targets are in-distribution by construction**, which isolates the optimiser's failure from the surrogate's extrapolation but makes the reported shape error a lower bound on what a novel target would cost.
+- **Inverse-design targets are in-distribution by construction**, which isolates the optimiser's failure from the surrogate's extrapolation but makes the reported shape error a lower bound on what a novel target would cost. Concretely: each target is a profile the simulator produced from a recipe inside the training box, with the true initial geometry supplied, at a depth the generator chose. Nothing here measures inversion of an independently specified manufacturing target, a different depth regime, or a geometry outside the box.
+- **Shape error is a global area difference.** A local defect — a notch, a sidewall deviation, a critical-dimension error — contributes to it only in proportion to its area, and a larger removed area flatters the same absolute defect. The bound that answers this is the worst-case Hausdorff distance, which is reported beside the area figure and, on the searched-duration arm, is a fraction of one grid cell. Hausdorff is not what the clause is scored on, so it qualifies the verdict rather than constituting it.
+- **The occupancy metric is a smoothed area fraction**, exact only for contours parallel to a cell edge, and two distinct sub-cell geometries can share a cell fraction. The hard sign-threshold reading is reported alongside it and the two differ by about a thousandth, which bounds the effect without removing it.
 - **The crossed split drops trajectories that leave the window**, so it is biased against fast recipes at long dt and its error is if anything optimistic.
 - **Seeds.** Comparisons are screens until run at 8 seeds per arm with an exact test. The converged-seed range is reported wherever a comparison is made.
 - **Accuracy is already below the ground truth's own grid error**, so further in-distribution gains fit the Δ=0.2 discretisation rather than the physics.

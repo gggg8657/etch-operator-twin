@@ -125,6 +125,25 @@ All four rows are scored the same way. `true_resim` re-simulates the recipe that
 
 Box margin: minimum 0.083 of the box width from a wall; 0 of 20 solutions pinned against a wall (a pinned solution is a clipped answer, not an interior optimum).
 
+**Does the global area metric hide a local defect?** A notch or a sidewall deviation contributes to an area difference only in proportion to its area, so the area figure alone cannot answer this. The bound that can is the worst-case Hausdorff distance — the largest distance from any point of one contour to the other — measured against the Δ = 0.2 µm grid the ground truth itself is computed on:
+
+| contour | Hausdorff µm (mean) | worst of 20 targets | worst, in grid cells |
+|---|---|---|---|
+| gradient descent's proposal | 0.0358 | 0.0733 | 0.37 |
+| true recipe re-simulated (floor) | 0.0202 | 0.0348 | 0.17 |
+
+The largest local deviation anywhere in the worst target is **0.37 of one grid cell**, against a floor of 0.17 cells for re-simulating the true recipe. Hausdorff is not what the clause is scored on, so this qualifies the verdict rather than constituting it — but it is a stronger statement than the area figure it supports.
+
+**Scope, stated where it can be read.** Every target is a profile ViennaPS produced from a recipe inside the training box, with the true initial geometry supplied, at an etch depth the generator chose. That is deliberate — it guarantees a solution exists, so a failure is the optimiser's and not the target's — and it is a hard limit on what the clause certifies. **Nothing here measures inversion of an independently specified manufacturing target, a different depth regime, or a geometry outside the recipe box.** The reported shape error is a lower bound on what a novel target would cost.
+
+| reading | value | verdict |
+|---|---|---|
+| mean ≤ 0.05 (literal reading of the clause) | 0.0061 | MET |
+| every target ≤ 0.05 (strict reading) | 0.0098 | MET |
+| simulations that ran to completion | 20/20 | clean |
+
+Both readings are printed because they can disagree: a mean under 5% can carry a target over it. The truncation row exists because `solver.simulate()` stops at the window and repeats its last frame with `steps_ok` False while the wrapper still reports no failure — so a zero failure count did not, until this row, mean verification had completed.
+
 ### Both protocols, and why the constrained one is worse
 
 A target profile arrives with no duration attached, so whether total etch time `T = n_steps·dt` is known is a protocol choice, not a detail. Both are reported.

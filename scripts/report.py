@@ -325,6 +325,66 @@ def main():
               f"{s['box_margin']['n_pinned_at_wall']} of {s['n_targets']} solutions pinned against "
               "a wall (a pinned solution is a clipped answer, not an interior optimum).", ""]
 
+        # Objection: a global area difference can hide a local defect. The reply
+        # is the worst-case Hausdorff distance measured against the grid the
+        # ground truth itself lives on.
+        gd_h = s["hausdorff_um"]["operator_gd"]
+        tr_h = s["hausdorff_um"]["true_resim"]
+        if gen and gen.get("grid_delta"):
+            dx = gen["grid_delta"]
+            L += ["**Does the global area metric hide a local defect?** A notch or a "
+                  "sidewall deviation contributes to an area difference only in proportion "
+                  "to its area, so the area figure alone cannot answer this. The bound that "
+                  "can is the worst-case Hausdorff distance — the largest distance from any "
+                  f"point of one contour to the other — measured against the Δ = {dx} µm grid "
+                  "the ground truth itself is computed on:", "",
+                  table([["gradient descent's proposal", f(gd_h['mean'], 4), f(gd_h['max'], 4),
+                          f"{gd_h['max']/dx:.2f}"],
+                         ["true recipe re-simulated (floor)", f(tr_h['mean'], 4),
+                          f(tr_h['max'], 4), f"{tr_h['max']/dx:.2f}"]],
+                        ["contour", "Hausdorff µm (mean)", "worst of "
+                         f"{s['n_targets']} targets", "worst, in grid cells"]), "",
+                  f"The largest local deviation anywhere in the worst target is "
+                  f"**{gd_h['max']/dx:.2f} of one grid cell**, against a floor of "
+                  f"{tr_h['max']/dx:.2f} cells for re-simulating the true recipe. Hausdorff is "
+                  "not what the clause is scored on, so this qualifies the verdict rather "
+                  "than constituting it — but it is a stronger statement than the area figure "
+                  "it supports.", ""]
+
+        # Objection: the targets are a curated family. True, and it belongs here
+        # rather than in a script docstring.
+        L += ["**Scope, stated where it can be read.** Every target is a profile ViennaPS "
+              "produced from a recipe inside the training box, with the true initial geometry "
+              "supplied, at an etch depth the generator chose. That is deliberate — it "
+              "guarantees a solution exists, so a failure is the optimiser's and not the "
+              "target's — and it is a hard limit on what the clause certifies. **Nothing here "
+              "measures inversion of an independently specified manufacturing target, a "
+              "different depth regime, or a geometry outside the recipe box.** The reported "
+              "shape error is a lower bound on what a novel target would cost.", ""]
+
+        # Objection: `met` on the mean alone. Both readings, computed from the
+        # per-target rows so the answer is identical across every seed's JSON
+        # regardless of which version of design.py wrote it.
+        ae = [r["operator_gd"]["area_error_vs_removed"] for r in design["targets"]
+              if r["operator_gd"].get("area_error_vs_removed") is not None]
+        trunc = sum(1 for r in design["targets"]
+                    if (r["operator_gd"].get("sim_status") or {}).get("steps_ok") is False)
+        if ae:
+            L += [table([["mean ≤ 0.05 (literal reading of the clause)", f(sum(ae)/len(ae)),
+                          "MET" if max(ae) is not None and sum(ae)/len(ae) <= 0.05 else "NOT MET"],
+                         ["every target ≤ 0.05 (strict reading)", f(max(ae)),
+                          "MET" if max(ae) <= 0.05 else "NOT MET"],
+                         ["simulations that ran to completion",
+                          f"{len(ae) - trunc}/{len(design['targets'])}",
+                          "clean" if trunc == 0 else "**TRUNCATED**"]],
+                        ["reading", "value", "verdict"]), "",
+                  "Both readings are printed because they can disagree: a mean under 5% can "
+                  "carry a target over it. The truncation row exists because "
+                  "`solver.simulate()` stops at the window and repeats its last frame with "
+                  "`steps_ok` False while the wrapper still reports no failure — so a zero "
+                  "failure count did not, until this row, mean verification had completed.",
+                  ""]
+
         # The two protocols, and the fact that the "optimistic" one loses.
         if design_alt:
             sa = design_alt["summary"]

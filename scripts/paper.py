@@ -37,6 +37,9 @@ def main():
     ss = rd("runs/seed_spread.json", {})
     dsn_fx = rd("runs/design_Tfixed.json")
     dsn_fr = rd("runs/design_Tfree.json")
+    degen = rd("runs/design_degeneracy.json")
+    rcurve = rd("runs/random_curve.json")
+    dt_honest = {m: rd(f"runs/design_Tfree_dtinit_{m}.json") for m in ("random", "mid")}
     invb = rd("runs/inverse_baseline.json")
     ver = rd("runs/verify_solver.json", {})
     cf = rd("runs/confound.json", {})
@@ -234,7 +237,7 @@ def main():
     L += ["### 4.3 Clause 3 — inverse-design shape error", ""]
     for tag, dsn in [("total etch time pinned to the target (a constraint, and "
                       "measured worse than searching it)", dsn_fx),
-                     ("total etch time searched (honest)", dsn_fr)]:
+                     ("total etch time searched", dsn_fr)]:
         L += [f"**Protocol: {tag}.**", ""]
         if dsn:
             s = dsn["summary"]
@@ -243,7 +246,7 @@ def main():
             names = {"true_resim": "true recipe re-simulated (tripwire)",
                      "operator_gd": "**gradient design, scored in ViennaPS**",
                      "surrogate_opinion": "gradient design, surrogate's own opinion",
-                     "random_search": "random search over the operator, matched budget"}
+                     "random_search": "random search over the operator (see 4.3.1 for its budget)"}
             for kk, nm in names.items():
                 if kk in s["area_error_vs_removed"]:
                     ae = s["area_error_vs_removed"][kk]
@@ -258,6 +261,98 @@ def main():
                   f"{kd.get('simulator_determinism_check', float('nan')):.2e}.", ""]
         else:
             L += [NM, ""]
+
+    # ---- 4.3.1 the baseline's budget
+    L += ["#### 4.3.1 The baseline, as a curve rather than a point", ""]
+    if rcurve:
+        c, comp, v = rcurve["curve"], rcurve["compute"], rcurve["verdict"]
+        gdm = rcurve["gd_reference"]["mean_area_error"]
+        L += [f"Gradient descent used {comp['gd_restarts']} restarts × "
+              f"{comp['gd_iters']} iterations, i.e. {comp['gd_rollouts_forward']} rollouts "
+              f"forward and as many backward — about {comp['gd_forward_equivalents']} "
+              "forward-equivalents. The random-search row above used 256 candidates. Those "
+              "budgets are not comparable, so the baseline is reported as a curve. Nested "
+              "prefixes of one candidate stream per target, so the ranking is free of "
+              "independent-draw noise; random search keeps the target's true etch time "
+              "throughout, which makes it stronger than the method it is compared against.",
+              "",
+              "| candidates | area error (mean) | median | max |", "|---|---|---|---|"]
+        L += [f"| {b} | {c[b]['mean']:.4f} | {c[b]['median']:.4f} | {c[b]['max']:.4f} |"
+              for b in sorted(c, key=int)]
+        L += ["", f"Gradient descent on the same targets: **{gdm:.4f}**.", ""]
+        if v["h3_falsified"]:
+            L += [f"Random search reaches gradient descent's error at "
+                  f"{min(v['budgets_reaching_gd'])} candidates, so **H3 is falsified**: the "
+                  "advantage was in part a budget. What the operator demonstrably provides is "
+                  "a cheap and accurate *ranker*; the claim that its gradients are what "
+                  "produce the answer is not supported by this comparison, and the honest "
+                  "statement of the contribution is the differentiable surrogate as a search "
+                  "oracle, at whatever budget the user can afford.", ""]
+        else:
+            L += ["No budget tested reaches gradient descent's error, so the gradients buy "
+                  "something a matched or larger random budget does not.", ""]
+    else:
+        L += [NM, ""]
+
+    # ---- 4.3.2 the warm start
+    L += ["#### 4.3.2 Whether the searched-duration arm was warm-started", ""]
+    if dsn_fr:
+        g0 = dsn_fr["targets"][0]["operator_gd_surrogate"]
+        L += ["The published searched-duration arm initialised its duration parameter at the "
+              "target's own dt, which `gen_data` had obtained by probing the true recipe's "
+              "etch rate. The arm was labelled honest and was warm-started at the answer; an "
+              "adversarial review found it. The optimiser does leave that start — the "
+              "recovered duration is "
+              f"{sum(abs(r['operator_gd_surrogate']['dt_rel_err']) for r in dsn_fr['targets'])/len(dsn_fr['targets']):.1%} "
+              "from the true value on average — but that is an argument, not a measurement.",
+              ""]
+        if any(dt_honest.values()):
+            L += ["| duration initialisation | area error (mean) | max | targets < 5% |",
+                  "|---|---|---|---|"]
+            L += [f"| target's own dt (published, warm-started) | "
+                  f"{dsn_fr['summary']['area_error_vs_removed']['operator_gd']['mean']:.4f} | "
+                  f"{dsn_fr['summary']['area_error_vs_removed']['operator_gd']['max']:.4f} | "
+                  f"{dsn_fr['summary']['kpi_clause_shape_error']['frac_targets_under_5pct']:.0%} |"]
+            for m, d in dt_honest.items():
+                if d:
+                    a_ = d["summary"]["area_error_vs_removed"]["operator_gd"]
+                    L += [f"| {m}, independent of the target | {a_['mean']:.4f} | "
+                          f"{a_['max']:.4f} | "
+                          f"{d['summary']['kpi_clause_shape_error']['frac_targets_under_5pct']:.0%} |"]
+            L += [""]
+        else:
+            L += ["Independent initialisations: `[not measured]` — queued, and this section "
+                  "fills from `runs/design_Tfree_dtinit_*.json` when they land. Until then "
+                  "the searched-duration number should be read as warm-started.", ""]
+    else:
+        L += [NM, ""]
+
+    # ---- 4.3.3 what shape error does not certify
+    L += ["#### 4.3.3 What a matched profile does not certify", ""]
+    if degen:
+        L += ["Shape error is the clause. Recipe recovery is a different quantity and it is "
+              "not met, which matters because the two are easy to conflate when selling a "
+              "process twin.", "",
+              "| protocol | shape error | recipe distance (RMS, fraction of box) | beyond 10% "
+              "of box | duration rel. error | corr with shape error |",
+              "|---|---|---|---|---|---|"]
+        for arm in degen["arms"]:
+            rd_ = arm["recipe_distance_unit_box"]
+            L += [f"| {'T searched' if arm['dt_optimised'] else 'T pinned'} | "
+                  f"{arm['shape_error_area_vs_removed']['mean']:.4f} | "
+                  f"{rd_['rms']['mean']:.3f} | "
+                  f"{rd_['frac_beyond_10pct_of_box']:.0%} | "
+                  f"{arm['etch_time_rel_error']['mean']:.3f} | "
+                  f"{arm['corr_recipe_distance_vs_shape_error']:.3f} |"]
+        L += ["", "The forward map is degenerate over (rate × time): distinct processes reach "
+              "the same profile, so matching a profile does not identify the process that "
+              "produced it. The weak correlation is the mechanical form of that statement — a "
+              "small shape error carries almost no information about whether the recipe is "
+              "right. The deliverable is profile targeting, not recipe identification, and "
+              "breaking the degeneracy would need extra observables (depth and sidewall angle "
+              "and duration) rather than a better optimiser.", ""]
+    else:
+        L += [NM, ""]
 
     L += ["### 4.4 What the surrogate is worth, in simulator calls", ""]
     if invb:
@@ -279,7 +374,22 @@ def main():
           f"is {NM}.",
           "- **Inverse-design targets are in-distribution by construction**, which isolates "
           "the optimiser's failure from the surrogate's extrapolation but makes the reported "
-          "shape error a lower bound on what a novel target would cost.",
+          "shape error a lower bound on what a novel target would cost. Concretely: each "
+          "target is a profile the simulator produced from a recipe inside the training box, "
+          "with the true initial geometry supplied, at a depth the generator chose. Nothing "
+          "here measures inversion of an independently specified manufacturing target, a "
+          "different depth regime, or a geometry outside the box.",
+          "- **Shape error is a global area difference.** A local defect — a notch, a "
+          "sidewall deviation, a critical-dimension error — contributes to it only in "
+          "proportion to its area, and a larger removed area flatters the same absolute "
+          "defect. The bound that answers this is the worst-case Hausdorff distance, which is "
+          "reported beside the area figure and, on the searched-duration arm, is a fraction "
+          "of one grid cell. Hausdorff is not what the clause is scored on, so it qualifies "
+          "the verdict rather than constituting it.",
+          "- **The occupancy metric is a smoothed area fraction**, exact only for contours "
+          "parallel to a cell edge, and two distinct sub-cell geometries can share a cell "
+          "fraction. The hard sign-threshold reading is reported alongside it and the two "
+          "differ by about a thousandth, which bounds the effect without removing it.",
           "- **The crossed split drops trajectories that leave the window**, so it is biased "
           "against fast recipes at long dt and its error is if anything optimistic.",
           "- **Seeds.** Comparisons are screens until run at 8 seeds per arm with an exact "
