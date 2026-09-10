@@ -4806,3 +4806,75 @@ measurement: `choose_dt` sizes dt from the rate on the *initial flat* geometry
 and the rate falls as the trench deepens, so the etch must under-deliver. The
 requested reading does not exist on `test_crossed` — all 209 trajectories store
 NaN — and asking for it there raises rather than falling back.
+
+### CORRECTION, and it is mine: "within 3% of clause 1" was the wrong comparison
+
+A concurrent α instance (commit `49bcc9a`) caught an inference in the Turn 11
+entry above and it is right. I wrote that the pointwise arm's **0.05052** put it
+"within 3% of the clause" and concluded that *"the measured 3% is therefore an
+estimate of how much of this problem is not leading-order normal advance, and it
+is small."*
+
+**3% is the distance to the threshold, not the distance to a model that mixes
+spatially**, and the second is the only one that bears on the physics. Against
+the spatial models the pointwise arm is:
+
+* **1.07× worse** than `fno_w8m4L2` (0.05052 vs 0.04717), and
+* **2.67× worse** than the 8-seed K=1 anchor (0.05052 vs 0.01890).
+
+So spatial mixing buys a factor of **2.67 in error**, not 3%. My inference
+overstated how much of this problem is leading-order normal advance by roughly
+9×, and the mechanism of the error is worth naming because it is reusable: I
+compared a measurement to a *threshold* and then read the gap as if it were a
+comparison to an *alternative*. The threshold is a policy; the alternative is
+the physics.
+
+Two consequences, both applied:
+
+1. **The `SpectralPropagator` docstring carried the same flawed motivation** —
+   it cited the pointwise near-miss as evidence that a linear propagator should
+   be nearly sufficient. Corrected in place, with the wrong version kept as a
+   warning, because a bad argument inside a class that is currently training is
+   exactly the thing that gets copied into a paper.
+2. **H18's justification does not depend on it.** The reason to run H18 is the
+   measured operation count — ~20 operations at ~30 µs each against a 511 µs
+   budget — and that measurement is untouched. The concurrent instance's own
+   phrasing is the right one: the pointwise near-miss "is not a reason to run
+   H18. The operation count is." H18's *cost* prediction has since been
+   confirmed at 1742–2268×; its accuracy prediction (0.05–0.12) now has one
+   fewer reason behind it, and if anything should be revised **pessimistically**:
+   if spatial mixing is worth 2.67×, a model that is merely linear in φ has more
+   to make up than I credited.
+
+### D4 recurred a third time, and this time the duplication was lucky rather than wasteful
+
+Two α loop instances are again running against this one working tree. Evidence:
+commits `61ef751` and `49bcc9a` are not from this instance, and three stride-1
+arms are training that this instance never launched (`w8m8L2_K1_s1`,
+`w16m8L2_K1_s1`, `w32m12L4_K1_s1`).
+
+**The work is complementary, not duplicated, which is luck and not design:**
+
+* The other instance implemented `scripts/derive_depth.py` and H19 —
+  conditioning on achieved depth instead of `log_dt` — which is exactly D5's
+  Option C as written into `WEEKEND.md` this turn, and the route that dissolves
+  the 12.8× probe ceiling rather than pricing it. It reports Pearson r
+  0.952–0.965 between achieved and requested depth and the correct predicted
+  *direction* (achieved below requested, because `choose_dt` sizes dt from the
+  rate on the initial flat geometry and the rate falls as the trench deepens).
+  Not re-derived here; recorded and cross-referenced.
+* Its stride-1 grid (`w8m8L2`, `w16m8L2`, `w32m12L4` at stride 1) is precisely
+  the ablation my own confound statement said was missing — the capacity curve
+  in `runs/capacity_test.json` varies width, modes and depth together, and that
+  grid is what would let the non-monotone optimum be attributed to one of them.
+  So `capacity_test.py` will have five points instead of three when it drains,
+  and the attribution I declined to claim becomes measurable.
+
+**And it caught a real error of mine**, which is the strongest argument yet that
+the duplication is not purely a cost. But the hazards are unchanged and they are
+not hypothetical: both instances hold the same `git add -A`, and this turn's
+commit `25b9574` staged the other instance's in-flight files while the
+pre-commit hook (added for this exact reason) unstaged 12 half-written
+`log.jsonl` files, three of which belong to the other instance's runs. Nothing
+in this repository can prevent two loops from pushing, and `WEEKEND.md`'s D4
+options stand unchanged.

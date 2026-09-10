@@ -100,6 +100,12 @@ def main():
                 "arm_point": float(arm_seeds.mean()),
                 "anchor_point": float(anc_seeds.mean()),
                 "arm_seed_range": float(np.ptp(arm_seeds)),
+                # The "every seed" reading needs the worst seed, and a document
+                # that quotes it must read it from here rather than have it
+                # typed in -- which is exactly what happened once in
+                # scripts/weekend.py and is why this field exists.
+                "arm_worst_seed": float(arm_seeds.max()),
+                "anchor_worst_seed": float(anc_seeds.max()),
                 "anchor_seed_range": float(np.ptp(anc_seeds)),
                 # Negative = the SMALLER model is better.
                 "mean_diff_arm_minus_anchor": float(arm_seeds.mean() - anc_seeds.mean()),

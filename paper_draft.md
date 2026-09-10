@@ -83,6 +83,49 @@ The best of these 8 rows is **9.58×** (`K10_nv_s1`, cold_single_wafer), short o
 
 The operator's advantage is not that it does less arithmetic — on one CPU core, one step per application, it is *slower* than the simulator — but that its arithmetic is dense, regular and batchable. The solver's is a scattered Monte Carlo ray trace, which is also why it refuses to parallelise. That is the honest statement of what a learned operator buys on this problem, and it is a statement about hardware utilisation rather than about operation count.
 
+#### 4.2.1 The denominator above was measured on the wrong workload
+
+The table in 4.2 divides by a reference that etches for a fixed 2.0 minutes at a timestep the benchmark chose. The dataset does not work that way: each trajectory carries a per-recipe timestep, so the wafers the operator is *scored* on are not the wafers the reference was *timed* on. An adversarial review raised the mismatch; measuring it showed it was larger than the review supposed, because `eot.solver.simulate` accumulates its cost over ten separate `apply()` calls, one per emitted frame, while the benchmark makes one.
+
+There is therefore no single honest denominator. There is one per output, and they are measured here on the test split's own recipes and timesteps, in one process per column, so a difference between columns is a difference in workload and not in geometry:
+
+| reference workload | CPU-s / wafer | budget at 1000× | matches an operator at |
+|---|---|---|---|
+| one apply of 10·dt — terminal state only | 0.5109 | 511 µs | 1 application/wafer |
+| ten applies of dt — all ten states | 3.8661 | 3866 µs | 10 applications/wafer |
+| — the same, excluding our own rasteriser | 0.9696 | 970 µs | 10 applications/wafer |
+| one apply of a fixed 2.0 min (§4.2's reference) | 0.3256 | 326 µs | — |
+| building the initial level set | 0.0007 | — | excluded from every row above |
+
+The matched reading is **1.57×** the fixed-duration one, so adopting it makes the clause *easier*. We therefore report all of them and delete none: the fixed-duration column stays in the table, and a test fails if it is ever removed. Choosing the larger denominator silently would be the one move this work refuses.
+
+**One exclusion is ours and is argued rather than assumed.** The ten-apply column contains our own NumPy rasterisation, 2.8641 CPU-s of 3.8661 — 74% of it. Charging the reference for our unoptimised code would inflate the denominator with our own slowness, and §4.5 already measures a competent Euclidean rasteriser at 988 µs — three orders of magnitude less. Adding that figure instead moves the terminal column by 0.2% and the ten-apply column by 1%, so the treatment is immaterial either way, which is why it can be settled without it being a judgement call.
+
+The generation-time figure stored in the dataset (`solver_s`, median 18.5 s) is **not** a denominator anywhere. It is wall-clock recorded while eight generation workers shared this machine, and a test asserts it never becomes one — it would make the clause roughly forty times easier.
+
+#### 4.2.2 A ceiling the numerator cannot lift: the cost of building the query
+
+Everything above prices the *answer*. This section prices the *question*, and it is where the clause is actually decided.
+
+The operator takes the horizon as a conditioning input — log(K·dt). A caller must therefore know the timestep before the surrogate can be evaluated at all. If the caller's query is itself a timestep, that costs nothing and §4.2.1's budget stands. But a process engineer does not ask for a timestep; they ask for a **target depth**. Converting a target depth into a timestep is what `eot.solver.choose_dt` does, and it does it by calling `probe_rate`, which is a real simulation: build the domain, apply the process for 0.1 min, extract the surface twice. Measured: **39.9 ms**.
+
+The solver needs no such conversion — given a target depth it can integrate and stop when the depth is reached. So the probe is a cost the *surrogate* incurs because of the shape of its interface, and it bounds the ratio from above independently of the network:
+
+| query | bound on the speedup | binding on |
+|---|---|---|
+| target depth, terminal state | **12.8×** | every architecture |
+| target depth, all ten states | **24.3×** | every architecture |
+
+These are suprema as the network's own cost goes to zero. **Under the target-depth reading the clause is unreachable by a factor of 78, and no architecture changes that** — not a smaller operator, not a fused kernel, and not a model that emits the field in under the budget. A surrogate that must run the solver to construct its own input has not replaced the solver.
+
+We first wrote this bound as (probe + solver)/probe, charging the probe to both sides, which gives 13.8×. That was too generous to the surrogate: it assumes the reference also needs a timestep chosen in advance, and it does not. The corrected bound is the smaller one and it is the one above.
+
+**The route out is to change the interface, not the network.** If the operator is conditioned on the depth it must advance rather than on the time it must advance, a depth query needs no probe by construction. That is a different model with its own accuracy question, and this section claims no accuracy for it.
+
+The conditioning channel it needs is measurable from data already in hand. Achieved depth is recoverable from the stored frames by interpolating the deepest zero crossing of the signed-distance field, sub-cell, for every split — including the crossed-timestep split, whose stored requested depth is unusable (0 of 209 trajectories carry a finite value). Against the requested depth on the splits that have one: Pearson r = **0.965**, achieved/requested median **0.975**. The direction of that residual was predicted before it was measured — `choose_dt` sizes the timestep from the etch rate on the initial *flat* geometry, and the rate falls as the trench deepens, so the etch must under-deliver.
+
+**A caveat that belongs here rather than in a footnote.** Training on achieved depth is correct; *scoring* on it is not deployable, because it hands the model a quantity derived from the label it is being scored against. The achieved-depth reading is labelled an oracle reading wherever it appears, and the deployable reading conditions on the depth a caller would supply. The two differ by 2.5%, which is small — and a small leak reported as a deployable number is still a leak.
+
 ### 4.3 Clause 3 — inverse-design shape error
 
 **Protocol: total etch time pinned to the target (a constraint, and measured worse than searching it).**
@@ -162,7 +205,15 @@ The forward map is degenerate over (rate × time): distinct processes reach the 
 
 `[not measured]`
 
-### 4.5 Why the speedup clause is not an implementation problem
+### 4.5 Where the speedup clause is bound, and where it is not
+
+**A correction to this section's own framing, before its evidence.** It previously argued that the clause is not an implementation problem. Part of that argument stands and part of it is now falsified, and the two must be separated.
+
+What stands is the *compact-representation* result below: if a surrogate predicts a description of the front rather than a field, converting it back to the field that clause 1 scores costs more than the whole budget, across five algorithms spanning 2,442x in cost. That conclusion is unchanged.
+
+What is falsified is the stronger claim that grew out of it — that emitting a 128x128 field exhausts the budget for any architecture. The cheapest field-emitting surrogate now measured costs **226 µs/wafer** (`specprop_m8_ma32_K10`), against the §4.2.1 matched budget of 511 µs — **inside it**. So the field output does not bound the clause; our earlier architectures did. **No accuracy is claimed for any cost row here**, and the family that is both cheap and accurate is not established: the cheapest rows measured are either untrained or, where trained, wrong by a factor of five (§4.1). The binding constraint has in any case moved to the query interface of §4.2.2, which no architecture addresses.
+
+#### 4.5.1 The cost floor of the output representation
 
 Section 4.2 leaves the clause short by 95x at **10.55x** (8.86-12.16x over 8 whole invocations). The obvious reading of such a gap is that the implementation is unfinished. We tested that reading directly, and it is wrong in one direction and right in another.
 

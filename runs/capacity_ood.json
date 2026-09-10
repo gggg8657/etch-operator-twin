@@ -27,6 +27,8 @@
         "arm_point": 0.025668101500719784,
         "anchor_point": 0.018902862367220222,
         "arm_seed_range": 0.0034665411077439805,
+        "arm_worst_seed": 0.027235081549733878,
+        "anchor_worst_seed": 0.019768870061263443,
         "anchor_seed_range": 0.0017172754295170303,
         "mean_diff_arm_minus_anchor": 0.006765239133499561,
         "exact_test": {
@@ -63,6 +65,8 @@
         "arm_point": 0.042886024237079316,
         "anchor_point": 0.05433350959205846,
         "arm_seed_range": 0.010221429900381683,
+        "arm_worst_seed": 0.04977163099799274,
+        "anchor_worst_seed": 0.07060257989666925,
         "anchor_seed_range": 0.035105400830353344,
         "mean_diff_arm_minus_anchor": -0.011447485354979144,
         "exact_test": {
@@ -106,6 +110,8 @@
         "arm_point": 0.05765713383536786,
         "anchor_point": 0.018902862367220222,
         "arm_seed_range": 0.018432136423885824,
+        "arm_worst_seed": 0.0669845000654459,
+        "anchor_worst_seed": 0.019768870061263443,
         "anchor_seed_range": 0.0017172754295170303,
         "mean_diff_arm_minus_anchor": 0.03875427146814764,
         "exact_test": {
@@ -142,6 +148,8 @@
         "arm_point": 0.08212563876555232,
         "anchor_point": 0.05433350959205846,
         "arm_seed_range": 0.024488418170612702,
+        "arm_worst_seed": 0.09493191623367554,
+        "anchor_worst_seed": 0.07060257989666925,
         "anchor_seed_range": 0.035105400830353344,
         "mean_diff_arm_minus_anchor": 0.027792129173493857,
         "exact_test": {

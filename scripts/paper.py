@@ -38,6 +38,15 @@ def main():
     # 6.57x, 119.12x) are withdrawn. Only the symmetric bench may fill this
     # clause; if it is absent the section says so rather than reaching for them.
     sp = rd("runs/speed_symmetric.json")
+    wl = rd("runs/bench_workload.json")
+    ac = rd("runs/arch_cost.json")
+    # A second cost file exists, written by a concurrently running instance of
+    # this loop against the same working tree. It prices an architecture family
+    # this instance did not build. Reading both and taking the genuine minimum
+    # is the only honest option: quoting only our own file would understate the
+    # frontier, and the frontier is the thing this section is about.
+    ac2 = rd("runs/arch_cost_h18.json")
+    dep = rd("runs/depth_derivation.json")
     sp_withdrawn = rd("runs/speed.json")
     sp_drift = rd("runs/solver_drift.json")
     ss = rd("runs/seed_spread.json", {})
@@ -281,6 +290,160 @@ def main():
     else:
         L += [NM, ""]
 
+    # ---- 4.2.1 the denominator itself
+    L += ["#### 4.2.1 The denominator above was measured on the wrong workload",
+          ""]
+    if wl:
+        c = wl["columns"]
+        L += [
+            "The table in 4.2 divides by a reference that etches for a fixed "
+            f"{10 * 0.2:.1f} minutes at a timestep the benchmark chose. The "
+            "dataset does not work that way: each trajectory carries a "
+            "per-recipe timestep, so the wafers the operator is *scored* on "
+            "are not the wafers the reference was *timed* on. An adversarial "
+            "review raised the mismatch; measuring it showed it was larger "
+            "than the review supposed, because `eot.solver.simulate` "
+            "accumulates its cost over ten separate `apply()` calls, one per "
+            "emitted frame, while the benchmark makes one.",
+            "",
+            "There is therefore no single honest denominator. There is one per "
+            "output, and they are measured here on the test split's own "
+            "recipes and timesteps, in one process per column, so a difference "
+            "between columns is a difference in workload and not in geometry:",
+            "",
+            "| reference workload | CPU-s / wafer | budget at 1000× | matches an operator at |",
+            "|---|---|---|---|",
+            f"| one apply of 10·dt — terminal state only | {c['terminal_one_apply']['median_cpu_s']:.4f} | "
+            f"{c['terminal_one_apply']['median_cpu_s'] / 1000 * 1e6:.0f} µs | 1 application/wafer |",
+            f"| ten applies of dt — all ten states | {c['all_frames_ten_applies']['median_cpu_s']:.4f} | "
+            f"{c['all_frames_ten_applies']['median_cpu_s'] / 1000 * 1e6:.0f} µs | 10 applications/wafer |",
+            f"| — the same, excluding our own rasteriser | {c['all_frames_ten_applies']['median_cpu_s_excluding_raster']:.4f} | "
+            f"{c['all_frames_ten_applies']['median_cpu_s_excluding_raster'] / 1000 * 1e6:.0f} µs | 10 applications/wafer |",
+            f"| one apply of a fixed 2.0 min (§4.2's reference) | {c['fixed_duration_one_apply']['median_cpu_s']:.4f} | "
+            f"{c['fixed_duration_one_apply']['median_cpu_s'] / 1000 * 1e6:.0f} µs | — |",
+            f"| building the initial level set | {c['domain_build']['median_cpu_s']:.4f} | — | "
+            f"excluded from every row above |",
+            "",
+            f"The matched reading is **{c['terminal_one_apply']['median_cpu_s'] / c['fixed_duration_one_apply']['median_cpu_s']:.2f}×** "
+            "the fixed-duration one, so adopting it makes the clause *easier*. "
+            "We therefore report all of them and delete none: the "
+            "fixed-duration column stays in the table, and a test fails if it "
+            "is ever removed. Choosing the larger denominator silently would "
+            "be the one move this work refuses.",
+            "",
+            "**One exclusion is ours and is argued rather than assumed.** The "
+            "ten-apply column contains our own NumPy rasterisation, "
+            f"{c['all_frames_ten_applies']['cpu_raster_median_s']:.4f} CPU-s of "
+            f"{c['all_frames_ten_applies']['median_cpu_s']:.4f} — "
+            f"{100 * c['all_frames_ten_applies']['cpu_raster_median_s'] / c['all_frames_ten_applies']['median_cpu_s']:.0f}% "
+            "of it. Charging the reference for our unoptimised code would "
+            "inflate the denominator with our own slowness, and §4.5 already "
+            "measures a competent Euclidean rasteriser at 988 µs — three "
+            "orders of magnitude less. Adding that figure instead moves the "
+            "terminal column by 0.2% and the ten-apply column by 1%, so the "
+            "treatment is immaterial either way, which is why it can be "
+            "settled without it being a judgement call.",
+            "",
+            "The generation-time figure stored in the dataset "
+            f"(`solver_s`, median {wl['dataset_recorded_solver_s']['median']:.1f} s) "
+            "is **not** a denominator anywhere. It is wall-clock recorded while "
+            "eight generation workers shared this machine, and a test asserts "
+            "it never becomes one — it would make the clause roughly forty "
+            "times easier.", ""]
+    else:
+        L += [NM, ""]
+
+    # ---- 4.2.2 the ceiling
+    L += ["#### 4.2.2 A ceiling the numerator cannot lift: the cost of "
+          "building the query", ""]
+    if wl:
+        ceil = wl["ratios"]["dt_probe_ceiling"]["ceiling_operator_pays"]
+        probe = wl["columns"]["dt_probe"]["median_cpu_s"]
+        L += [
+            "Everything above prices the *answer*. This section prices the "
+            "*question*, and it is where the clause is actually decided.",
+            "",
+            "The operator takes the horizon as a conditioning input — "
+            "log(K·dt). A caller must therefore know the timestep before the "
+            "surrogate can be evaluated at all. If the caller's query is "
+            "itself a timestep, that costs nothing and §4.2.1's budget stands. "
+            "But a process engineer does not ask for a timestep; they ask for "
+            "a **target depth**. Converting a target depth into a timestep is "
+            "what `eot.solver.choose_dt` does, and it does it by calling "
+            "`probe_rate`, which is a real simulation: build the domain, apply "
+            f"the process for 0.1 min, extract the surface twice. Measured: "
+            f"**{probe * 1e3:.1f} ms**.",
+            "",
+            "The solver needs no such conversion — given a target depth it can "
+            "integrate and stop when the depth is reached. So the probe is a "
+            "cost the *surrogate* incurs because of the shape of its "
+            "interface, and it bounds the ratio from above independently of "
+            "the network:",
+            "",
+            "| query | bound on the speedup | binding on |",
+            "|---|---|---|",
+            f"| target depth, terminal state | **{ceil['vs_terminal']:.1f}×** | every architecture |",
+            f"| target depth, all ten states | **{ceil['vs_all_frames_excl_raster']:.1f}×** | every architecture |",
+            "",
+            "These are suprema as the network's own cost goes to zero. **Under "
+            "the target-depth reading the clause is unreachable by a factor of "
+            f"{1000 / ceil['vs_terminal']:.0f}, and no architecture changes "
+            "that** — not a smaller operator, not a fused kernel, and not a "
+            "model that emits the field in under the budget. A surrogate that "
+            "must run the solver to construct its own input has not replaced "
+            "the solver.",
+            "",
+            "We first wrote this bound as (probe + solver)/probe, charging the "
+            f"probe to both sides, which gives "
+            f"{wl['ratios']['dt_probe_ceiling']['ceiling_both_sides_pay_SUPERSEDED']['vs_terminal']:.1f}×. "
+            "That was too generous to the surrogate: it assumes the reference "
+            "also needs a timestep chosen in advance, and it does not. The "
+            "corrected bound is the smaller one and it is the one above.",
+            "",
+            "**The route out is to change the interface, not the network.** If "
+            "the operator is conditioned on the depth it must advance rather "
+            "than on the time it must advance, a depth query needs no probe by "
+            "construction. That is a different model with its own accuracy "
+            "question, and this section claims no accuracy for it."]
+        if dep:
+            tr = (dep.get("splits", {}).get("train", {})
+                  .get("vs_stored_target_depth", {}))
+            cr = dep.get("splits", {}).get("test_crossed", {})
+            if tr.get("pearson_r") is not None:
+                L += [
+                    "",
+                    "The conditioning channel it needs is measurable from data "
+                    "already in hand. Achieved depth is recoverable from the "
+                    "stored frames by interpolating the deepest zero crossing "
+                    "of the signed-distance field, sub-cell, for every split — "
+                    "including the crossed-timestep split, whose stored "
+                    f"requested depth is unusable "
+                    f"({cr.get('vs_stored_target_depth', {}).get('n_comparable', 0)} "
+                    f"of {cr.get('n_trajectories', 0)} trajectories carry a "
+                    "finite value). Against the requested depth on the splits "
+                    f"that have one: Pearson r = **{tr['pearson_r']:.3f}**, "
+                    f"achieved/requested median **{tr['achieved_over_requested_median']:.3f}**. "
+                    "The direction of that residual was predicted before it "
+                    "was measured — `choose_dt` sizes the timestep from the "
+                    "etch rate on the initial *flat* geometry, and the rate "
+                    "falls as the trench deepens, so the etch must "
+                    "under-deliver.",
+                    "",
+                    "**A caveat that belongs here rather than in a footnote.** "
+                    "Training on achieved depth is correct; *scoring* on it is "
+                    "not deployable, because it hands the model a quantity "
+                    "derived from the label it is being scored against. The "
+                    "achieved-depth reading is labelled an oracle reading "
+                    "wherever it appears, and the deployable reading "
+                    "conditions on the depth a caller would supply. The two "
+                    f"differ by "
+                    f"{100 * (1 - tr['achieved_over_requested_median']):.1f}%, "
+                    "which is small — and a small leak reported as a "
+                    "deployable number is still a leak."]
+        L += [""]
+    else:
+        L += [NM, ""]
+
     # ---- clause 3
     L += ["### 4.3 Clause 3 — inverse-design shape error", ""]
     for tag, dsn in [("total etch time pinned to the target (a constraint, and "
@@ -464,7 +627,54 @@ def main():
              key=lambda r: len(r.get("cost", {})), default=None)
     sr = rd("runs/surface_representable.json")
     spr = rd("runs/speed_spread.json")
-    L += ["### 4.5 Why the speedup clause is not an implementation problem", ""]
+    L += ["### 4.5 Where the speedup clause is bound, and where it is not", ""]
+    # TITLE CHANGED, and the change is a retraction. This section was called
+    # "Why the speedup clause is not an implementation problem". Its central
+    # claim -- that no architecture emitting a 128x128 field fits the budget --
+    # has since been falsified by measurement, so the old title asserted a
+    # conclusion the evidence no longer supports.
+    _rows = [(n, m) for f in (ac, ac2) if f
+             for n, m in (f.get("models") or {}).items()
+             if m.get("warm", {}).get("per_wafer_cpu_s")
+             and m.get("applications_per_wafer") == 1]
+    if _rows and wl:
+        cheap = min(_rows, key=lambda kv: kv[1]["warm"]["per_wafer_cpu_s"])
+        budget = wl["columns"]["terminal_one_apply"]["median_cpu_s"] / 1000.0
+        us = cheap[1]["warm"]["per_wafer_cpu_s"]
+        fits = us <= budget
+        L += [
+            "**A correction to this section's own framing, before its "
+            "evidence.** It previously argued that the clause is not an "
+            "implementation problem. Part of that argument stands and part of "
+            "it is now falsified, and the two must be separated.",
+            "",
+            "What stands is the *compact-representation* result below: if a "
+            "surrogate predicts a description of the front rather than a "
+            "field, converting it back to the field that clause 1 scores costs "
+            "more than the whole budget, across five algorithms spanning "
+            "2,442x in cost. That conclusion is unchanged.",
+            "",
+            "What is falsified is the stronger claim that grew out of it — "
+            "that emitting a 128x128 field exhausts the budget for any "
+            "architecture. The cheapest field-emitting surrogate now measured "
+            f"costs **{us * 1e6:.0f} µs/wafer** (`{cheap[0]}`), against the "
+            f"§4.2.1 matched budget of {budget * 1e6:.0f} µs — "
+            + ("**inside it**. So the field output does not bound the clause; "
+               "our earlier architectures did."
+               if fits else
+               f"still **{us / budget:.1f}x over** it, but within the same "
+               "order of magnitude rather than the two orders the deployed "
+               "operator sits at. The claim that no field-emitting "
+               "architecture can approach the budget does not survive; "
+               "whether one reaches it is not settled by this row.")
+            + " **No accuracy is claimed for any cost row here**, and the "
+            "family that is both cheap and accurate is not established: the "
+            "cheapest rows measured are either untrained or, where trained, "
+            "wrong by a factor of five (§4.1). The binding constraint has in "
+            "any case moved to the query interface of §4.2.2, which no "
+            "architecture addresses.",
+            ""]
+    L += ["#### 4.5.1 The cost floor of the output representation", ""]
     if spr:
         k = spr["kpi_clause"]
         lo, hi = k["value_range_over_invocations"]

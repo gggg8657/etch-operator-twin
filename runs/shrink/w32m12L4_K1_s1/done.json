@@ -1,0 +1,27 @@
+{
+  "finished": 1789067965.966243,
+  "pid": 2041928,
+  "argv": [
+    "scripts/train.py",
+    "--run",
+    "runs/shrink/w32m12L4_K1_s1",
+    "--epochs",
+    "80",
+    "--device",
+    "cuda:0",
+    "--seed",
+    "1",
+    "--stride",
+    "1",
+    "--width",
+    "32",
+    "--modes",
+    "12",
+    "--layers",
+    "4"
+  ],
+  "epochs": 80,
+  "seed": 1,
+  "best_val_roll_band": 0.01308140188579758,
+  "train_wall_s": 830.5643049068749
+}

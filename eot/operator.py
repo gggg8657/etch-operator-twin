@@ -443,9 +443,22 @@ class SpectralPropagator(nn.Module):
     advancing at normal speed V with |grad phi| = 1 updates as phi - V*dt: a
     pointwise shift. `H` is a linear propagator (the advection, plus the
     curvature-driven smoothing a level set performs), and `A` supplies the
-    spatially varying rate that mask shadowing produces. H16's result is the
-    evidence that this is most of the problem -- a purely pointwise model, with
-    no spatial coupling at all, already reaches within 3% of clause 1.
+    spatially varying rate that mask shadowing produces.
+
+    **A motivation that was in this docstring and is WRONG, kept as a warning.**
+    It said H16's pointwise result showed "this is most of the problem", because
+    a purely pointwise model reaches 0.05052 -- "within 3% of clause 1". 3% is
+    the distance to the *threshold*, not to a model that mixes spatially. The
+    comparison that bears on the physics is against the spatial models: pointwise
+    is 1.07x worse than `fno_w8m4L2` (0.04717) and **2.67x** worse than the
+    8-seed K=1 anchor (0.01890). Spatial mixing buys a factor of 2.67 in error,
+    not 3%, so the inference was overstated by about 9x and is no argument for
+    this architecture. A concurrent instance caught it (commit 49bcc9a).
+
+    The justification that survives is the operation count, which is measured:
+    ~20 operations at ~30 us each against a 511 us budget. If anything the
+    accuracy prediction should move PESSIMISTICALLY on the corrected reading --
+    a model merely linear in phi has 2.67x to make up, not 3%.
 
     What it provably cannot represent is any part of the advance that depends
     *nonlinearly* on phi, which is what an undercut is: the advance beneath an

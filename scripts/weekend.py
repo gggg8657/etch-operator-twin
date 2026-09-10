@@ -196,6 +196,7 @@ def main():
     genx = read("data/gen_report_crossed.json", {})
 
     wl = read("runs/bench_workload.json") or {}
+    cap = read("runs/capacity_ood.json") or {}
     kc = read("runs/kcurve.json") or {}
     shr = read("runs/shrink.json") or {}
     ac = read("runs/arch_cost.json") or {}
