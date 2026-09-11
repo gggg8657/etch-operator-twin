@@ -35,8 +35,13 @@ BASE = dict(arch="specprop", width=8, modes=4, layers=2, modes_a=64,
             width_full=8, scale=2, n_local=1, act="gelu")
 
 
+def _m(**over):
+    """The constructed model, for flags that change behaviour but not size."""
+    return build_model(Namespace(**{**BASE, **over}), cond_dim=7)
+
+
 def _n(**over):
-    return build_model(Namespace(**{**BASE, **over}), cond_dim=7).param_count()
+    return _m(**over).param_count()
 
 
 def test_state_modes_reaches_the_model():
@@ -87,6 +92,27 @@ def test_hidden_and_cond_ch_and_norm_reach_the_model():
     assert _n(arch="fno", cond_ch=8) != b
     assert _n(arch="fno", no_norm=True) != b
     assert _n(arch="multiscale", cond_ch=16) != _n(arch="multiscale")
+
+
+def test_act_and_scale_reach_the_model():
+    """Found by rewriting the meta-test with an AST instead of substrings.
+
+    Neither flag changes the parameter count, so `_n` cannot see either, and
+    the old substring meta-test believed both were covered: `scale` occurs
+    inside the string `multiscale` and `act` inside ordinary English words in
+    the other tests' source. Both were in fact unasserted.
+
+    `act` is dispatched functionally through `self._act` rather than as a
+    module, which is why scanning for `nn.ReLU` also finds nothing. Asserting
+    on the parameter count or on the module list would both pass with the flag
+    dropped; these assertions observe what the flag actually sets.
+    """
+    assert _m(arch="multiscale", scale=2).scale == 2
+    assert _m(arch="multiscale", scale=4).scale == 4
+    assert _m(arch="multiscale", act="gelu").act_name == "gelu"
+    assert _m(arch="multiscale", act="relu").act_name == "relu"
+    assert (_m(arch="multiscale", act="gelu")._act
+            is not _m(arch="multiscale", act="relu")._act)
 
 
 def test_specprop_modes_flags_reach_the_model():
@@ -205,26 +231,57 @@ def test_every_constructor_parameter_is_reachable_from_build_model():
 
 
 def test_every_arch_shaping_flag_is_covered_by_this_file():
-    """A flag added to train.py without a wiring test here fails this test.
+    """A flag `build_model` reads must have a wiring assertion here.
 
-    Without this, the file protects exactly the flags someone remembered, which
-    is the same failure mode one level up.
+    **Rewritten, because the first version passed with the bug in place --
+    twice over, and both holes are the ones a sibling test in this file was
+    just rewritten to close.** It matched flag names as SUBSTRINGS of source
+    text, so:
+
+    * `referenced` counted `modes` as read because `build_model` contains
+      `a.modes_a`, which contains the string `a.modes`. Delete the real
+      `a.modes` and the test still believes it is there.
+    * `covered` counted `modes` as covered by
+      `test_state_modes_reaches_the_model`, because the string `modes` occurs
+      inside `state_modes`. A flag was marked protected by a test that never
+      mentions it.
+
+    Both are the H22 failure in miniature: metadata (here, source text) said
+    one thing while behaviour said another. So this reads the SYNTAX instead of
+    the characters -- exact attribute names from `build_model`'s AST, and exact
+    keyword names from the `_n(...)` calls each test actually makes.
     """
+    import ast
     import inspect
-    src = inspect.getsource(build_model)
-    referenced = {n for n in BASE if f"a.{n}" in src}
+
+    def _attrs_read(fn):
+        """Exact `a.<name>` attribute names, from the AST, not from substrings."""
+        tree = ast.parse(inspect.getsource(fn).lstrip())
+        return {n.attr for n in ast.walk(tree)
+                if isinstance(n, ast.Attribute)
+                and isinstance(n.value, ast.Name) and n.value.id == "a"}
+
+    def _flags_exercised(fn):
+        """Exact keyword names passed to `_n(...)` by this test."""
+        tree = ast.parse(inspect.getsource(fn).lstrip())
+        out = set()
+        for n in ast.walk(tree):
+            if (isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+                    and n.func.id in ("_n", "_m")):
+                out |= {kw.arg for kw in n.keywords if kw.arg}
+        return out
+
+    referenced = _attrs_read(build_model) & set(BASE)
     covered = set()
-    for fn in (test_state_modes_reaches_the_model,
-               test_a_rank_reaches_the_model,
-               test_hidden_and_cond_ch_and_norm_reach_the_model,
-               test_specprop_modes_flags_reach_the_model,
-               test_fno_flags_reach_the_model,
-               test_multiscale_flags_reach_the_model):
-        covered |= {n for n in BASE if n in inspect.getsource(fn)}
+    for name, fn in sorted(globals().items()):
+        if name.startswith("test_") and callable(fn) and name != \
+                "test_every_arch_shaping_flag_is_covered_by_this_file":
+            covered |= _flags_exercised(fn)
+
     missing = referenced - covered - {"arch"}
     assert not missing, (
-        f"build_model reads these flags but no test asserts they reach the "
-        f"model: {sorted(missing)}")
+        f"build_model reads these flags but no test in this file passes them "
+        f"to _n() or _m(): {sorted(missing)}")
 
 
 if __name__ == "__main__":

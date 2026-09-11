@@ -6864,3 +6864,219 @@ the obvious one and equally that the duplication is systematic.
 
 **What I contributed that their sweep needed:** without the wiring fix above,
 their nine arms would have trained the dense anchor.
+
+### Turn 16, addendum — the concurrent instance broke my reachability guard, and the same flaw was in the meta-test next door
+
+While I was writing the above, the concurrent instance committed `c8802a7`,
+which includes a correction to a test I wrote an hour earlier. It is right and
+worth restating in my own words rather than just inheriting:
+
+> `if name not in src` is a substring check on build_model's source, so
+> leaving the comment `# a_rank UNREACHABLE` in place satisfied it while
+> a_rank was genuinely untrainable; it is also fooled by containment, `modes`
+> being a substring of modes_a and state_modes.
+
+Both true. My `test_every_constructor_parameter_is_reachable_from_build_model`
+matched characters, so a *comment* naming the parameter was enough to satisfy
+it. Its replacement patches each model class to record the kwargs it is
+actually constructed with — behaviour, not text — and is verified against the
+sabotage. I did not verify mine against the a_rank sabotage, because I wired
+`a_rank` before writing the test and never put the bug back; for `state_modes`
+I did, which is the only reason that one is trustworthy. **Verify the guard by
+breaking the thing it guards, every time, not when it is convenient.**
+
+**The same flaw was in the other meta-test in the same file, which their
+commit did not touch**, and it was hiding real gaps rather than hypothetical
+ones. `test_every_arch_shaping_flag_is_covered_by_this_file` computed both its
+sets by substring:
+
+* `referenced` counted `modes` as read because `build_model` contains
+  `a.modes_a`, which contains `a.modes`;
+* `covered` counted a flag as protected if its name appeared **anywhere** in
+  any test's source text. `scale` was "covered" because the string occurs
+  inside `multiscale`; `act` was "covered" because those three letters occur
+  in ordinary English words in the docstrings.
+
+Rewritten to read the AST — exact `a.<name>` attribute names from
+`build_model`, exact keyword names from the `_n(...)`/`_m(...)` calls each test
+makes — it **immediately named `act` and `scale` as genuinely unasserted**.
+Neither changes the parameter count, so `_n` could never have seen them, and
+`act` is dispatched functionally through `self._act` rather than as a module,
+so scanning for `nn.ReLU` finds nothing either. Both are wired correctly; they
+were simply untested, and the test that existed to notice that was
+structurally incapable of noticing it. Sabotage-verified: removing the new
+assertions makes the meta-test name exactly `['act', 'scale']`.
+
+Three versions of one invariant now, and the pattern across all three is the
+same as H22 itself: **every weak version inspected metadata or source text,
+and the working version observes behaviour.** `args.json` recording
+`state_modes: 8` for a model that did not have it is the same error as a
+comment satisfying a reachability check.
+
+## Turn 16, continued — H22's first seed says the state head makes it WORSE, and the paper draft gets a generator
+
+### H22, seed 1 of 3: the prediction is falsified in the direction the falsifier did not cover
+
+The re-launched sweep's first wave landed. Against the anchor at the **same
+seed**, so this is a matched comparison and not a cross-seed one:
+
+| arm | params | terminal rel-L2 | vs anchor |
+|---|---|---|---|
+| anchor `sm=0` | 1,070,144 | 0.08823 | — |
+| `sm=4` | 1,074,368 | 0.09358 | **+0.00534 (+6.1%)** |
+| `sm=8` | 1,087,040 | 0.09711 | **+0.00887 (+10.1%)** |
+| `sm=16` | 1,137,728 | 0.10312 | **+0.01489 (+16.9%)** |
+
+The prediction registered in `scripts/h22.sh` before the sweep was **"sm8 lands
+0.05-0.075"**. Measured: **0.09711**, worse than the anchor it was supposed to
+improve on, and worse than the bottom of the predicted band by 1.94x.
+
+**And the registered falsifier does not cleanly fire, which is a defect in how
+I wrote it.** It read: *"if sm8 lands within the seed spread of m4_ma64
+(~0.002), then nonlinearity delivered through the additive head is worth
+nothing here."* It anticipated "no better" and had no branch for "actively
+worse". The measured +0.00887 is outside the anchor's spread but on the wrong
+side, so the falsifier's conclusion — "worth nothing" — understates what
+happened. A pre-registered falsifier that only names one direction of failure
+is half a falsifier, and this is the second time this weekend a registration
+of mine was written against the outcome I expected rather than against the
+outcomes available.
+
+The anchor now has **6 seeds scored** (seeds 1-6; 7 and 8 training): mean
+**0.08927**, range **0.00455** — a wider spread than the 0.00353 the 3-seed
+reading gave, which is the usual direction. Against that range, `sm=8` and
+`sm=16` are outside and `sm=4` sits at its edge.
+
+**This is one seed and it is a screen, not a verdict.** What makes it worth
+writing down before the other two seeds land is the *monotonicity*: three arms,
+one seed each, ordered exactly by `state_modes`, and the effect grows with it.
+A single seed of noise does not usually arrange itself in the order of the
+independent variable.
+
+### A mechanism that predicts the monotonicity, and the control that would test it
+
+The state summary is concatenated to the 7-dim recipe before the shared trunk,
+and its width is `2*(2s)*s`: **32 dims at s=4, 128 at s=8, 512 at s=16**. So
+the recipe falls from 18% of the trunk's input at s=4 to **1.3% at s=16**.
+The degradation is monotone in exactly that ratio.
+
+So the competing explanations are:
+
+* **dimensional dilution** — the recipe signal is swamped in the trunk's input,
+  and the damage scales with the state width. `state_norm` is a LayerNorm over
+  the state block, which fixes its *scale* and does nothing about its *width*.
+* **the nonlinearity itself is harmful** — being linear in phi is a useful
+  inductive bias for this operator and breaking it costs accuracy.
+
+They are distinguishable by one change: **project the state summary through a
+small fixed-width linear layer (say 8 dims) before concatenating**, so the
+nonlinearity survives and the width imbalance does not. If accuracy recovers,
+it is dilution and the head can be rescued; if it does not, the linear-in-phi
+structure is load-bearing and the four-operation family is closed for clause 1
+by something more interesting than capacity. I am not launching it this turn —
+seeds 2 and 3 are still training and the lease is full — and it is written here
+so the next turn does not have to rediscover it.
+
+Worth noting against the repo's own history: the `m0_ma64` phi-blind null reads
+0.32064, so the phi pathway through the *multiplicative* term does real work.
+The state head adds a *second* phi pathway and makes things worse. Those are
+consistent only if what matters is how phi enters, not that it enters.
+
+### The paper draft was the last document that could go stale silently, and it had
+
+`paper_draft.md` was the only document in this repo not generated from run
+JSONs. Its abstract read **"the speedup clause is unreachable at 1000x under
+every reading we can defend"** and its §4.2 headline was **9.58x, UNREACHABLE
+by a factor of 104**, while `runs/clock_matched_speedup.json` was measuring a
+median of **1225-1265x** across four readings with 6-8 of 8 repeats over the
+threshold.
+
+**Nothing in it was fabricated** — every figure came from a run. The failure is
+narrower and worse: §4.2 prices the *FNO family* against the *fixed-duration
+denominator this repo retired in §4.2.1*, and the document had no way to notice
+when its numbers stopped being the repo's best measurement. Some sections were
+updated by hand (§4.5 already cites specprop at 226 µs) and the abstract was
+not, so the draft contradicted itself across sections.
+
+`scripts/paper_status.py` generates a dated status block from eight run JSONs
+and inserts it between markers near the top. The prose stays hand-written — it
+is a paper — and **the superseded figures are kept in place rather than edited
+away**, with the block stating explicitly what they were measured on, because a
+reader needs to see that the estimate moved and by how much.
+
+`tests/test_paper_status.py` makes staleness a test failure. It checks CONTENT
+equality — regenerating must produce no diff — and deliberately does *not*
+compare mtimes against the source JSONs, because a sweep rewriting a JSON
+without changing a derived number would fail the suite while nothing was stale,
+and a test that fires during every run gets ignored. Verified twice: it fires
+when an arm lands and changes the family table (it did, within minutes of being
+written), and it fires when a number in the block is hand-edited to look like a
+pass — `0.07282` changed to `0.04000` is caught, so the block cannot be
+flattered by hand without the suite going red.
+
+`scripts/make_report.sh` now regenerates the block, so the normal reporting
+flow keeps the test green instead of the test firing on every completed arm.
+
+---
+
+## Turn 17 — H26, registered before the run: the CPU burn is an idle-pool artefact, not work
+
+**The observation that forced this.** At 04:36 UTC `nvidia-smi` reads GPU 0 at
+**0-1% utilisation** while three `scripts/train.py --device cuda:0` children of
+`scripts/h22.sh` hold **162 threads and 2177-2341% CPU each**, and a fourth
+process, `scripts/eval.py`, reads **3161%**. Load average is **398**. `top -H`
+on PID 868733 shows **75 of its 162 threads in R state at an identical 36.4%
+each** — an even split across a pool is what an OpenMP team looks like, not what
+a workload looks like.
+
+That is ~69 cores on the three trainers plus ~31 on the eval, against a **CPU
+lease of 48**. The brief names this exact failure and tells me to treat a
+GPU-leased job whose GPU reads near zero as a bug to diagnose *before* launching
+more copies. So this turn is the diagnosis, not a new arm.
+
+**The mechanism I am accusing, specifically.** `train.py` is the one script in
+this repo that never pins its intra-op pool — `eot/solver.py`, `gen_data.py`,
+`bench_symmetric.py`, `bench_speed.py`, `batch_diagnostic.py` and `cnn_cost.py`
+all set `OMP_NUM_THREADS` and several call `torch.set_num_threads(1)`;
+`train.py` sets neither, so torch sizes the pool to all **192** cores. Its
+`--num-workers` defaults to **0**, so `PairDataset.__getitem__` runs in the main
+process, and each item does `torch.from_numpy(...).float() / scale` — small CPU
+tensor ops that dispatch into that 192-wide pool. At `batch=32` that is ~96 tiny
+CPU ops per batch, each one waking the whole team. `epoch_s` is **0.145 s**, so
+the wake rate is high and the useful arithmetic per wake is microscopic.
+
+**Registered predictions, and the falsifier, written before the measurement:**
+
+1. Median `epoch_s` at 1 thread is **within 15%** of the 192-thread default.
+2. Cores used (CPU-s / wall-s) falls roughly linearly with the thread cap, so
+   the default cell reads many cores and the 1-thread cell reads ~1.
+3. **Falsifier:** if median `epoch_s` rises by **more than 15%** going 192 -> 1,
+   then the CPU work is real, H26 is false, and pinning trades throughput for
+   lease compliance — in which case I report the trade rather than the fix.
+
+Cells {192, 16, 4, 1} x 3 rounds, interleaved so a drift in the box hits all
+four equally, fresh subprocess per cell, CPU seconds from `getrusage`. Nothing
+in `runs/specprop` or `runs/kcurve` is touched; output is `runs/thread_cost.json`.
+
+### Turn 16, second addendum — a test that is correct and will fail through every sweep
+
+`tests/test_paper_status.py` failed once in a full-suite run and passed on
+re-run two minutes later. Not flakiness in the usual sense: `paper_status.py`
+derives its block from `runs/specprop/*/`, the **live** run directories, so the
+instant `m4_ma64_s6` finished and wrote its `test_eval.json` the block in
+`paper_draft.md` became genuinely stale and the test correctly said so.
+
+It already excludes arms lacking `test_eval.json` and `args.json` and tolerates
+an unparseable JSON, so this is not a half-written-file race. The document
+really was out of date, for about the time it took to notice.
+
+The tension is in the test's own docstring, which rejected an mtime-based check
+because *"a test that fires during every run gets ignored"* — and the content
+check it chose instead fires during every sweep too, for the same underlying
+reason: the document tracks a moving corpus. Regenerating fixes it, and I have.
+Recording it because the failure mode is predictable and someone will hit it at
+3 a.m. and assume the suite is broken: **during an active sweep, expect this
+test to fail whenever an arm lands, and regenerate rather than investigate.**
+The alternative designs both cost something real — skipping while jobs run
+weakens the guard, and pinning the corpus to committed arms only would have
+missed exactly the staleness it was written to catch.
