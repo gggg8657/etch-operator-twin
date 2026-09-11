@@ -484,6 +484,71 @@ def profile_and_route_section():
     return L
 
 
+
+def dt_dependence_section():
+    """Clause 2 as a function of the duration a wafer is defined to represent.
+
+    Generated from runs/speedup_vs_dt.json and runs/clause2_test_split.json.
+    This exists because two protocols in this repo disagreed by 1.99x on the
+    solver denominator, and the cause turned out not to be a bug in either: they
+    price different amounts of physics per wafer. Nothing here is typed by hand.
+    """
+    dd = read(Path("runs/speedup_vs_dt.json"))
+    ts = read(Path("runs/clause2_test_split.json"))
+    if not dd and not ts:
+        return []
+    L = ["", "## Clause 2 is a function of dt, and the 1000x crossing is inside "
+         "the test split", ""]
+    if dd:
+        L += [("The solver pays for the duration a wafer represents; a K10 "
+               "operator applied once per wafer does not, and is never even "
+               f"passed `dt`. Solver log-log slope on dt is "
+               f"**{dd['solver_loglog_slope']:.4f}** (superlinear); the "
+               f"operator's is **{dd['operator_loglog_slope']:.3f}**, i.e. noise."),
+              "",
+              "| dt | sim time/wafer | solver (ms) | operator (ms) | speedup | 1-thread? |",
+              "|---|---|---|---|---|---|"]
+        for c in dd["cells"]:
+            ok = "yes" if c["operator_single_threaded"] else "**NO — void**"
+            L += [f"| {c['dt']} | {c['sim_time_per_wafer']:.1f} | "
+                  f"{c['solver_cpu_s']*1e3:.2f} | {c['operator_cpu_s']*1e3:.3f} | "
+                  f"{c['speedup_cpu']:.1f}x | {ok} |"]
+        d = dd["test_split_dt"]
+        L += ["",
+              (f"So the ratio moves **{dd['cells'][0]['speedup_cpu']:.0f}x to "
+               f"{dd['cells'][-1]['speedup_cpu']:.0f}x** across that range with "
+               "nothing about either implementation changing. The 1000x "
+               f"crossing sits at **dt = "
+               f"{dd['dt_where_speedup_crosses_1000x']:.4f}**, inside the test "
+               f"split's own distribution (min {d['min']:.3f}, median "
+               f"{d['median']:.4f}, mean {d['mean']:.4f}, max {d['max']:.3f}). "
+               "A single speedup number is therefore not a property of the "
+               "operator until the wafer's simulated duration is stated."), ""]
+    if ts:
+        sp, pr = ts["speedup"], ts["protocol"]
+        L += [("### Priced on the population clause 1 is measured on"), "",
+              ("Clause 1's accuracy is measured on the test split, so pricing "
+               "clause 2 at a fixed dt compares a cost on one set of wafers "
+               "against an accuracy on another. Each test wafer at its own "
+               "recipe and its own dt, both sides one verified thread, solver "
+               f"warm, operator warm over {ts['operator']['n']} rounds:"), "",
+              "| statistic | speedup |", "|---|---|",
+              f"| min | {sp['min']:.1f}x |",
+              f"| p10 | {sp['p10']:.1f}x |",
+              f"| **median** | **{sp['median']:.1f}x** |",
+              f"| p90 | {sp['p90']:.1f}x |",
+              f"| max | {sp['max']:.1f}x |",
+              f"| wafers clearing 1000x | **{ts['n_wafers_meeting_1000x']} of "
+              f"{pr['n_wafers_priced']}** ({ts['frac_wafers_meeting_1000x']*100:.1f}%) |",
+              "",
+              f"**Verdict: {ts['verdict']}.** {ts['verdict_rule'].capitalize()}, "
+              "so clause 2 is NOT MET on this population even though its median "
+              "clears the target. This replaces both the fixed-dt reading and "
+              "the single-invocation figures above; where they disagree, this "
+              "one prices the wafers the rest of the project is defined over.", ""]
+    return L
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", default="runs/seed1")
@@ -1009,6 +1074,7 @@ def main():
 
     L += [""]
 
+    L += dt_dependence_section()
     L += cost_reproducibility_section()
     L += clock_section()
     L += profile_and_route_section()
