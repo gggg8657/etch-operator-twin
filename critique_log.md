@@ -6461,3 +6461,406 @@ is what that attacks, and it is now the indicated route rather than a guess.
 **What is not measured: whether any of these ranks can learn.** A rank
 constraint asserts the additive spectral response is separable in the two
 frequency axes and nothing has tested that. Queued behind H22.
+
+## Turn 16 — the profile finds the money, my cost hypothesis is falsified, and a guard I wrote passes while the bug it was written for is present
+
+### The profile, which is the first thing in this repo to say where the time goes
+
+`runs/specprop_profile.json`, stages of a 128x128 `specprop_m4_ma64` forward,
+5 repeats, fresh subprocess each, one thread:
+
+| stage | median us | % of forward |
+|---|---|---|
+| `04_coeffs_a` | **243.1** | **46.3%** |
+| unaccounted (inter-stage dispatch) | 74.6 | 14.2% |
+| `06_hermitian` | 74.1 | 14.1% |
+| `07_irfft2` | 49.3 | 9.4% |
+| `05_coeffs_h` | 44.6 | 8.5% |
+| `01_rfft2` | 31.4 | 6.0% |
+| `02_zeros_like`, `03_cond_a`, `08_add` | 8.4 | 1.6% |
+
+**Every FFT together is 15.4%.** Nearly half the forward is one
+`nn.Linear(64 -> 16384)`, which is also **1,048,576 of the model's 1,070,144
+parameters**. Fifteen turns of cost work in this repo have been spent on the
+transforms and the operation count, and the transforms were never the money.
+
+Stage times are not expected to sum to the whole -- each pays its own timing
+overhead and none includes inter-stage dispatch -- so the 14.2% shortfall is
+reported rather than absorbed into a stage.
+
+### Two attacks closed by data that already existed, before spending anything
+
+Pulling every scored specprop arm into one table (8 configs, 3 seeds each,
+terminal-step rel-L2, with the costs `arch_cost*.json` measured):
+
+| config | m | ma | params | term rel-L2 | seed range | us/wafer | speedup |
+|---|---|---|---|---|---|---|---|
+| `m4_ma4` | 4 | 4 | 9,344 | 0.82732 | 0.00054 | 175.5 | 2886.0x |
+| `m4_ma16` | 4 | 16 | 71,744 | 0.44293 | 0.00541 | 293.8 | 1742.3x |
+| `m8_ma32` | 8 | 32 | 283,904 | 0.29633 | 0.00146 | 225.7 | 2267.9x |
+| `m0_ma64` | 0 | 64 | 1,065,472 | 0.32064 | 0.00266 | — | — |
+| `m4_ma64` | 4 | 64 | 1,070,144 | 0.08886 | 0.00353 | 401.8 | 1283.8x |
+| `m16_ma64` | 16 | 64 | 1,132,544 | 0.07586 | 0.00251 | 537.4 | 942.4x |
+| `m32_ma64` | 32 | 64 | 1,332,224 | 0.07444 | 0.00284 | 482.2 | 1069.7x |
+| `m64_ma64` | 64 | 64 | 2,130,944 | 0.07282 | 0.00140 | 693.4 | 743.9x |
+
+* **Shrinking `modes_a` to buy cost is dead.** 64 -> 32 triples the error
+  (0.08886 -> 0.29633) and 64 -> 16 quintuples it. The additive band is where
+  the accuracy lives, and `modes_a=64` is already the maximum a 128 grid
+  admits, so that axis is exhausted in both directions.
+* **`modes` has saturated.** m16 -> m32 -> m64 moves the error by 0.00142 and
+  0.00162, against seed ranges of 0.00251-0.00284. **Those steps are at or
+  below the noise floor** and each doubles the parameters. The best accuracy
+  ever measured in this family is **0.07282**, still **1.46x** above the
+  clause, bought at 2.13M parameters and 743.9x -- which fails clause 2. No
+  configuration in this table meets both clauses, and none meets clause 1 at
+  all.
+
+### H25, mine: "the cost is bytes streamed, not arithmetic". Falsified, and the test I built to decide it could not have decided it
+
+The dominant layer is a batch-1 matvec at 0.5 FLOP/byte, and 243.1 us for
+4.19 MB reads as either 8.6 GFLOP/s (implausibly low for an AVX-512 core) or
+17.3 GB/s (an ordinary single-core streaming rate). I registered the bandwidth
+reading and a test I called discriminating: implied GB/s and implied GFLOP/s
+cannot both be flat across configs, so whichever is flat names the resource.
+
+`runs/bandwidth_bound.json`, 11 configs, 5 repeats:
+
+| prediction | outcome |
+|---|---|
+| implied GB/s flat to ~1.5x, GFLOP/s spans >3x | **FALSIFIED** — GB/s spreads **6.10x**, GFLOP/s **3.09x**; neither is flat |
+| bfloat16 halves bytes, cuts time >=1.6x | **FALSIFIED** — bf16 is **1.38x SLOWER** (236.5 vs 171.2 us), fp16 **2.71x slower** |
+| time linear in bytes, small intercept | pooled fit R^2 = 0.279, intercept 88.7 us |
+| same bytes + same MACs, different shape: <1.25x | **FALSIFIED** — 1.49x (162.9 / 171.2 / 243.1 us) |
+
+**And the deeper error is in the design, not the prediction.** At fixed dtype,
+weight bytes and MACs are related by a constant factor of 4 -- they are
+perfectly collinear, so no sweep over sizes in one dtype can ever separate
+"bandwidth-bound" from "arithmetic-bound". The only rows that could separate
+them are the dtype rows, and those are confounded by kernel quality: bf16 and
+fp16 being *slower* says PyTorch's CPU path for them is unoptimised, not that
+the hardware prefers bytes. **So H25 is not decidable by this experiment, and
+calling it a discriminating test was wrong.** The 0.279 pooled R^2 is itself an
+artefact of mixing dtypes into a bytes fit; restricted to fp32 the same fit
+gives R^2 = 0.911.
+
+What the experiment *does* establish is a cost model, fit on fp32 rows only:
+
+    time_us = 3.168e-3 * n_out  +  1.256e-4 * (hidden * n_out),   R^2 = 0.987
+
+against R^2 = 0.911 for either single term alone. Two terms, and the first one
+is the point: **a cost proportional to the number of coefficients emitted,
+independent of the weights that produced them.** For the real head that is
+47.4 us of output materialisation plus 131.8 us of weight work. A floor no
+weight reduction can touch.
+
+**Negative result worth keeping: bf16 and fp16 are slower than fp32 on this CPU
+path**, so the cheap precision route to clause-2 margin is closed by
+measurement rather than by argument.
+
+### The floor predicted a ceiling, and a concurrent instance measured both
+
+A second instance is working in this repository (D4, below). It read
+`runs/specprop_profile.json`, built a rank-factorised additive head, and priced
+it in `runs/rank_cost.json` while I was fitting the model above. Its registered
+falsifier **fired**: rank 4 beats rank 16 in the stage by **1.85x** against
+their **4.0x** MAC ratio, so the stage is *not* purely arithmetic-bound -- which
+is the same conclusion my two-term fit reaches from independent data, by a
+different route. Its own floor fit finds **72.4 us**, the same structure as my
+47.4 us output term (the two are not directly comparable: its "stage" is a
+forward minus a constant taken from another invocation at loadavg 415).
+
+Measured, all rows in one invocation:
+
+| a_rank | params | forward us | speedup vs dense |
+|---|---|---|---|
+| 0 (dense) | 1,070,144 | 609.8 | 1.00x |
+| 16 | 404,544 | 471.2 | 1.29x |
+| 8 | 204,864 | 412.1 | 1.48x |
+| 4 | 105,024 | 384.4 | **1.59x** |
+
+And the floor bounds the route: **1.68x even at rank 1**. Against clause 2's
+worst draws (`runs/clock_matched_speedup.json`) that covers the cycle-matched
+sustained reading (needs 1.06x), the cycle-matched burst (1.23x) and the raw
+sustained (1.35x), and **misses the strictest raw-burst reading, which needs
+1.76x**. So the rank route is necessary and not sufficient, and it was priced
+before a single accuracy number existed for it.
+
+### A guard I wrote three hours ago passes while the bug it was written for is present
+
+`a_rank` existed on `SpectralPropagator` with a cost script, a measured 1.59x,
+and **no CLI flag and no mention in `build_model`** -- untrainable. That is the
+H22 defect arriving from the opposite direction: H22 was a flag that reached
+nothing, this is a knob nothing could reach. Launched as it stood, all nine
+arms would have trained the dense anchor and H26 would have been recorded as
+"rank is free" on an architecture that was never built.
+
+**My `test_every_arch_shaping_flag_is_covered_by_this_file` passed throughout**,
+because it asks "does every flag `build_model` *reads* have an assertion?" and
+`build_model` did not read this one. The invariant was pointing the wrong way.
+
+The concurrent instance wired the knob and replaced my meta-test with a
+reachability check. **I then falsified that too.** It was `if name not in src`
+-- a substring test on `build_model`'s source text. Re-breaking the wiring while
+leaving the comment `# a_rank UNREACHABLE` in place, the reachability test
+**passed**:
+
+```
+FAIL test_a_rank_reaches_the_model: --a-rank 4 did not change the model: 1070144
+  ok test_every_constructor_parameter_is_reachable_from_build_model
+```
+
+A test a comment can satisfy is worse than no test, because it reports a pass.
+It is also fooled by containment: `modes` is a substring of `modes_a` and
+`state_modes`, so the multiplicative band was "covered" by either neighbour.
+
+Replaced with a **behavioural** version: each model class is patched to record
+the kwargs it is actually constructed with, `build_model` is driven once per
+argument with that argument perturbed (including past falsy guards, which would
+otherwise hide a kwarg passed only under `if a.hidden:`), and a constructor
+parameter counts as reachable only if some Namespace causes it to be *passed*.
+Verified against the same sabotage:
+
+```
+FAIL test_every_constructor_parameter_is_reachable_from_build_model:
+  constructor parameters build_model never passes: {'SpectralPropagator': ['a_rank']}
+```
+
+Three versions of one invariant, each defeated by the next test of it. The
+pattern worth extracting: **every one of the weak versions inspected metadata
+or source text, and the version that works observes behaviour.** That is the
+same failure as H22 itself, where `args.json` recorded `state_modes: 8` for a
+model that did not have it — the repo keeps trusting descriptions of what ran.
+
+### An independent pre-registration for H26, recorded before the run lands
+
+The concurrent instance's `scripts/rank_acc.sh` is queued and carries its own
+prediction: r=16 within ~15% of dense (0.09-0.11), r=4 clearly worse
+(0.13-0.20). I had written a different one into a duplicate driver before
+finding theirs, and I am recording it here rather than discarding it, because
+two independent predictions before one run are worth more than one:
+
+**Mine: r=16 within 0.005 of the dense 0.08886; r=4 degrades 10-40%
+(0.098-0.124).** I am more optimistic about r=4 than they are. The reason is
+physical: the additive term supplies the mask-shadowing rate field, the mask is
+a rectangular trench, and a rectangle's 2D spectrum is close to a product of
+two 1D transforms -- i.e. nearly separable, which is exactly what a rank
+constraint assumes. Their argument against is that `modes_a` is the axis
+accuracy cares about most, so the coefficient field's fine structure is doing
+real work. Both will be scored against the same run.
+
+### D4, recurring, with a measured cost this time
+
+Two loops are in this repository. Within about twenty minutes they
+independently: built the same low-rank head experiment, wrote functionally
+identical accuracy drivers (`rank_acc.sh` and my `rank_accuracy.sh` -- same
+ranks, same seeds, same run-directory naming, same epoch count), and queued
+against the same GPUs. I deleted mine rather than race the run directories;
+`eot/runlock.py` would have turned the collision into an exit-3 rather than
+corruption, but the duplicated design work is pure waste and neither instance
+can see the other's plan.
+
+**It was not all waste, and that is the interesting part.** The duplication
+produced an adversarial pairing that neither instance would have got alone:
+they wrote the reachability test, I broke it; I registered the bandwidth
+hypothesis, their MAC-ratio falsifier independently reached the same "not
+arithmetic-bound" conclusion from the other side. Two instances checking each
+other is *more* than twice one instance -- and it is still not a reason to run
+two, because nothing coordinates them and the next collision could as easily
+land in a run directory as in a test file.
+
+No new decision is proposed; D4 stands as recorded, now with a timestamped
+instance of the duplication cost.
+
+## Turn 16 — the dominant stage is neither bandwidth- nor arithmetic-bound, and `a_rank` was another flag nothing could reach
+
+### Measuring the forward instead of arguing about it
+
+`runs/specprop_profile.json`, five fresh subprocesses, one thread, 400 inner
+reps per stage:
+
+| stage | median µs | % of forward |
+|---|---|---|
+| `_coeffs_a` | **243.1** | **46.3%** |
+| unaccounted (inter-stage dispatch) | 74.6 | 14.2% |
+| `_hermitian` | 74.1 | 14.1% |
+| `irfft2` | 49.3 | 9.4% |
+| `_coeffs_h` | 44.6 | 8.5% |
+| `rfft2` | 31.4 | 6.0% |
+| `zeros_like`, `_cond_a`, residual add | 8.4 | 1.6% |
+
+**Every FFT together is 15.4%.** Nearly half the forward is one
+`nn.Linear(64 -> 16384)`, which also holds **1,048,576 of the model's
+1,070,144 parameters**. Fifteen turns of cost work in this repo had been
+attacking the transforms.
+
+### Two proposals killed before either was built, both by measurement
+
+**1. `codex`'s erf-GELU -> ReLU is worth exactly zero here.** Asked at rung 4
+how to make clause 2 pass, it proposed replacing the full-grid erf-GELU, which
+its arithmetic put at 139.5 µs of a ~350 µs budget — a 1.66x overall gain.
+Instrumenting every activation module through one 128x128 forward finds
+**two GELUs, both on 64-element vectors**, inside `h_head` and `a_head`. There
+is no full-grid activation in `SpectralPropagator` at all.
+
+The 152.7 µs erf-GELU figure is real but belongs to the multiscale/FNO family.
+**I handed codex a list of "prior measured facts" without saying which
+architecture each came from, so the bad premise is mine and its arithmetic was
+correct on the premise it was given.** Worth generalising: when this log quotes
+a measurement to an adversary, the architecture it was measured on is part of
+the measurement.
+
+**2. Reducing `modes_a` to buy margin is dead**, from arms already on disk.
+Terminal-step rel-L2, 3 seeds each:
+
+| config | params | terminal rel-L2 | seed range | µs/wafer |
+|---|---|---|---|---|
+| `m4_ma4` | 9,344 | 0.82732 | 0.00054 | 175.5 |
+| `m4_ma16` | 71,744 | 0.44293 | 0.00541 | 293.8 |
+| `m8_ma32` | 283,904 | 0.29633 | 0.00146 | 225.7 |
+| `m4_ma64` | 1,070,144 | **0.08886** | 0.00353 | 401.8 |
+| `m16_ma64` | 1,132,544 | 0.07586 | 0.00251 | 537.4 |
+| `m32_ma64` | 1,332,224 | 0.07444 | 0.00284 | 482.2 |
+| `m64_ma64` | 2,130,944 | **0.07282** | 0.00140 | 693.4 |
+
+`ma` 64 -> 32 **triples** the error. And `modes` has saturated: m16 -> m32 ->
+m64 moves the error by 0.0015 and 0.0016 against seed ranges of 0.0014-0.0028,
+i.e. **at or below the noise floor**, bought with 1.9x the parameters. `ma=64`
+is already the maximum a 128-grid admits. So within this family the best
+accuracy ever measured is **0.07282**, still **1.46x above clause 1**, and it
+reads 743.9x so it fails clause 2 too. The remaining untested axis is the
+nonlinearity (H22, training now).
+
+### H25, mine, and it is falsified — but so is the framing that replaced it
+
+I registered H25 as *"cost is weight BYTES STREAMED, not arithmetic"*, from
+243.1 µs for 4.19 MB = 17.3 GB/s (ordinary) against 8.63 GFLOP/s (implausibly
+low for AVX-512). The discriminating test: implied GB/s and implied GFLOP/s
+cannot both be flat, and whichever is flat names the binding resource.
+
+`runs/bandwidth_bound.json`, 11 configs, 5 repeats:
+
+* implied GB/s spread **6.10x**, implied GFLOP/s spread **3.09x**. **Neither is
+  flat**, so neither single-resource model holds.
+* **`bfloat16` is 1.38x SLOWER than fp32** (236.5 vs 171.2 µs) and `float16` is
+  **2.7x slower** (463.4 µs), at identical MACs and half the bytes. Prediction 2
+  said bf16 would be >=1.6x faster. **Falsified**, and it closes the cheap
+  precision route by measurement rather than by argument.
+* same bytes and MACs, different shape: 162.9 / 171.2 / 243.1 µs, a **1.49x**
+  spread against a predicted <1.25x. Falsified.
+
+**And my "discriminating test" could not have worked, which is the part I got
+wrong before the numbers came in.** At fixed dtype, `bytes = 4 x MACs`
+exactly — they are perfectly collinear, so no fp32 size sweep can separate
+them, and pooling the dtype rows into the byte fit is what produced the
+misleading R^2 = 0.279. The only separating arm was the dtype one, and that is
+confounded by kernel quality rather than by hardware. **H25 is therefore not
+decidable by this experiment**, which is a weaker and more accurate statement
+than "falsified".
+
+What the fp32 rows do support, cleanly (R^2 **0.9869**, 8 configs):
+
+    stage_µs  =  3.17e-3 x n_out  +  1.256e-4 x (hidden x n_out)
+
+Two terms: a per-output-coefficient cost that does not care what produced it,
+and a per-weight cost. For the real head that is **47.4 µs of output
+materialisation and 131.8 µs of weight work**. A single-term fit on bytes alone
+gives R^2 0.911 and a 28.4 µs intercept, so the floor is visible either way.
+
+### The floor decides the route, and a concurrent instance measured it
+
+A second loop is working in this repository (D4, again — see below) and built
+the rank-factorised head this profile points at, pricing it in
+`runs/rank_cost.json` while I was measuring the cost model. Its registered
+falsifier was: *if `a_rank=4` does not beat `a_rank=16` in the stage by roughly
+their 4x MAC ratio, the stage is not purely arithmetic-bound.*
+
+**It fired.** Measured stage ratio r16/r4 is **1.85x** against a MAC ratio of
+4.0. Its own docstring called the stage "arithmetic-bound"; its own experiment
+says otherwise, which is the right way round.
+
+| a_rank | params | stage µs | forward µs | speedup |
+|---|---|---|---|---|
+| 0 (dense) | 1,070,144 | 327.4 | 609.8 | 1.00x |
+| 16 | 404,544 | 188.8 | 471.2 | 1.29x |
+| 8 | 204,864 | 129.7 | 412.1 | 1.48x |
+| 4 | 105,024 | 102.0 | 384.4 | **1.59x** |
+
+Its floor fit gives 72.4 µs and bounds the whole route at **1.684x even at
+rank 1**, because a floor does not shrink with the rank. That agrees with my
+independently fitted output term (47.4 µs, from a different experiment on plain
+`nn.Linear` layers) to within 1.5x — two experiments, two methods, the same
+structure.
+
+**What that means against clause 2, reading by reading**, using the worst draw
+of each from `runs/clock_matched_speedup.json`, since a verdict needs the whole
+distribution on one side:
+
+| reading | worst draw | factor still needed | covered by this route? |
+|---|---|---|---|
+| raw, burst | 568x | **1.76x** | **no** — route caps at 1.68x |
+| raw, sustained | 738x | 1.35x | yes, at r=8 |
+| cycle-matched, burst | 811x | 1.23x | yes, at r=16 |
+| cycle-matched, sustained | 948x | 1.06x | yes, at r=16 |
+
+So the rank route closes three of the four readings and **cannot close the
+strictest one even at rank 1**. It is necessary and not sufficient, and the
+gap is 1.76 against a ceiling of 1.68 — close enough that it will be tempting
+to quote the reading that passes. The four readings stay in the table for that
+reason.
+
+**No accuracy exists for any rank.** Every row above is cost.
+
+### `a_rank` was a third flag nothing could reach, and my own meta-test could not see it
+
+`a_rank` existed on `SpectralPropagator`, with a cost script and a measured
+1.59x — and was **not a CLI flag and not in `build_model`**. A sweep launched
+against it would have trained nine dense anchors and recorded "rank is free" on
+an architecture that was never built. That is the H22 defect from the opposite
+direction, three hours after fixing H22.
+
+**`tests/test_flag_wiring.py` passed throughout**, because the meta-test I
+wrote asks *"does every flag `build_model` READS have a wiring assertion?"* and
+`build_model` did not mention `a_rank` at all. The invariant was pointing the
+wrong way. The replacement,
+`test_every_constructor_parameter_is_reachable_from_build_model`, asks the
+other direction: every architecture-shaping constructor parameter of every
+model class must be reachable. It failed immediately and named three more:
+`hidden` on `SpectralPropagator` — **the other lever in my own cost model** —
+and `cond_ch` and `norm` on both other classes. All four are now wired, with
+`0` meaning "class default" so no existing geometry moves; the default still
+builds **1,070,144** parameters and r=4/8/16 build **105,024 / 204,864 /
+404,544**, matching `runs/rank_cost.json` exactly, so the sweep trains what was
+priced.
+
+### A latent defect on `main`: `train.py --help` has never worked
+
+An `--act` help string contains a bare `%` — "i.e. 55% of the entire clause-2
+budget". argparse runs `help % params`, so `% o` is read as an `%o` octal
+conversion and `python scripts/train.py --help` dies with `TypeError: %o
+format: an integer is required, not dict`. Present in `HEAD`, not mine, and
+never noticed because every job in this repo is launched from a driver with the
+flags spelled out and nothing ever runs `--help`. In a repo whose whole method
+is that a reader can re-derive the numbers from the scripts, the one command a
+reader would type was broken. Fixed, and `tests/test_cli_help.py` renders the
+help of every script that exposes a CLI.
+
+### D4 recurrence, and what I did about it
+
+A second loop is in this repository: it modified `eot/operator.py` at 04:14,
+added `scripts/rank_cost.py` and `tests/test_no_full_grid_activation.py`, and
+at 04:20:21 opened `e4-h25` queueing an `a_rank` accuracy sweep. I had opened
+`e4-rankacc` at 04:20:45 — **24 seconds later, the same nine run directories,
+the same flags, the other GPU.** `eot/runlock.py` would have turned that into a
+loud refusal rather than corruption, but it would still have burned a lease
+slot and thrashed both schedulers.
+
+**I killed mine and kept theirs**, because theirs was first and sits on GPU 1
+behind a five-arm queue that drains before GPU 0's nine. The duplicate driver
+is deleted; its reasoning is in this entry, which is where reasoning belongs.
+Recorded rather than smoothed over: two instances independently reached the
+same next experiment within half a minute, which is evidence the experiment is
+the obvious one and equally that the duplication is systematic.
+
+**What I contributed that their sweep needed:** without the wiring fix above,
+their nine arms would have trained the dense anchor.

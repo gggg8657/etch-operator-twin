@@ -385,6 +385,105 @@ def clock_section():
     return L
 
 
+def profile_and_route_section():
+    """Where the forward spends its time, and what the rank route can buy.
+
+    Generated from runs/specprop_profile.json, runs/rank_cost.json and
+    runs/clock_matched_speedup.json so the margin arithmetic cannot drift from
+    the measurements it is built on.
+    """
+    L = []
+    prof = read(Path("runs/specprop_profile.json"))
+    rank = read(Path("runs/rank_cost.json"))
+    cm = read(Path("runs/clock_matched_speedup.json"))
+    if not prof and not rank:
+        return L
+    L += ["## Where the forward actually spends its time", ""]
+
+    if prof:
+        st = prof["stages"]
+        acc = prof["accounting"]
+        L += ["`runs/specprop_profile.json`, stages timed in isolation on the "
+              "tensors the real forward uses, fresh subprocess per repeat:", "",
+              "| stage | median µs | % of forward |", "|---|---|---|"]
+        for k in sorted(st):
+            if k.startswith(("98", "99")):
+                continue
+            v = st[k]
+            L += [f"| `{k}` | {v['median_us']:.1f} | {v['pct_of_forward']:.1f}% |"]
+        L += [f"| *unaccounted (inter-stage dispatch)* | "
+              f"{acc['unaccounted_us']:.1f} | {acc['unaccounted_pct']:.1f}% |",
+              f"| **whole forward** | **{acc['whole_forward_us']:.1f}** | 100% |",
+              "",
+              "**Every FFT together is 15.4% and one `nn.Linear(64 -> 16384)` "
+              "is 46.3%** — a layer that also holds 1,048,576 of the model's "
+              "1,070,144 parameters. Fifteen turns of cost work in this repo "
+              "had been attacking the transforms.", ""]
+
+    if rank:
+        rows = rank["rows"]
+        b = rank.get("bound_on_this_route", {})
+        fo = rank.get("falsifier_outcome", {})
+        L += ["### Factorising that layer: measured, and bounded", "",
+              "| `a_rank` | params | stage µs | forward µs | speedup |",
+              "|---|---|---|---|---|"]
+        for r in rows:
+            L += [f"| {r['a_rank']} | {r['params']:,} | {r['stage_us']:.1f} | "
+                  f"{r['forward_us']:.1f} | {r['speedup_vs_dense']:.2f}× |"]
+        if fo:
+            L += ["",
+                  f"The registered falsifier **fired**: rank 16 over rank 4 is "
+                  f"**{fo['measured_stage_ratio_r16_over_r4']:.2f}×** in the "
+                  f"stage against a MAC ratio of "
+                  f"{fo['mac_ratio_r16_over_r4']:.1f}×, so the stage is not "
+                  f"arithmetic-bound. A separate experiment "
+                  f"(`runs/bandwidth_bound.json`) shows it is not "
+                  f"bandwidth-bound either — bfloat16 halves the bytes at "
+                  f"identical MACs and runs **1.38× slower**. What fits is a "
+                  f"floor plus work."]
+        if b:
+            L += ["",
+                  f"**The route is capped at "
+                  f"{b['best_possible_speedup']:.2f}× even at rank 1**, "
+                  f"because the floor does not shrink with the rank."]
+        L += ["", "**No accuracy exists for any rank.** Every row is cost. A "
+              "rank constraint asserts the additive spectral response is "
+              "separable in the two frequency axes, which nothing has "
+              "measured; the accuracy sweep is training.", ""]
+
+    if cm and rank:
+        cap = rank.get("bound_on_this_route", {}).get("best_possible_speedup")
+        S = cm["summary"]
+        L += ["### What each clause-2 reading still needs, against that cap",
+              "",
+              "A verdict needs the whole distribution on one side, so the "
+              "worst draw is what has to clear 1000×.", "",
+              "| reading | worst draw | factor still needed | within the "
+              f"{cap:.2f}× cap? |" if cap else
+              "| reading | worst draw | factor still needed |",
+              "|---|---|---|---|"]
+        labels = {
+            "speedup_raw_burst": "raw, burst — the published protocol",
+            "speedup_raw_sustained": "raw, sustained — duration-matched",
+            "speedup_cycle_matched_burst": "cycle-matched, burst",
+            "speedup_cycle_matched_sustained": "cycle-matched, sustained",
+        }
+        for k, lab in labels.items():
+            s = S.get(k)
+            if not s:
+                continue
+            need = 1000.0 / s["min"]
+            ok = ("**no**" if cap and need > cap else "yes")
+            L += [f"| {lab} | {s['min']:.0f}× | **{need:.2f}×** | {ok} |"]
+        L += ["",
+              "**The rank route closes three of the four readings and cannot "
+              "close the strictest one at any rank.** It is necessary and not "
+              "sufficient. The four readings stay in this table precisely "
+              "because the gap is small enough that quoting the one that "
+              "passes would be easy.", ""]
+    return L
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", default="runs/seed1")
@@ -912,6 +1011,7 @@ def main():
 
     L += cost_reproducibility_section()
     L += clock_section()
+    L += profile_and_route_section()
 
     Path(a.out).write_text("\n".join(L) + "\n")
     print(f"wrote {a.out}")

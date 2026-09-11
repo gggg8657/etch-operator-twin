@@ -1,0 +1,188 @@
+{
+  "hypothesis": "H25: this operator's cost is weight BYTES STREAMED, not arithmetic. At batch 1 the dominant layer is a matvec at 0.5 FLOP/byte, so the binding resource should be memory, and 243.1 us for 4.19 MB implies 17.3 GB/s (ordinary) against 8.6 GFLOP/s (implausibly low).",
+  "discriminating_test": "implied GB/s and implied GFLOP/s cannot both be flat across configs. Whichever is flat names the binding resource.",
+  "predictions_registered_before_the_run": [
+    "implied GB/s flat to within ~1.5x; implied GFLOP/s spans >3x",
+    "bfloat16 halves the bytes and cuts the time by >=1.6x",
+    "time is linear in bytes with a small intercept",
+    "same bytes + same MACs, different shape: time moves <1.25x"
+  ],
+  "prediction_outcomes": {
+    "1_gbps_flatter": {
+      "gbps_spread": 6.098905726675108,
+      "gflops_spread": 3.088601264695333,
+      "outcome": "see numbers"
+    },
+    "2_bf16_speedup": {
+      "factor": 0.7239539722415739,
+      "outcome": "FALSIFIED"
+    },
+    "3_linear_in_bytes": {
+      "slope_s_per_byte": 2.9982987864930074e-11,
+      "implied_gbps_from_slope": 33.352246430705485,
+      "intercept_us": 88.72532339549483,
+      "r_squared": 0.27925647960966926
+    },
+    "4_shape_invariance_at_fixed_bytes": {
+      "configs": [
+        "a_head_real_fp32",
+        "same_bytes_shape_128x8192",
+        "same_bytes_shape_32x32768"
+      ],
+      "spread": 1.4926532203355947,
+      "outcome": "FALSIFIED"
+    }
+  },
+  "protocol": {
+    "estimator": "CPU-seconds, one thread, fresh subprocess per repeat, batch 1, 20 untimed warmups",
+    "inner_reps": 300,
+    "repeats": 5,
+    "measures_cost_only": "bfloat16 changes numerics. No accuracy is claimed for any dtype here; adopting one would require re-measuring accuracy under the same protocol as every other arm."
+  },
+  "rows": [
+    {
+      "name": "a_head_real_fp32",
+      "hidden": 64,
+      "n_out": 16384,
+      "dtype": "float32",
+      "weight_bytes": 4194304,
+      "macs": 1048576,
+      "median_us": 171.19050000002912,
+      "min_us": 154.40449999992722,
+      "max_us": 178.3265000000478,
+      "implied_gbps": 24.500798817687237,
+      "implied_gflops": 12.250399408843618
+    },
+    {
+      "name": "a_head_bf16",
+      "hidden": 64,
+      "n_out": 16384,
+      "dtype": "bfloat16",
+      "weight_bytes": 2097152,
+      "macs": 1048576,
+      "median_us": 236.46599999993524,
+      "min_us": 134.6354999999244,
+      "max_us": 247.88249999996293,
+      "implied_gbps": 8.868725313578166,
+      "implied_gflops": 8.868725313578166
+    },
+    {
+      "name": "a_head_fp16",
+      "hidden": 64,
+      "n_out": 16384,
+      "dtype": "float16",
+      "weight_bytes": 2097152,
+      "macs": 1048576,
+      "median_us": 463.4345000000817,
+      "min_us": 453.5470000001096,
+      "max_us": 465.4160000000518,
+      "implied_gbps": 4.525239273294565,
+      "implied_gflops": 4.525239273294565
+    },
+    {
+      "name": "same_bytes_shape_128x8192",
+      "hidden": 128,
+      "n_out": 8192,
+      "dtype": "float32",
+      "weight_bytes": 4194304,
+      "macs": 1048576,
+      "median_us": 162.89449999995486,
+      "min_us": 153.5175000000333,
+      "max_us": 188.12049999983316,
+      "implied_gbps": 25.748591880027636,
+      "implied_gflops": 12.874295940013818
+    },
+    {
+      "name": "same_bytes_shape_32x32768",
+      "hidden": 32,
+      "n_out": 32768,
+      "dtype": "float32",
+      "weight_bytes": 4194304,
+      "macs": 1048576,
+      "median_us": 243.14499999988914,
+      "min_us": 221.6439999999098,
+      "max_us": 251.98949999993835,
+      "implied_gbps": 17.25021694874216,
+      "implied_gflops": 8.62510847437108
+    },
+    {
+      "name": "hidden_8",
+      "hidden": 8,
+      "n_out": 16384,
+      "dtype": "float32",
+      "weight_bytes": 524288,
+      "macs": 131072,
+      "median_us": 58.67299999995357,
+      "min_us": 58.42349999995999,
+      "max_us": 58.892500000018444,
+      "implied_gbps": 8.935762616542785,
+      "implied_gflops": 4.467881308271393
+    },
+    {
+      "name": "hidden_16",
+      "hidden": 16,
+      "n_out": 16384,
+      "dtype": "float32",
+      "weight_bytes": 1048576,
+      "macs": 262144,
+      "median_us": 59.95950000003969,
+      "min_us": 54.58300000005245,
+      "max_us": 61.81449999997923,
+      "implied_gbps": 17.488071114657494,
+      "implied_gflops": 8.744035557328747
+    },
+    {
+      "name": "hidden_32",
+      "hidden": 32,
+      "n_out": 16384,
+      "dtype": "float32",
+      "weight_bytes": 2097152,
+      "macs": 524288,
+      "median_us": 124.4649999998515,
+      "min_us": 115.17849999997942,
+      "max_us": 128.5069999998889,
+      "implied_gbps": 16.849331137287606,
+      "implied_gflops": 8.424665568643803
+    },
+    {
+      "name": "hidden_128",
+      "hidden": 128,
+      "n_out": 16384,
+      "dtype": "float32",
+      "weight_bytes": 8388608,
+      "macs": 2097152,
+      "median_us": 303.9460000000549,
+      "min_us": 300.3590000000278,
+      "max_us": 323.06500000012227,
+      "implied_gbps": 27.599007718471324,
+      "implied_gflops": 13.799503859235662
+    },
+    {
+      "name": "ma32_equivalent",
+      "hidden": 64,
+      "n_out": 4096,
+      "dtype": "float32",
+      "weight_bytes": 1048576,
+      "macs": 262144,
+      "median_us": 39.48049999991099,
+      "min_us": 27.104999999916224,
+      "max_us": 42.090500000036,
+      "implied_gbps": 26.559339420786568,
+      "implied_gflops": 13.279669710393284
+    },
+    {
+      "name": "ma16_equivalent",
+      "hidden": 64,
+      "n_out": 1024,
+      "dtype": "float32",
+      "weight_bytes": 262144,
+      "macs": 65536,
+      "median_us": 16.208000000128564,
+      "min_us": 11.855000000005056,
+      "max_us": 16.397500000042697,
+      "implied_gbps": 16.173741362161934,
+      "implied_gflops": 8.086870681080967
+    }
+  ],
+  "verdict": "ARITHMETIC-bound: implied GFLOP/s is the flatter of the two"
+}

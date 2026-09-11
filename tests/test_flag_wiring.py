@@ -109,39 +109,99 @@ def test_multiscale_flags_reach_the_model():
 
 
 def test_every_constructor_parameter_is_reachable_from_build_model():
-    """The blind spot that let `a_rank` through, closed.
+    """The blind spot that let `a_rank` through, closed BEHAVIOURALLY.
 
-    The meta-test below asks "does every flag build_model READS have a wiring
-    assertion?" -- and passed while `a_rank` existed on SpectralPropagator with
-    no flag at all, because build_model did not mention it. That is the wrong
-    direction of the invariant. A constructor parameter nothing can reach is
-    exactly as useless as a flag that is silently dropped, and it fails the
-    same way: the sweep trains the default and the hypothesis is recorded as
-    falsified on an architecture that was never built.
+    Two earlier versions of this invariant were both too weak, in opposite
+    ways, and the history is the point:
 
-    So this asks the other direction: for each model class, every constructor
-    parameter that shapes the architecture must appear in build_model's source.
-    Parameters that are genuinely not architectural are listed with a reason.
+    1. "Does every flag build_model READS have a wiring assertion?" passed
+       while `a_rank` existed on `SpectralPropagator` with a cost script, a
+       measured 1.59x and no CLI flag at all -- because build_model did not
+       mention it, so there was nothing to demand a test of.
+    2. "Does every constructor parameter appear in build_model's SOURCE?"
+       was a substring check on source text, and it passed with `a_rank`
+       genuinely unreachable: replacing the kwarg with the comment
+       `# a_rank UNREACHABLE` left the name in the source and satisfied it.
+       Verified by doing exactly that. It is also fooled by containment --
+       `modes` is a substring of both `modes_a` and `state_modes`, so the
+       multiplicative band would have been "covered" by either of its
+       neighbours.
+
+    A test that a comment can satisfy is worse than no test, because it is
+    reported as a pass. So this one does not read source: it records what
+    build_model actually PASSES. Each model class is patched to capture its
+    kwargs, build_model is driven once per argument with that argument
+    perturbed, and a constructor parameter counts as reachable only if some
+    Namespace causes it to be passed explicitly. That catches a name mentioned
+    in a comment, a kwarg dropped behind a falsy guard, and an argument whose
+    CLI name differs from the constructor's.
     """
     import inspect
-    from eot.operator import EtchOperator, MultiScaleOperator, SpectralPropagator
+    from unittest import mock
+    from eot import operator as OP
 
     NOT_ARCHITECTURAL = {
         "self", "cond_dim",          # supplied by the caller from the norm file
         "n_grid",                    # fixed by the dataset, not swept
         "hermitian_closed",          # legacy-compat switch, pinned by its own test
     }
-    src = inspect.getsource(build_model)
+    classes = ["EtchOperator", "MultiScaleOperator", "SpectralPropagator"]
+
+    passed = {c: set() for c in classes}
+
+    def _record(cls_name):
+        real = getattr(OP, cls_name)
+
+        def spy(*args, **kw):
+            passed[cls_name] |= set(kw)
+            return real(*args, **kw)
+        return spy
+
+    # Perturb every argument away from BASE, including the values that a falsy
+    # guard would swallow, so a kwarg passed only under `if a.hidden:` is still
+    # observed.
+    perturbations = []
+    for k, v in BASE.items():
+        if k == "arch":
+            continue
+        if isinstance(v, bool):
+            perturbations.append({k: not v})
+        elif isinstance(v, int):
+            perturbations.append({k: (v or 0) + 7})
+        else:
+            perturbations.append({k: v})
+    perturbations.append({})
+
+    with mock.patch.multiple(
+            "scripts.train",
+            **{c: _record(c) for c in classes}):
+        for arch in ("fno", "multiscale", "specprop"):
+            for over in perturbations:
+                ns = Namespace(**{**BASE, **over, "arch": arch})
+                try:
+                    build_model(ns, cond_dim=7)
+                except Exception:
+                    # An individual perturbation may be geometrically invalid
+                    # (a mode count above the grid, say). Reachability is a
+                    # property of the union over perturbations, so skipping a
+                    # failed build cannot hide an unreachable parameter unless
+                    # EVERY perturbation of it fails, which the assertion below
+                    # would then report.
+                    continue
+
     missing = {}
-    for cls in (EtchOperator, MultiScaleOperator, SpectralPropagator):
+    for cls_name in classes:
+        cls = getattr(OP, cls_name)
         for name in inspect.signature(cls.__init__).parameters:
             if name in NOT_ARCHITECTURAL:
                 continue
-            if name not in src:
-                missing.setdefault(cls.__name__, []).append(name)
+            if name not in passed[cls_name]:
+                missing.setdefault(cls_name, []).append(name)
     assert not missing, (
-        f"constructor parameters no CLI flag can reach: {missing}. Either wire "
-        f"them into build_model or add them to NOT_ARCHITECTURAL with a reason.")
+        f"constructor parameters build_model never passes: {missing}. Either "
+        f"wire them to a CLI flag or add them to NOT_ARCHITECTURAL with a "
+        f"reason. A mention in a comment does not count -- this test records "
+        f"what is passed, not what is written.")
 
 
 def test_every_arch_shaping_flag_is_covered_by_this_file():

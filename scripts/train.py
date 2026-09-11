@@ -200,7 +200,7 @@ def main():
     ap.add_argument("--act", choices=("gelu", "relu"), default="gelu",
                     help="multiscale only: full-resolution nonlinearity. One "
                          "GELU at 128x128 costs 152.7 us against a ReLU's 13.2 "
-                         "us on the same tensor (runs/arch_cost.json), i.e. 55% "
+                         "us on the same tensor (runs/arch_cost.json), i.e. 55%% "
                          "of the entire clause-2 budget, so this is a budget "
                          "decision and not a taste one.")
     ap.add_argument("--rollout-steps", type=int, default=0,

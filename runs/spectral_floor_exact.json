@@ -1,0 +1,101 @@
+{
+  "question": "what is the LOWEST band rel-L2 attainable by any residual inside the modes_a budget -- the true floor, not the error of the L2 projection",
+  "corrects": "runs/spectral_floor.json evaluated the metric at the L2 projection and called it a lower bound. It is an upper bound on the minimum: the projection is one reachable residual. Because the metric is band-weighted and the L2 projection allocates error uniformly over the window, the two can differ a lot.",
+  "protocol": {
+    "split": "test",
+    "stride": 10,
+    "n_trajectories": 32,
+    "subsample_note": "the solve runs per trajectory, so a subsample is used and declared. runs/spectral_floor.json used all 250; these means are over the first 32 and are not interchangeable with it.",
+    "solver": "exact weighted normal equations on a materialised operator, solved per trajectory; the objective is a convex quadratic so this is the global minimum",
+    "subspace": "defined as what the model can emit, by round-tripping through irfft2/rfft2, so the Hermitian leak at (+modes_a, 0) is inside the subspace rather than excluded by a hand-written mask",
+    "estimator": "attained minimum, so a TRUE floor: no SpectralPropagator at this modes_a can beat it",
+    "target": 0.05
+  },
+  "floors": {
+    "4": {
+      "modes_a": 4,
+      "n_retained_cells": 32,
+      "ridge": 1e-08,
+      "band_weighted_optimum": {
+        "mean": 0.07777625322341919,
+        "median": 0.07103929668664932,
+        "max": 0.1450670212507248,
+        "frac_under_target": 0.0625,
+        "meets_target_on_mean": false
+      },
+      "l2_projection_for_comparison": {
+        "mean": 0.9634796977043152,
+        "meets_target_on_mean": false
+      },
+      "l2_over_optimum": 12.387839317321777,
+      "ridge_x100_mean": 0.22717633843421936,
+      "ridge_sensitive": true
+    },
+    "8": {
+      "modes_a": 8,
+      "n_retained_cells": 128,
+      "ridge": 1e-08,
+      "band_weighted_optimum": {
+        "mean": 0.022149011492729187,
+        "median": 0.021967118605971336,
+        "max": 0.025809941813349724,
+        "frac_under_target": 1.0,
+        "meets_target_on_mean": true
+      },
+      "l2_projection_for_comparison": {
+        "mean": 0.6803516149520874,
+        "meets_target_on_mean": false
+      },
+      "l2_over_optimum": 30.71702003479004,
+      "ridge_x100_mean": 0.13931995630264282,
+      "ridge_sensitive": true
+    },
+    "16": {
+      "modes_a": 16,
+      "n_retained_cells": 512,
+      "ridge": 1e-08,
+      "band_weighted_optimum": {
+        "mean": 0.012395134195685387,
+        "median": 0.01198952179402113,
+        "max": 0.015611004084348679,
+        "frac_under_target": 1.0,
+        "meets_target_on_mean": true
+      },
+      "l2_projection_for_comparison": {
+        "mean": 0.4751851558685303,
+        "meets_target_on_mean": false
+      },
+      "l2_over_optimum": 38.33642578125,
+      "ridge_x100_mean": 0.10001352429389954,
+      "ridge_sensitive": true
+    },
+    "32": {
+      "modes_a": 32,
+      "n_retained_cells": 2048,
+      "ridge": 1e-08,
+      "band_weighted_optimum": {
+        "mean": 0.006098024547100067,
+        "median": 0.005903336685150862,
+        "max": 0.007813080213963985,
+        "frac_under_target": 1.0,
+        "meets_target_on_mean": true
+      },
+      "l2_projection_for_comparison": {
+        "mean": 0.3068659007549286,
+        "meets_target_on_mean": false
+      },
+      "l2_over_optimum": 50.322181701660156,
+      "ridge_x100_mean": 0.06971798837184906,
+      "ridge_sensitive": true
+    }
+  },
+  "modes_a_that_cannot_meet_target": [],
+  "modes_a_unresolved_cg_did_not_converge": [
+    "4"
+  ],
+  "modes_a_shown_NOT_blocked": [
+    "8",
+    "16",
+    "32"
+  ]
+}
