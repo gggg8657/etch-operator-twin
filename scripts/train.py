@@ -75,6 +75,28 @@ def evaluate(model, loader, device, scale, band_um, rollout=True, blind=False):
     return {k: (float(np.mean(v)) if v else None) for k, v in acc.items()}
 
 
+def build_model(a, cond_dim):
+    """The single place a model is constructed from parsed arguments.
+
+    Extracted so `tests/test_flag_wiring.py` can exercise the real path. The
+    H22 sweep trained nine arms with `--state-modes` silently dropped, because
+    the construction lived inline in `main()` and nothing could reach it: the
+    flag parsed, was recorded into args.json by `vars(a)`, and never met the
+    constructor. A test against a COPY of this logic would not have caught it.
+    """
+    if a.arch == "fno":
+        return EtchOperator(cond_dim=cond_dim, width=a.width,
+                            modes=a.modes, n_layers=a.layers)
+    if a.arch == "specprop":
+        return SpectralPropagator(cond_dim=cond_dim, modes=a.modes,
+                                  modes_a=a.modes_a,
+                                  state_modes=a.state_modes)
+    return MultiScaleOperator(
+        cond_dim=cond_dim, width=a.width, modes=a.modes,
+        n_layers=a.layers, width_full=a.width_full, scale=a.scale,
+        n_local=a.n_local, act=a.act)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data")
@@ -225,17 +247,7 @@ def main():
     va_traj = TrajDataset(data / "val.npz", norm, stride=eval_stride)
     device = torch.device(a.device)
 
-    if a.arch == "fno":
-        model = EtchOperator(cond_dim=len(norm["cond_keys"]), width=a.width,
-                             modes=a.modes, n_layers=a.layers).to(device)
-    elif a.arch == "specprop":
-        model = SpectralPropagator(cond_dim=len(norm["cond_keys"]),
-                                   modes=a.modes, modes_a=a.modes_a).to(device)
-    else:
-        model = MultiScaleOperator(
-            cond_dim=len(norm["cond_keys"]), width=a.width, modes=a.modes,
-            n_layers=a.layers, width_full=a.width_full, scale=a.scale,
-            n_local=a.n_local, act=a.act).to(device)
+    model = build_model(a, len(norm["cond_keys"])).to(device)
     if a.init_from:
         model.load_state_dict(torch.load(a.init_from, map_location=device))
     opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=1e-4)

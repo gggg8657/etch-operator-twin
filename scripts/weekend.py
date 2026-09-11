@@ -237,17 +237,151 @@ def cost_reproducibility_section():
                       f"range of load while the operator moves "
                       f"{max(uss) / min(uss):.2f}×**, so the ratio inherits the "
                       f"operator's whole variance instead of cancelling any of "
-                      f"it. Load is the plausible mechanism — four tiny "
-                      f"dispatches are far more exposed to cache and "
-                      f"memory-bandwidth contention than a half-second "
-                      f"compute-bound C++ solve — but the ordering is not "
-                      f"monotone in loadavg, so it is a hypothesis with a "
-                      f"mechanism and not a finding.", ""]
+                      f"it. **Load is NOT the mechanism**, and an earlier version of "
+                      f"this file said it was. The idle-box run built "
+                      f"to test it came back SLOWER on the median and "
+                      f"1.5x wider, and r(cost, loadavg) pooled over 56 "
+                      f"invocations is -0.36. The CLOCK is: R-squared of "
+                      f"cost on 1/GHz is 0.784, and the next section "
+                      f"measures it.", ""]
         L += ["Any single number above is a real measurement and none of them is "
               "a verdict. A clause verdict needs a distribution whose whole "
               "range sits on one side of the threshold — the same standard this "
               "repo already applies to accuracy, where it demands 8 seeds and an "
               "exact test before believing a 0.01 difference in rel-L2.", ""]
+    return L
+
+
+def clock_section():
+    """Clause 2's dependence on the CPU clock, generated from the run JSONs.
+
+    The repo spent turns 13-14 attributing a 1.32x spread on an unchanged
+    architecture to machine load. The idle-box run built to test that came back
+    SLOWER and wider, which falsified it, and the replacement is visible in one
+    command: a `powersave` governor, cores idling at 800 MHz against a 2.1 GHz
+    base and a 4.0 GHz turbo, and no pinning anywhere in the timing path.
+    """
+    L = []
+    pin = sorted(Path("runs").glob("cost_pinning_*.json"))
+    cm = read(Path("runs/clock_matched_speedup.json"))
+    if not pin and not cm:
+        return L
+    L += ["## The clock, not the load: what actually moves every cost number "
+          "in this repo", ""]
+
+    for pp in pin:
+        d = read(pp)
+        if not d:
+            continue
+        S, b = d["summary"], d["box"]
+        L += [f"`{pp.name}` — `{d['config']}`, "
+              f"{d['protocol']['invocations_per_cell']} invocations per cell, "
+              f"cells interleaved so a drift in the box hits all four equally. "
+              f"Governor `{b['governor']}`, {b['cpus']} CPUs, "
+              f"{b['numa_nodes']} NUMA nodes.", "",
+              "| cell | median µs | spread | GHz | median × | meets target |",
+              "|---|---|---|---|---|---|"]
+        for k, s in S.items():
+            L += [f"| `{k}` | {s['median_us']:.1f} | "
+                  f"{s['between_invocation_spread_factor']:.2f}× | "
+                  f"{(s['median_ghz'] if s['median_ghz'] else float('nan')):.2f} | "
+                  f"{s['speedup_median']:.1f}× | "
+                  f"{s['n_meeting_target']}/{s['n_invocations']} |"]
+        L += ["",
+              f"The adoption rule was registered before the run and selects on "
+              f"**spread, not speed**, so the fastest cell cannot win by being "
+              f"fastest. It picks `{d['tightest_cell']}`. Three of the four "
+              f"predictions registered with it were falsified: pinning moved "
+              f"the median about eight times more than the long warm-up did, "
+              f"it *increased* the between-invocation spread rather than "
+              f"reducing it, and the tightest cell was not the pinned one.", ""]
+
+    if cm:
+        S = cm["summary"]
+        L += ["### Clause 2 is a ratio of two timings taken at different clocks",
+              "",
+              "The numerator is one ~0.5-second compute-bound solver run and "
+              "the denominator is ~0.35 ms of tiny dispatches. A `powersave` "
+              "governor treats those differently, so the ratio carries a clock "
+              "term belonging to neither implementation. "
+              f"`runs/clock_matched_speedup.json` prices both sides with their "
+              f"clocks measured, {cm['protocol']['repeats']} repeats, sampler "
+              "in the parent process.", "",
+              "| reading | median | range | spread | meets target |",
+              "|---|---|---|---|---|"]
+        labels = {
+            "speedup_raw_burst": "raw, burst — **the published protocol**",
+            "speedup_raw_sustained": "raw, sustained — duration-matched",
+            "speedup_cycle_matched_burst": "cycle-matched, burst",
+            "speedup_cycle_matched_sustained": "cycle-matched, sustained",
+        }
+        for k, lab in labels.items():
+            s = S.get(k)
+            if not s:
+                L += [f"| {lab} | [not measured] | | | |"]
+                continue
+            sp = (f"{s['spread_factor']:.2f}×" if s["spread_factor"]
+                  else "n=1, no spread")
+            L += [f"| {lab} | **{s['median']:.1f}×** | "
+                  f"{s['min']:.0f}–{s['max']:.0f} | {sp} | "
+                  f"{s['n_meeting_target']}/{s['n']} |"]
+        L += ["", "| clock | median | range |", "|---|---|---|"]
+        for k, lab in (("solver_ghz", "solver"),
+                       ("operator_burst_ghz", "operator, burst"),
+                       ("operator_sustained_ghz", "operator, sustained")):
+            s = S.get(k)
+            if s:
+                L += [f"| {lab} | {s['median']:.2f} GHz | "
+                      f"{s['min']:.2f}–{s['max']:.2f} |"]
+        mb = S.get("monitor_bias_check", {})
+        order = [S[k]["spread_factor"] for k in labels
+                 if S.get(k) and S[k]["spread_factor"]]
+        L += ["",
+              "**Removing the clock term tightens the reading monotonically** — "
+              + " → ".join(f"{x:.2f}×" for x in order) +
+              " — first by protocol (matching the duration profile so both "
+              "sides sit in the same governor regime, which is not batching: "
+              "batch size stays 1 and calls stay sequential) and then by "
+              "arithmetic. The medians barely move, because in this run the "
+              "asymmetry did not reproduce: an earlier run measured the solver "
+              "at 2.10 GHz against the operator's 4.00 GHz and turned 1471× "
+              "into 772×, and here the solver ran at "
+              f"{S['solver_ghz']['median']:.2f} GHz. So the clock gap is **real "
+              "but intermittent** — it widens the distribution rather than "
+              "biasing it in a direction that could be corrected once.", "",
+              f"Monitor bias check ({mb.get('n_readings', 0)} readings, exact "
+              f"paired sign test): {mb.get('reading', '[not measured]')} "
+              f"(p = {mb.get('sign_test_p_two_sided')}).", "",
+              "**Three measurements of one unchanged architecture this weekend, "
+              "and the architecture is not what differs between them:**", "",
+              "| run | condition | meets 1000× |", "|---|---|---|"]
+        for nm, cond in (("cost_repro_specprop_m4_ma64_K10_IDLEBOX.json",
+                          "loadavg ~20"),
+                         ("cost_repro_specprop_m4_ma64_K10.json",
+                          "loadavg ~420")):
+            d2 = read(Path("runs") / nm)
+            if d2:
+                L += [f"| `{nm.replace('cost_repro_specprop_m4_ma64_K10', '…')}`"
+                      f" | {cond} | "
+                      f"{d2['summary']['n_invocations_meeting_target']}/"
+                      f"{len(d2['invocations'])} |"]
+        rb = S.get("speedup_raw_burst")
+        if rb:
+            L += [f"| `clock_matched_speedup.json` | loadavg ~50, both clocks "
+                  f"measured | {rb['n_meeting_target']}/{rb['n']} |"]
+        L += ["",
+              "**The measurement is the bottleneck to a verdict, not the "
+              "operator.** By this repo's own standard — a distribution whose "
+              "whole range sits on one side — clause 2 is NOT met by this "
+              "architecture, and no amount of re-timing fixes that, because "
+              "the failures are draws from a distribution the box controls. "
+              "Pinning the clock needs root (`intel_pstate/no_turbo` is "
+              "root-owned and this loop has no sudo), so the route that "
+              "remains is margin: the tightest reading's worst draw is "
+              + (f"{S['speedup_cycle_matched_sustained']['min']:.0f}×, a gap of "
+                 f"{1000 / S['speedup_cycle_matched_sustained']['min']:.2f}× "
+                 if S.get("speedup_cycle_matched_sustained") else "[not measured] ")
+              + "at the threshold.", ""]
     return L
 
 
@@ -777,6 +911,7 @@ def main():
     L += [""]
 
     L += cost_reproducibility_section()
+    L += clock_section()
 
     Path(a.out).write_text("\n".join(L) + "\n")
     print(f"wrote {a.out}")

@@ -1,0 +1,200 @@
+{
+  "question": "Is the clause-2 cost reading for one architecture reproducible across independent invocations?",
+  "config": "specprop_m4_ma64_K10",
+  "build": "from eot.operator import SpectralPropagator\nM = SpectralPropagator(cond_dim=7, modes=4, modes_a=64)",
+  "protocol": {
+    "invocations": 14,
+    "rounds_per_invocation": 16,
+    "estimator": "CPU-seconds per wafer, one verified thread, fresh subprocess per invocation, 3 untimed warm rollouts",
+    "denominator_cpu_s": 0.5158362045000002,
+    "denominator_source": "runs/arch_cost_h21.json budget_provenance.denominators_cpu_s[terminal_one_apply] = 0.515836 CPU-s -- the WORKLOAD-MATCHED cost of producing what one operator application produces, held FIXED so this measures the operator side alone. NOT the retired fixed-duration 0.2767.",
+    "speedup_target": 1000.0
+  },
+  "invocations": [
+    {
+      "i": 0,
+      "loadavg_before": 24.65869140625,
+      "loadavg_after": 23.724609375,
+      "wall_s": 1.7393274307250977,
+      "params": 1070144,
+      "median_per_wafer_s": 0.0005753789999999315,
+      "min_s": 0.0005576090000001255,
+      "max_s": 0.0006489219999998852,
+      "within_spread_factor": 1.1637581172465639,
+      "speedup": 896.5155219430352
+    },
+    {
+      "i": 1,
+      "loadavg_before": 23.724609375,
+      "loadavg_after": 23.724609375,
+      "wall_s": 1.775848388671875,
+      "params": 1070144,
+      "median_per_wafer_s": 0.0005835475000000034,
+      "min_s": 0.0005638989999998678,
+      "max_s": 0.0006569970000001035,
+      "within_spread_factor": 1.165096941119345,
+      "speedup": 883.9660944481764
+    },
+    {
+      "i": 2,
+      "loadavg_before": 23.724609375,
+      "loadavg_after": 22.06494140625,
+      "wall_s": 1.724712610244751,
+      "params": 1070144,
+      "median_per_wafer_s": 0.0005839920000000332,
+      "min_s": 0.0005659740000001356,
+      "max_s": 0.000643072999999994,
+      "within_spread_factor": 1.1362235721072698,
+      "speedup": 883.2932719968269
+    },
+    {
+      "i": 3,
+      "loadavg_before": 22.06494140625,
+      "loadavg_after": 22.06494140625,
+      "wall_s": 1.752922534942627,
+      "params": 1070144,
+      "median_per_wafer_s": 0.0005629854999998907,
+      "min_s": 0.0005529029999999935,
+      "max_s": 0.0006170139999999158,
+      "within_spread_factor": 1.1159534312527208,
+      "speedup": 916.2513146432731
+    },
+    {
+      "i": 4,
+      "loadavg_before": 22.06494140625,
+      "loadavg_after": 22.06494140625,
+      "wall_s": 1.6988868713378906,
+      "params": 1070144,
+      "median_per_wafer_s": 0.0005798380000000547,
+      "min_s": 0.000564970000000109,
+      "max_s": 0.0006496970000000601,
+      "within_spread_factor": 1.1499672548983748,
+      "speedup": 889.6212467964355
+    },
+    {
+      "i": 5,
+      "loadavg_before": 22.06494140625,
+      "loadavg_after": 20.6181640625,
+      "wall_s": 1.7530467510223389,
+      "params": 1070144,
+      "median_per_wafer_s": 0.0005700475000001148,
+      "min_s": 0.0005578670000001562,
+      "max_s": 0.0006301559999999373,
+      "within_spread_factor": 1.1295810650204454,
+      "speedup": 904.900389002489
+    },
+    {
+      "i": 6,
+      "loadavg_before": 20.6181640625,
+      "loadavg_after": 20.6181640625,
+      "wall_s": 1.7032675743103027,
+      "params": 1070144,
+      "median_per_wafer_s": 0.000569618000000105,
+      "min_s": 0.0005569080000000781,
+      "max_s": 0.0006276889999998758,
+      "within_spread_factor": 1.1270963965319007,
+      "speedup": 905.5826966491669
+    },
+    {
+      "i": 7,
+      "loadavg_before": 20.6181640625,
+      "loadavg_after": 20.6181640625,
+      "wall_s": 1.853553295135498,
+      "params": 1070144,
+      "median_per_wafer_s": 0.0005723505000000406,
+      "min_s": 0.0005581590000001135,
+      "max_s": 0.0006356800000000273,
+      "within_spread_factor": 1.138886947984173,
+      "speedup": 901.2592886700783
+    },
+    {
+      "i": 8,
+      "loadavg_before": 20.6181640625,
+      "loadavg_after": 19.20703125,
+      "wall_s": 1.7328464984893799,
+      "params": 1070144,
+      "median_per_wafer_s": 0.0005836639999999838,
+      "min_s": 0.0005659730000000529,
+      "max_s": 0.0006359970000000548,
+      "within_spread_factor": 1.1237232164785163,
+      "speedup": 883.7896538076951
+    },
+    {
+      "i": 9,
+      "loadavg_before": 19.20703125,
+      "loadavg_after": 19.20703125,
+      "wall_s": 1.761831283569336,
+      "params": 1070144,
+      "median_per_wafer_s": 0.0005905310000000608,
+      "min_s": 0.000573005999999987,
+      "max_s": 0.0006316330000000203,
+      "within_spread_factor": 1.1023148099671463,
+      "speedup": 873.5124904534176
+    },
+    {
+      "i": 10,
+      "loadavg_before": 19.20703125,
+      "loadavg_after": 19.20703125,
+      "wall_s": 1.731416940689087,
+      "params": 1070144,
+      "median_per_wafer_s": 0.0005736054999999629,
+      "min_s": 0.0005561960000000088,
+      "max_s": 0.0006416960000001914,
+      "within_spread_factor": 1.1537227883698935,
+      "speedup": 899.2874100754501
+    },
+    {
+      "i": 11,
+      "loadavg_before": 19.20703125,
+      "loadavg_after": 17.9091796875,
+      "wall_s": 1.606137990951538,
+      "params": 1070144,
+      "median_per_wafer_s": 0.0005752584999998422,
+      "min_s": 0.000561408000000041,
+      "max_s": 0.0006163700000001437,
+      "within_spread_factor": 1.0979002792979415,
+      "speedup": 896.7033159877545
+    },
+    {
+      "i": 12,
+      "loadavg_before": 17.9091796875,
+      "loadavg_after": 17.9091796875,
+      "wall_s": 1.7757933139801025,
+      "params": 1070144,
+      "median_per_wafer_s": 0.0006370570000000519,
+      "min_s": 0.0005638139999999403,
+      "max_s": 0.0006666880000001374,
+      "within_spread_factor": 1.1824608824899843,
+      "speedup": 809.7175048699852
+    },
+    {
+      "i": 13,
+      "loadavg_before": 17.9091796875,
+      "loadavg_after": 17.9091796875,
+      "wall_s": 1.6252996921539307,
+      "params": 1070144,
+      "median_per_wafer_s": 0.00035016099999996,
+      "min_s": 0.00034112899999994006,
+      "max_s": 0.00038656900000000327,
+      "within_spread_factor": 1.1332047407287893,
+      "speedup": 1473.140082704982
+    }
+  ],
+  "summary": {
+    "median_us": 575.3187499998869,
+    "min_us": 350.16099999996,
+    "max_us": 637.057000000052,
+    "between_invocation_spread_factor": 1.8193259671983024,
+    "worst_within_invocation_spread_factor": 1.1824608824899843,
+    "speedup_median": 896.6094189653949,
+    "speedup_min": 809.7175048699852,
+    "speedup_max": 1473.140082704982,
+    "n_invocations_meeting_target": 1,
+    "spearman_us_vs_loadavg": 0.05054945054945055,
+    "loadavg_range": [
+      17.9091796875,
+      24.65869140625
+    ]
+  },
+  "verdict": "STRADDLES the threshold: the verdict depends on which invocation is quoted"
+}

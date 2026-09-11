@@ -1,0 +1,666 @@
+{
+  "hypothesis": "H23: the between-invocation spread in clause-2 cost is core and frequency state, not machine load. The load hypothesis was falsified by the idle-box run, which came back SLOWER (median 575.3 us at loadavg 20) than the loaded run (526.0 us at loadavg 420).",
+  "predictions_registered_before_the_run": [
+    "rampup moves the median more than pin does",
+    "pin reduces the between-invocation spread more than it moves the median",
+    "pinned_ramp has the tightest spread of the four cells",
+    "recorded frequency rises with rampup and carries the median difference"
+  ],
+  "adoption_rule_registered_before_the_run": "the cell with the SMALLEST between-invocation spread becomes the repo's clause-2 protocol, and its median is the clause-2 number even if that number is worse than what this repo has published. Selecting on speed is not available.",
+  "config": "specprop_m4_ma64_K10",
+  "build": "from eot.operator import SpectralPropagator\nM = SpectralPropagator(cond_dim=7, modes=4, modes_a=64)",
+  "box": {
+    "governor": "powersave",
+    "numa_nodes": 4,
+    "cpus": 192,
+    "model": "INTEL(R) XEON(R) PLATINUM 8558"
+  },
+  "protocol": {
+    "invocations_per_cell": 14,
+    "rounds_per_invocation": 16,
+    "rampup_rollouts": 300,
+    "pin_core": 8,
+    "interleaved": "invocation i of every cell before i+1 of any",
+    "denominator_cpu_s": 0.5158362045000002,
+    "denominator_source": "runs/arch_cost_h21.json [terminal_one_apply], workload-matched, held fixed",
+    "speedup_target": 1000.0
+  },
+  "cells": {
+    "unpinned_warm3": [
+      {
+        "i": 0,
+        "loadavg": 38.3056640625,
+        "median_per_wafer_s": 0.0006223910000000554,
+        "within_spread_factor": 1.1443064622876,
+        "speedup": 828.7976601524673,
+        "n_distinct_cores": 1,
+        "median_khz": 2100000.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 1,
+        "loadavg": 36.35888671875,
+        "median_per_wafer_s": 0.0003721264999999585,
+        "within_spread_factor": 1.2686587823623616,
+        "speedup": 1386.1850862544263,
+        "n_distinct_cores": 1,
+        "median_khz": 4000000.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 2,
+        "loadavg": 34.0078125,
+        "median_per_wafer_s": 0.0003778425000000585,
+        "within_spread_factor": 1.1749095654807318,
+        "speedup": 1365.2148831852435,
+        "n_distinct_cores": 1,
+        "median_khz": 4000000.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 3,
+        "loadavg": 36.873046875,
+        "median_per_wafer_s": 0.00038234000000003654,
+        "within_spread_factor": 1.2096642163018234,
+        "speedup": 1349.1557370402022,
+        "n_distinct_cores": 1,
+        "median_khz": 3999959.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 4,
+        "loadavg": 34.3203125,
+        "median_per_wafer_s": 0.0007659810000000267,
+        "within_spread_factor": 1.4994945031512161,
+        "speedup": 673.4321145041225,
+        "n_distinct_cores": 1,
+        "median_khz": 3000000.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 5,
+        "loadavg": 39.5,
+        "median_per_wafer_s": 0.0006243895000000999,
+        "within_spread_factor": 1.167732660681151,
+        "speedup": 826.1449055436034,
+        "n_distinct_cores": 1,
+        "median_khz": 2100000.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 6,
+        "loadavg": 34.7177734375,
+        "median_per_wafer_s": 0.0004279689999999725,
+        "within_spread_factor": 1.306770714140118,
+        "speedup": 1205.3120775103648,
+        "n_distinct_cores": 1,
+        "median_khz": 3262080.5,
+        "affinity_n": 192
+      },
+      {
+        "i": 7,
+        "loadavg": 41.86767578125,
+        "median_per_wafer_s": 0.0005156984999999947,
+        "within_spread_factor": 1.1803487336133218,
+        "speedup": 1000.2670252095081,
+        "n_distinct_cores": 1,
+        "median_khz": 2899985.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 8,
+        "loadavg": 40.2763671875,
+        "median_per_wafer_s": 0.0003879170000000709,
+        "within_spread_factor": 1.19687755943277,
+        "speedup": 1329.7592126663847,
+        "n_distinct_cores": 1,
+        "median_khz": 3999979.5,
+        "affinity_n": 192
+      },
+      {
+        "i": 9,
+        "loadavg": 50.58984375,
+        "median_per_wafer_s": 0.000549040499999931,
+        "within_spread_factor": 1.1886208902247573,
+        "speedup": 939.5230488462419,
+        "n_distinct_cores": 1,
+        "median_khz": 3000000.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 10,
+        "loadavg": 62.474609375,
+        "median_per_wafer_s": 0.00038092600000000365,
+        "within_spread_factor": 1.2851846083644995,
+        "speedup": 1354.163812656514,
+        "n_distinct_cores": 1,
+        "median_khz": 4000040.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 11,
+        "loadavg": 58.1123046875,
+        "median_per_wafer_s": 0.0004980050000000236,
+        "within_spread_factor": 1.150590329130345,
+        "speedup": 1035.8052720353728,
+        "n_distinct_cores": 1,
+        "median_khz": 2995130.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 12,
+        "loadavg": 61.787109375,
+        "median_per_wafer_s": 0.0003748820000000208,
+        "within_spread_factor": 1.119874867246005,
+        "speedup": 1375.9961921350493,
+        "n_distinct_cores": 1,
+        "median_khz": 4000000.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 13,
+        "loadavg": 58.1201171875,
+        "median_per_wafer_s": 0.00038908750000010706,
+        "within_spread_factor": 1.282919196067532,
+        "speedup": 1325.7588704336642,
+        "n_distinct_cores": 1,
+        "median_khz": 3952819.0,
+        "affinity_n": 192
+      }
+    ],
+    "unpinned_ramp": [
+      {
+        "i": 0,
+        "loadavg": 38.3056640625,
+        "median_per_wafer_s": 0.0003845004999999402,
+        "within_spread_factor": 1.0930573886758728,
+        "speedup": 1341.5748601109244,
+        "n_distinct_cores": 1,
+        "median_khz": 3872336.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 1,
+        "loadavg": 36.35888671875,
+        "median_per_wafer_s": 0.0003670144999999847,
+        "within_spread_factor": 1.0375808308978443,
+        "speedup": 1405.492710778516,
+        "n_distinct_cores": 1,
+        "median_khz": 4000000.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 2,
+        "loadavg": 39.21240234375,
+        "median_per_wafer_s": 0.0003712980000001309,
+        "within_spread_factor": 1.0732970889821802,
+        "speedup": 1389.2781660548087,
+        "n_distinct_cores": 1,
+        "median_khz": 3999979.5,
+        "affinity_n": 192
+      },
+      {
+        "i": 3,
+        "loadavg": 36.873046875,
+        "median_per_wafer_s": 0.0003721515000000286,
+        "within_spread_factor": 1.0512707659591312,
+        "speedup": 1386.0919665780216,
+        "n_distinct_cores": 1,
+        "median_khz": 4000000.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 4,
+        "loadavg": 34.3203125,
+        "median_per_wafer_s": 0.0005949634999999898,
+        "within_spread_factor": 1.5885584137194888,
+        "speedup": 867.0047902098349,
+        "n_distinct_cores": 1,
+        "median_khz": 2906353.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 5,
+        "loadavg": 37.2177734375,
+        "median_per_wafer_s": 0.00037272899999996056,
+        "within_spread_factor": 1.0580966246646992,
+        "speedup": 1383.9443791603412,
+        "n_distinct_cores": 1,
+        "median_khz": 4000020.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 6,
+        "loadavg": 34.7177734375,
+        "median_per_wafer_s": 0.00040031100000004205,
+        "within_spread_factor": 1.1821748107355736,
+        "speedup": 1288.588633587251,
+        "n_distinct_cores": 1,
+        "median_khz": 3580806.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 7,
+        "loadavg": 41.86767578125,
+        "median_per_wafer_s": 0.00041120050000009734,
+        "within_spread_factor": 1.1580605501767127,
+        "speedup": 1254.4639524997613,
+        "n_distinct_cores": 1,
+        "median_khz": 3411086.5,
+        "affinity_n": 192
+      },
+      {
+        "i": 8,
+        "loadavg": 37.931640625,
+        "median_per_wafer_s": 0.0003734725000000272,
+        "within_spread_factor": 1.055487803214174,
+        "speedup": 1381.1892562369724,
+        "n_distinct_cores": 1,
+        "median_khz": 4000000.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 9,
+        "loadavg": 50.58984375,
+        "median_per_wafer_s": 0.0005532379999999559,
+        "within_spread_factor": 1.3630478919449702,
+        "speedup": 932.3947460225821,
+        "n_distinct_cores": 1,
+        "median_khz": 3000000.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 10,
+        "loadavg": 62.474609375,
+        "median_per_wafer_s": 0.00038029349999990636,
+        "within_spread_factor": 1.0977009936526212,
+        "speedup": 1356.4160431354394,
+        "n_distinct_cores": 1,
+        "median_khz": 3999919.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 11,
+        "loadavg": 58.1123046875,
+        "median_per_wafer_s": 0.00036949499999994195,
+        "within_spread_factor": 1.0579502406058643,
+        "speedup": 1396.0573336583209,
+        "n_distinct_cores": 1,
+        "median_khz": 4000000.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 12,
+        "loadavg": 61.787109375,
+        "median_per_wafer_s": 0.0005958894999998909,
+        "within_spread_factor": 1.0549479641193236,
+        "speedup": 865.6574826374599,
+        "n_distinct_cores": 1,
+        "median_khz": 2100000.0,
+        "affinity_n": 192
+      },
+      {
+        "i": 13,
+        "loadavg": 58.1201171875,
+        "median_per_wafer_s": 0.0004366200000001097,
+        "within_spread_factor": 1.1087835590109565,
+        "speedup": 1181.430544867094,
+        "n_distinct_cores": 1,
+        "median_khz": 3227414.0,
+        "affinity_n": 192
+      }
+    ],
+    "pinned_warm3": [
+      {
+        "i": 0,
+        "loadavg": 36.35888671875,
+        "median_per_wafer_s": 0.0006099170000001264,
+        "within_spread_factor": 1.1652867125810156,
+        "speedup": 845.7481993449819,
+        "n_distinct_cores": 1,
+        "median_khz": 2100000.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 1,
+        "loadavg": 34.0078125,
+        "median_per_wafer_s": 0.0006584149999999678,
+        "within_spread_factor": 1.186787094446364,
+        "speedup": 783.4514774117016,
+        "n_distinct_cores": 1,
+        "median_khz": 2100042.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 2,
+        "loadavg": 39.21240234375,
+        "median_per_wafer_s": 0.0006129470000000303,
+        "within_spread_factor": 1.192569701040978,
+        "speedup": 841.5673859240272,
+        "n_distinct_cores": 1,
+        "median_khz": 2100000.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 3,
+        "loadavg": 36.873046875,
+        "median_per_wafer_s": 0.0006099269999999546,
+        "within_spread_factor": 1.183612282827473,
+        "speedup": 845.734332961221,
+        "n_distinct_cores": 1,
+        "median_khz": 2100000.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 4,
+        "loadavg": 39.5,
+        "median_per_wafer_s": 0.0006068965000000093,
+        "within_spread_factor": 1.1128649131297437,
+        "speedup": 849.9574548543159,
+        "n_distinct_cores": 1,
+        "median_khz": 2100031.5,
+        "affinity_n": 1
+      },
+      {
+        "i": 5,
+        "loadavg": 37.2177734375,
+        "median_per_wafer_s": 0.000607131000000094,
+        "within_spread_factor": 1.1894216476542623,
+        "speedup": 849.629164875324,
+        "n_distinct_cores": 1,
+        "median_khz": 2099978.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 6,
+        "loadavg": 34.7177734375,
+        "median_per_wafer_s": 0.0006102570000000584,
+        "within_spread_factor": 1.1730846176831513,
+        "speedup": 845.276997232233,
+        "n_distinct_cores": 1,
+        "median_khz": 2100000.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 7,
+        "loadavg": 40.2763671875,
+        "median_per_wafer_s": 0.0006126124999999982,
+        "within_spread_factor": 1.118339984567949,
+        "speedup": 842.0269003652419,
+        "n_distinct_cores": 1,
+        "median_khz": 2100000.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 8,
+        "loadavg": 37.931640625,
+        "median_per_wafer_s": 0.0007930690000000906,
+        "within_spread_factor": 1.260184437703924,
+        "speedup": 650.4304221952204,
+        "n_distinct_cores": 1,
+        "median_khz": 2098456.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 9,
+        "loadavg": 62.474609375,
+        "median_per_wafer_s": 0.0009010415000000327,
+        "within_spread_factor": 1.2084870918064652,
+        "speedup": 572.488841523927,
+        "n_distinct_cores": 1,
+        "median_khz": 2100010.5,
+        "affinity_n": 1
+      },
+      {
+        "i": 10,
+        "loadavg": 58.1123046875,
+        "median_per_wafer_s": 0.0003844139999999441,
+        "within_spread_factor": 1.2405282254661554,
+        "speedup": 1341.8767383604013,
+        "n_distinct_cores": 1,
+        "median_khz": 3630641.5,
+        "affinity_n": 1
+      },
+      {
+        "i": 11,
+        "loadavg": 61.787109375,
+        "median_per_wafer_s": 0.0003684220000000349,
+        "within_spread_factor": 1.3366529019115674,
+        "speedup": 1400.1232404686782,
+        "n_distinct_cores": 1,
+        "median_khz": 4000000.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 12,
+        "loadavg": 58.1201171875,
+        "median_per_wafer_s": 0.00039478699999995204,
+        "within_spread_factor": 1.2178468289596112,
+        "speedup": 1306.6190236762175,
+        "n_distinct_cores": 1,
+        "median_khz": 3597901.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 13,
+        "loadavg": 56.1083984375,
+        "median_per_wafer_s": 0.00037031000000004033,
+        "within_spread_factor": 1.2492236695801548,
+        "speedup": 1392.9848086736627,
+        "n_distinct_cores": 1,
+        "median_khz": 3882034.0,
+        "affinity_n": 1
+      }
+    ],
+    "pinned_ramp": [
+      {
+        "i": 0,
+        "loadavg": 36.35888671875,
+        "median_per_wafer_s": 0.0005990030000000424,
+        "within_spread_factor": 1.0913436547654434,
+        "speedup": 861.1579649850898,
+        "n_distinct_cores": 1,
+        "median_khz": 2100000.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 1,
+        "loadavg": 34.0078125,
+        "median_per_wafer_s": 0.0006370765,
+        "within_spread_factor": 1.0432757092054121,
+        "speedup": 809.6927205759437,
+        "n_distinct_cores": 1,
+        "median_khz": 2100010.5,
+        "affinity_n": 1
+      },
+      {
+        "i": 2,
+        "loadavg": 39.21240234375,
+        "median_per_wafer_s": 0.0006024340000000405,
+        "within_spread_factor": 1.1036833059255964,
+        "speedup": 856.2534725795116,
+        "n_distinct_cores": 1,
+        "median_khz": 2099978.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 3,
+        "loadavg": 34.3203125,
+        "median_per_wafer_s": 0.0006034320000000148,
+        "within_spread_factor": 1.0391696432321018,
+        "speedup": 854.8373379270366,
+        "n_distinct_cores": 1,
+        "median_khz": 2100021.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 4,
+        "loadavg": 39.5,
+        "median_per_wafer_s": 0.0006260445000000336,
+        "within_spread_factor": 1.1560650960395216,
+        "speedup": 823.9609237042614,
+        "n_distinct_cores": 1,
+        "median_khz": 2100000.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 5,
+        "loadavg": 37.2177734375,
+        "median_per_wafer_s": 0.0005976814999999469,
+        "within_spread_factor": 1.0487707818968315,
+        "speedup": 863.0620230006217,
+        "n_distinct_cores": 1,
+        "median_khz": 2100000.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 6,
+        "loadavg": 41.86767578125,
+        "median_per_wafer_s": 0.0006040620000000718,
+        "within_spread_factor": 1.0769555048554533,
+        "speedup": 853.9457944713273,
+        "n_distinct_cores": 1,
+        "median_khz": 2100000.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 7,
+        "loadavg": 40.2763671875,
+        "median_per_wafer_s": 0.0006402264999999518,
+        "within_spread_factor": 1.1755190937972828,
+        "speedup": 805.7089241073886,
+        "n_distinct_cores": 1,
+        "median_khz": 2099978.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 8,
+        "loadavg": 37.931640625,
+        "median_per_wafer_s": 0.0007212830000000725,
+        "within_spread_factor": 1.0625617529043279,
+        "speedup": 715.1647889939849,
+        "n_distinct_cores": 1,
+        "median_khz": 2100000.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 9,
+        "loadavg": 62.474609375,
+        "median_per_wafer_s": 0.00035567499999999974,
+        "within_spread_factor": 1.072967105885114,
+        "speedup": 1450.3021142897326,
+        "n_distinct_cores": 1,
+        "median_khz": 4000000.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 10,
+        "loadavg": 58.1123046875,
+        "median_per_wafer_s": 0.00035656000000000576,
+        "within_spread_factor": 1.06858601164361,
+        "speedup": 1446.7023909019292,
+        "n_distinct_cores": 1,
+        "median_khz": 4000000.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 11,
+        "loadavg": 61.787109375,
+        "median_per_wafer_s": 0.00035374199999999023,
+        "within_spread_factor": 1.075014965579232,
+        "speedup": 1458.2271952440324,
+        "n_distinct_cores": 1,
+        "median_khz": 4000000.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 12,
+        "loadavg": 58.1201171875,
+        "median_per_wafer_s": 0.00036290999999999407,
+        "within_spread_factor": 1.1425520006394547,
+        "speedup": 1421.3887864760097,
+        "n_distinct_cores": 1,
+        "median_khz": 3899838.0,
+        "affinity_n": 1
+      },
+      {
+        "i": 13,
+        "loadavg": 56.1083984375,
+        "median_per_wafer_s": 0.00036275550000003376,
+        "within_spread_factor": 1.2289199318960835,
+        "speedup": 1421.994165491501,
+        "n_distinct_cores": 1,
+        "median_khz": 3920236.0,
+        "affinity_n": 1
+      }
+    ]
+  },
+  "summary": {
+    "unpinned_warm3": {
+      "median_us": 408.5282500000398,
+      "min_us": 372.1264999999585,
+      "max_us": 765.9810000000267,
+      "between_invocation_spread_factor": 2.058388746837734,
+      "iqr_us": 159.42549999993508,
+      "speedup_median": 1265.5354739720146,
+      "speedup_min": 673.4321145041225,
+      "speedup_max": 1386.1850862544263,
+      "n_meeting_target": 10,
+      "n_invocations": 14,
+      "median_ghz": 3.60744975,
+      "max_distinct_cores_in_an_invocation": 1,
+      "verdict": "STRADDLES the threshold"
+    },
+    "unpinned_ramp": {
+      "median_us": 382.3969999999233,
+      "min_us": 367.0144999999847,
+      "max_us": 595.889499999891,
+      "between_invocation_spread_factor": 1.6236129635202854,
+      "iqr_us": 57.96925000009503,
+      "speedup_median": 1348.995451623182,
+      "speedup_min": 865.6574826374599,
+      "speedup_max": 1405.492710778516,
+      "n_meeting_target": 11,
+      "n_invocations": 14,
+      "median_ghz": 3.9361275,
+      "max_distinct_cores_in_an_invocation": 1,
+      "verdict": "STRADDLES the threshold"
+    },
+    "pinned_warm3": {
+      "median_us": 609.9220000000405,
+      "min_us": 368.42200000003487,
+      "max_us": 901.0415000000327,
+      "between_invocation_spread_factor": 2.445677782542702,
+      "iqr_us": 165.0490000000559,
+      "speedup_median": 845.7412661531014,
+      "speedup_min": 572.488841523927,
+      "speedup_max": 1400.1232404686782,
+      "n_meeting_target": 4,
+      "n_invocations": 14,
+      "median_ghz": 2.10000525,
+      "max_distinct_cores_in_an_invocation": 1,
+      "verdict": "STRADDLES the threshold"
+    },
+    "pinned_ramp": {
+      "median_us": 600.7185000000414,
+      "min_us": 353.74199999999024,
+      "max_us": 721.2830000000725,
+      "between_invocation_spread_factor": 2.0390086560264047,
+      "iqr_us": 257.7547500000193,
+      "speedup_median": 858.7057187823007,
+      "speedup_min": 715.1647889939849,
+      "speedup_max": 1458.2271952440324,
+      "n_meeting_target": 5,
+      "n_invocations": 14,
+      "median_ghz": 2.10000525,
+      "max_distinct_cores_in_an_invocation": 1,
+      "verdict": "STRADDLES the threshold"
+    }
+  },
+  "tightest_cell": "unpinned_ramp",
+  "clause2_number_under_adoption_rule": {
+    "cell": "unpinned_ramp",
+    "speedup_median": 1348.995451623182,
+    "verdict": "STRADDLES the threshold"
+  }
+}

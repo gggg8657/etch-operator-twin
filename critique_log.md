@@ -5974,3 +5974,376 @@ Two things worth extracting rather than just apologising for:
    `fixed_duration` is not an allowed choice of the flag. A comment saying
    "use the workload-matched one" is what the repo already had, in a docstring,
    and it did not stop me.
+
+## Turn 15 — the load hypothesis dies on the run built to test it, and clause 2 turns out to be a ratio of two different CPU clocks
+
+### The measurement I registered last turn, and the prediction it falsified
+
+Turn 14 ended with: *"The matching 14-invocation run on an idle box is queued"*,
+and with load named as *"the most plausible mechanism"* for a 1.32x spread on an
+unchanged architecture. The box drained overnight — loadavg 23.5 against the
+413-422 of the previous run — so the run went out immediately.
+
+`runs/cost_repro_specprop_m4_ma64_K10_IDLEBOX.json`, 14 invocations, same
+config, same fixed workload-matched denominator (0.5158 CPU-s):
+
+| | loaded (loadavg ~420) | **idle (loadavg ~20)** |
+|---|---|---|
+| per-wafer cost | 449.8-553.4 us | **350.2-637.1 us** |
+| median | 526.0 us | **575.3 us** |
+| between-invocation spread | 1.23x | **1.82x** |
+| invocations meeting 1000x | 3/14 | **1/14** |
+
+**The idle box is slower on the median and half again as variable.** The
+prediction was that an idle box would be faster and tighter; it is neither. The
+load hypothesis is falsified in the direction opposite to the one I registered,
+and it was mine.
+
+### What replaces it was visible without running anything, which is the part worth being embarrassed about
+
+Two properties of this box, both readable in one command:
+
+* the cpufreq governor is **`powersave`** and idle cores sit at **800 MHz**
+  against a 2.1 GHz base (INTEL XEON PLATINUM 8558, turbo 4.0);
+* **4 NUMA nodes**, 2 sockets, 192 CPUs, and nothing in this repo's timing path
+  pins anything.
+
+A ~500 us workload of tiny dispatches is three orders of magnitude too short to
+ramp a clock. On an idle box it is measured on a cold slow core; on a loaded box
+its neighbours have already driven the package up. And `time.process_time()`
+counts CPU-seconds, so a 2.6x slower clock inflates the reading 2.6x *directly*.
+I had been attributing to contention a quantity that is mostly just the clock.
+
+### H23, the 2x2, and three of its four registered predictions falsified
+
+`scripts/cost_pinning.py`: `pin` (taskset to one core) x `rampup` (300 untimed
+rollouts vs 3), 14 invocations per cell, **interleaved** so a drift in the box
+hits all four cells equally. Predictions and the adoption rule were written into
+the script's docstring before it ran; the adoption rule selects on **spread, not
+speed**, so the fastest cell cannot win by being fastest.
+
+| cell | median us | spread | GHz | median x | meet |
+|---|---|---|---|---|---|
+| `unpinned_warm3` | 408.5 | 2.06x | 3.61 | 1265.5x | 10/14 |
+| `unpinned_ramp` | 382.4 | **1.62x** | 3.94 | 1349.0x | 11/14 |
+| `pinned_warm3` | 609.9 | 2.45x | 2.10 | 845.7x | 4/14 |
+| `pinned_ramp` | 600.7 | 2.04x | 2.10 | 858.7x | 5/14 |
+
+* **Prediction 1 — "rampup moves the median more than pin does": FALSIFIED.**
+  Pin moves it 408->610 us; rampup moves it ~26 us unpinned and ~9 us pinned.
+  Pin dominates by about 8x.
+* **Prediction 2 — "pin reduces the spread more than it moves the median":
+  FALSIFIED.** Pin *increased* the spread (2.06 -> 2.45x) and moved the median
+  enormously.
+* **Prediction 3 — "`pinned_ramp` is tightest": FALSIFIED.** `unpinned_ramp` is.
+* **Prediction 4 — "frequency carries the median difference": CONFIRMED**, but
+  not through rampup, which barely moved the clock (3.61 -> 3.94 unpinned,
+  2.10 -> 2.10 pinned). The clock differences are between *cells*, not between
+  warmup lengths.
+
+Pinning did not stabilise anything. It **locked the measurement to core 8's
+state**, which was 2.10 GHz for twelve invocations and then 3.9 GHz for the last
+two — a regime change mid-run that is most of why the pinned cells' spread is
+the worst of the four. So the pinned spread figures are contaminated by a
+non-stationarity and I am not treating 2.45x as a property of pinning.
+
+### The decomposition that makes all of it one effect
+
+Over all 56 invocations, four cells pooled:
+
+| quantity | range | spread | CV |
+|---|---|---|---|
+| raw us | 353.7 - 901.0 | 2.55x | 0.272 |
+| clock GHz | 2.10 - 4.00 | 1.91x | — |
+| **us x GHz (cycles)** | 1251.4 - 2297.9 | 1.84x | **0.120** |
+
+**R^2 of cost on 1/clock = 0.784.** The clock explains 78% of the variance in a
+number this repo has been quoting to four significant figures, and dividing it
+out more than halves the coefficient of variation. Pearson r(cost, loadavg) =
+**-0.36** — negative, pooling with the idle-box result and against the
+hypothesis I had registered.
+
+And once the clock is removed, the effect pinning was *supposed* to have becomes
+visible for the first time: in cycles, the pinned cells are **cheaper** —
+1335/1341 against 1487/1505, a genuine **1.12x locality gain** that was hidden
+behind core 8 running 1.7x slower. Pinning helps; it was just helping on a core
+whose clock destroyed the benefit.
+
+### H24 — and this is the one that matters: clause 2 is a ratio of two clocks
+
+The consequence I had not drawn, and nobody in this repo had checked in fifteen
+turns. **Clause 2 is a ratio, and its two sides have opposite duration
+profiles:**
+
+* numerator — the solver — is **one ~0.5-second** compute-bound C++ apply;
+* denominator — the operator — is **~0.35 milliseconds** of tiny dispatches.
+
+The governor treats those differently, so the ratio carries a clock term that
+belongs to neither implementation. `scripts/clock_matched_speedup.py` measures
+both clocks, with the sampler in the **parent** process — the first version put
+it in a thread inside the timed process and inflated the operator's reading by
+**25%**, because `process_time()` is process-wide and the sampler's own CPU
+landed in the number it existed to explain. The child publishes the
+`CLOCK_MONOTONIC` bounds of its timed region and the parent keeps only samples
+inside that window, which matters because the child spends seconds importing
+torch and microseconds doing the work.
+
+First reading, and the registered prediction was wrong in the most
+consequential way available:
+
+| | measured | I predicted |
+|---|---|---|
+| solver clock | **2.10 GHz** (base) | >= 3.5 GHz |
+| operator clock | **4.00 GHz** (turbo) | lower than the solver |
+| raw speedup | **1471.5x — PASSES** | — |
+| cycle-matched | **772.5x — FAILS** | raw would *understate* |
+
+**Nearly half of the headline speedup is the clock, not the algorithm.** The
+operator is measured at a clock 1.9x faster than the thing it is being compared
+against, because a 0.35 ms burst gets single-core turbo and a 0.5 s sustained
+run does not.
+
+Prediction 3 said the correction would run in the *flattering* direction. It
+runs the other way, which is worse for the clause and better for the repo.
+
+### Five repeats, and the asymmetry is not even stable
+
+| repeat | solver GHz | operator GHz | raw |
+|---|---|---|---|
+| 2 | 2.10 | 3.02 | 1499.3x |
+| 3 | 2.10 | 4.00 | 654.9x |
+| 4 | 2.10 | 3.49 | 1228.3x |
+| 5 | **3.90** | **2.10** | 869.8x |
+
+Repeat 5 has the asymmetry **reversed**. So this is not a systematic bias with a
+sign that can be corrected once; it is a 2.29x-wide distribution
+(654.9-1499.3x) over five repeats of an identical measurement, straddling the
+clause. Every single-invocation speedup this repo has published — 1187.7x,
+1283.8x, 958.7x, 2268x — is one draw from it.
+
+### Two defects in my own script, found by running it
+
+1. **The trustworthiness guard was mis-specified and threw away 3 of 5
+   readings.** It took cost from a pristine pass and clock from an adjacent
+   monitored one and flagged the clock whenever the two costs disagreed by more
+   than 5%. But the operator's intrinsic between-invocation spread is 2.55x, so
+   two adjacent invocations routinely differ by far more than 5% for reasons
+   that have nothing to do with the monitor — and the tell was there: the
+   monitored pass came out **faster** in every flagged case, which a monitor
+   overhead cannot do. Cost and clock now come from the **same** pass and are
+   self-consistent by construction; whether watching biases cost is asked once
+   over all readings by an exact paired sign test instead.
+2. **`spread_factor` printed `1.00x` off a single surviving value**, which reads
+   as perfect reproducibility and is the precise opposite of what n=1 means. It
+   now returns `None` below n=2.
+
+### Rung 4, asked properly, and its answer beats my arithmetic
+
+Asked `codex` *"how would you make this clause honestly pass"* rather than what
+is wrong with it. Its central protocol point:
+
+> **772× is a useful normalization, not a measured common-frequency latency
+> ratio.** Multiplying time by frequency estimates cycles only when the sampled
+> frequency represents the timed work. Predicting latency at another frequency
+> additionally assumes scaling that memory stalls and dispatch overhead may not
+> obey. [...] Each operator block should contain enough **sequential batch-one
+> requests** to last roughly as long as a solver block. [...] This improves
+> measurement resolution without giving the operator batching advantages.
+
+That is better than what I had. My cycle-matched number *estimates* the
+common-frequency ratio from a frequency reading; matching the **duration
+profile** — running the operator as 0.5 s of back-to-back batch-1 sequential
+calls — *measures* it, and needs no assumption about how stalls scale. It is
+also available without root, which matters: its first suggestion, disabling
+turbo via `intel_pstate/no_turbo`, is root-owned and this loop has no sudo.
+
+Implemented as the `sustained` arm. It is **not** batching: batch size stays 1
+and the calls stay sequential; only how many consecutive ones happen changes.
+
+It also set the quantitative gate honestly — *"a 1.9× gain requires saving 166
+µs [...] That is a concrete benchmark target, **not a guaranteed consequence of
+writing C++**"* — and flagged that the erf-GELU→ReLU saving it computes from my
+own isolated numbers (139.5 µs) may not be additive end to end. Both correct,
+and the second is the mistake this repo has now made four times.
+
+### The pre-registration I am overriding, and why that is not laundering
+
+The first version of `clock_matched_speedup.py` registered **"the RAW ratio,
+always"** as the verdict, on the reasoning that a real caller also issues short
+bursts and also gets whatever clock the governor gives it. I wrote that
+believing raw would be the *conservative* reading. It is the *flattering* one:
+raw passes at 1471x and the clock-matched estimate fails at 772x.
+
+Honouring a pre-registration whose premise has been falsified would be using the
+registration to launder a number, which is the opposite of what it is for. So
+the verdict moves to the **sustained raw ratio** if the sustained arm equalises
+the clocks — the only reading that measures both sides in the same governor
+regime and estimates nothing. The burst raw ratio stays as the **deployment**
+reading and the cycle-matched as the portable **architecture** reading. Three
+questions, three numbers, none deleted, and the override is recorded here rather
+than performed silently.
+
+**Running:** `clock_matched_speedup.py --repeats 8 --sustained-s 0.5`, at the
+8-repeat standard this repo already demands of accuracy verdicts and has never
+once demanded of cost.
+
+### The 8-repeat distribution: duration-matching does what it was predicted to do, and the clause still straddles
+
+`runs/clock_matched_speedup.json`, 8 repeats, solver and both operator regimes
+priced in every repeat:
+
+| reading | median | range | spread | meets 1000x |
+|---|---|---|---|---|
+| raw, burst (the published protocol) | 1255.4x | 568-1342 | **2.36x** | 7/8 |
+| raw, **sustained** (duration-matched) | 1225.5x | 738-1366 | **1.85x** | 6/8 |
+| cycle-matched, burst | 1265.3x | 811-1338 | **1.65x** | 7/8 |
+| cycle-matched, **sustained** | 1235.3x | 948-1366 | **1.44x** | 6/8 |
+
+| clock | median | range |
+|---|---|---|
+| solver | 3.93 GHz | 3.00-4.00 |
+| operator, burst | 3.79 GHz | 2.10-4.00 |
+| operator, sustained | 3.85 GHz | 2.10-4.00 |
+
+**The registered prediction for the sustained arm is confirmed on spread and
+falsified on level.** Spread falls monotonically as the clock term is removed,
+by protocol then by arithmetic: 2.36 -> 1.85 -> 1.65 -> **1.44x**. But the
+medians barely move — 1225-1265x across all four readings — so the clock was
+not, in this run, adding a systematic bias to correct.
+
+**And the reason it was not is the thing worth recording: the asymmetry did not
+reproduce.** The first run measured the solver at 2.10 GHz in four of five
+repeats; this one measured it at 3.93 GHz median. Same script, same
+architecture, same box, hours apart. So the 1.9x clock gap that turned 1471x
+into 772x is **real but intermittent**, not a standing bias with a sign I can
+correct once. Its effect is to widen the distribution, not to shift it.
+
+That retires the sharpest version of my own claim from earlier this turn.
+"Nearly half of the headline speedup is the clock" was true of the pair I
+measured it on and is **not** a general statement about this repo's numbers. The
+general statement the evidence supports is weaker and still serious: *the clock
+is an uncontrolled term in every speedup this repo has published, it moves the
+ratio by up to 1.9x, and which side it favours varies between runs.*
+
+### So what is clause 2's status, and what would settle it
+
+Three measurements of one unchanged architecture, all this weekend:
+
+| run | condition | meets 1000x |
+|---|---|---|
+| `cost_repro_..._IDLEBOX.json` | loadavg ~20 | **1/14** |
+| `cost_repro_....json` | loadavg ~420 | **3/14** |
+| `clock_matched_speedup.json` | loadavg ~50, both clocks measured | **6/8** |
+
+The architecture did not change between these. **The measurement is the
+bottleneck to a verdict, not the operator.** By this repo's own standard — a
+distribution whose whole range sits on one side — clause 2 is **not met** by
+`specprop_m4_ma64`, and it is not met in a way that no amount of re-timing will
+fix, because the failures are draws from a distribution the box controls.
+
+Two routes out, and only one is available to me:
+
+* **Control the clock.** `intel_pstate/no_turbo` and `scaling_max_freq` are
+  root-owned and this loop has no sudo (`sudo -n` fails, and the box cannot even
+  resolve its own hostname). Recorded as a blocked route, not an untried one.
+* **Buy enough margin that the distribution clears 1000x despite the clock.**
+  The tightest reading's minimum is 948x, so the gap at the worst draw is
+  **1.06x**, and at the burst reading's worst draw it is 1.76x. `codex` costed
+  the concrete route at rung 4: a native fused CPU forward pass — *"A C++
+  wrapper that merely repeats the existing ATen calls is insufficient. It needs
+  actual fused loops and reusable workspaces"* — plus replacing the full-grid
+  erf-GELU with ReLU, which its arithmetic puts at 139.5 µs of a ~350 µs
+  budget. It was careful to price that as a target and not a result: *"That is
+  a concrete benchmark target, **not a guaranteed consequence of writing
+  C++**."*
+
+This is rung 2, it is an architecture change rather than a measurement change,
+and it is the next thing to build once clause 1 has an answer — because a
+faster model that misses 0.05 by 1.78x is worth nothing.
+
+## Turn 15, continued — the H22 sweep trained the wrong model for nine arms, and the accident measured something this repo had never measured
+
+### The defect
+
+Nine arms carrying `--state-modes 4/8/16` finished training last turn and none
+of them was scored. The reason `eval.py` refused them:
+
+```
+Missing key(s) in state_dict: "state_norm.weight", "state_norm.bias".
+size mismatch for a_head.0.weight: copying a param with shape [64, 7] from
+checkpoint, the shape in current model is [64, 263].
+```
+
+The **checkpoint** is `[64, 7]` — that is `state_modes=0`. `scripts/train.py`
+declared `--state-modes`, parsed it, wrote it into every run's `args.json` via
+`vars(a)`, and never passed it to the constructor:
+
+```python
+model = SpectralPropagator(cond_dim=..., modes=a.modes, modes_a=a.modes_a)
+```
+
+All nine trained the anchor. The proof needs no inference: every one carries
+`params = 1070144`, the anchor's exact count, and each `best_val_roll_band`
+equals the corresponding anchor seed's **to all seventeen digits**.
+
+**This is mine**, committed last turn as `eb26883` with the message "H22: make
+the additive head a nonlinear function of phi". I wrote four property tests for
+`SpectralPropagator(state_modes=...)` and all four passed, because the class was
+correct. Nothing tested that the training script could reach it. Cost: 2.4
+GPU-hours.
+
+**The near miss is worse than the cost.** `eval.py` rebuilds the model from
+`args.json` and so the shapes disagreed. Had it rebuilt from the checkpoint's
+own shapes — which is the more forgiving and more common design — nine anchor
+runs would have been scored, the accuracy would have come out flat at ~0.088,
+and **H22 would have been recorded as falsified**. The falsification would have
+been of an architecture that was never trained, and its registered falsifier
+("if sm8 lands within the seed spread of m4_ma64, the four-operation family is
+closed for clause 1") would have fired on the anchor compared against itself.
+That is the failure mode this log exists to catch and it came within one design
+decision of being published.
+
+Fixed by extracting `build_model()` — the construction now has one home the
+tests can reach — and guarded by `tests/test_flag_wiring.py`, which asserts
+every architecture-shaping flag changes the model it names, plus a meta-test
+that fails if a flag is added to `build_model` without a wiring assertion.
+Verified by reintroducing the bug: the suite fails with
+`--state-modes 4 did not change the model: 1070144 params, same as
+state_modes=0. This is the H22 defect recurring.`
+
+Re-launched, and the parameter counts now confirm the model is the intended one
+before a single epoch is trusted: **1,074,368 / 1,087,040 / 1,137,728** for
+sm4/sm8/sm16, matching the three configurations `runs/arch_cost_h22.json`
+priced.
+
+### What the accident measured: run-to-run spread is exactly zero
+
+The nine arms are three triples — `sm4_s1`, `sm8_s1`, `sm16_s1` were the same
+configuration at the same seed, run as three independent invocations, and
+likewise for seeds 2 and 3. That is the experiment the seed-count discipline
+asks for and this repo had never actually run: *repeat one configuration and
+measure your own run-to-run spread.*
+
+| seed | three independent invocations | spread |
+|---|---|---|
+| 1 | 0.08605794188876947 x3 | **0** |
+| 2 | 0.08698809656004111 x3 | **0** |
+| 3 | 0.08942687273025512 x3 | **0** |
+
+**Bitwise identical, to all seventeen digits, across invocations on different
+days.** So this pipeline is deterministic given a seed, and every spread this
+repo has reported is attributable to the seed with no nondeterministic floor
+underneath it. That is a genuinely useful licence: an 8-seed permutation test
+here is testing seed variation and nothing else, which is the assumption those
+tests have been making without evidence.
+
+Kept in `runs/_mistrained_h22_state_modes_dropped/` with a `WHY.md` rather than
+deleted, because their `args.json` is the evidence for the defect.
+
+### Also launched, on the other half of the lease
+
+`scripts/anchor_seeds.sh` — the specprop anchor at seeds 4-8, on GPU 1, so that
+if the H22 screen moves the 8-seed comparison does not then have to wait for its
+own control. The anchor's three known seeds span 0.08606-0.08943, a range of
+0.00337, which is already the size of effects this repo has reported; three is
+a screen and not a verdict on either side of the comparison.
