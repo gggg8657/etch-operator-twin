@@ -1,0 +1,94 @@
+{
+  "hypothesis": "H25: the additive coefficient head is arithmetic-bound and 98% of the parameters, so factorising it buys real time -- unlike the four previous cost attacks here, which assumed arithmetic where the cost was dispatch.",
+  "predictions_registered_before_the_run": {
+    "a_rank=4": "~1.66x on the whole forward",
+    "a_rank=8": "~1.48x",
+    "a_rank=16": "~1.22x",
+    "stated_in_advance": "none of these is the 1.9x clause 2 needs; this is a necessary part of the margin, not the whole of it"
+  },
+  "falsifier_registered_before_the_run": "if a_rank=4 does not beat a_rank=16 in the STAGE by roughly their 4x MAC ratio, the stage is not purely arithmetic-bound",
+  "protocol": {
+    "all_rows_in_one_invocation": true,
+    "why": "one unchanged architecture read 350-901 us across 56 invocations this weekend, with the CPU clock explaining 78% of the variance, so only within-invocation deltas mean anything on this box",
+    "rounds": 24,
+    "warm": 5,
+    "loadavg_at_start": 415.56103515625,
+    "stage_cost_method": "forward minus a fixed 'everything else' of 282.4 us, taken from runs/specprop_profile.json (anchor forward 525.5 us minus anchor stage 243.1 us). Subtraction, not a second profile.",
+    "no_accuracy_claimed": "these are cost rows only. A rank constraint encodes a separability prior on the additive spectral response that nothing has measured."
+  },
+  "rows": [
+    {
+      "a_rank": 0,
+      "config": "specprop_m4_ma64_K10",
+      "params": 1070144,
+      "forward_us": 609.8239999999811,
+      "within_spread": 1.158035196087059,
+      "stage_macs": 1048576,
+      "stage_us": 327.42499999993686,
+      "speedup_vs_dense": 1.0,
+      "mac_ratio_vs_dense": 1.0,
+      "stage_time_ratio_vs_dense": 1.0,
+      "translation_efficiency": null
+    },
+    {
+      "a_rank": 16,
+      "config": "specprop_m4_ma64_r16_K10",
+      "params": 404544,
+      "forward_us": 471.1929999999809,
+      "within_spread": 1.3226275786040944,
+      "stage_macs": 655360,
+      "stage_us": 188.79399999993666,
+      "speedup_vs_dense": 1.2942127748077876,
+      "mac_ratio_vs_dense": 1.6,
+      "stage_time_ratio_vs_dense": 1.734297700139023,
+      "translation_efficiency": 1.2238295002317048
+    },
+    {
+      "a_rank": 8,
+      "config": "specprop_m4_ma64_r8_K10",
+      "params": 204864,
+      "forward_us": 412.0570000000212,
+      "within_spread": 1.5337444443032378,
+      "stage_macs": 327680,
+      "stage_us": 129.657999999977,
+      "speedup_vs_dense": 1.4799505893600877,
+      "mac_ratio_vs_dense": 3.2,
+      "stage_time_ratio_vs_dense": 2.5252973206435003,
+      "translation_efficiency": 0.6933169639288638
+    },
+    {
+      "a_rank": 4,
+      "config": "specprop_m4_ma64_r4_K10",
+      "params": 105024,
+      "forward_us": 384.3995000000211,
+      "within_spread": 1.3373422918521267,
+      "stage_macs": 163840,
+      "stage_us": 102.00049999997685,
+      "speedup_vs_dense": 1.5864328647668575,
+      "mac_ratio_vs_dense": 6.4,
+      "stage_time_ratio_vs_dense": 3.2100332841506773,
+      "translation_efficiency": 0.40926542299086616
+    }
+  ],
+  "floor_model": {
+    "form": "stage_us = floor_us + macs / rate",
+    "floor_us": 72.43249999999708,
+    "us_per_mac": 0.00017713710239946581,
+    "implied_gmac_per_s": 5.645344687556635,
+    "fitted_on": "the three rank rows",
+    "check_predicts_dense_stage_us": 258.1742142856193,
+    "measured_dense_stage_us": 327.42499999993686,
+    "dense_prediction_error_pct": -21.15012162001402
+  },
+  "falsifier_outcome": {
+    "mac_ratio_r16_over_r4": 4.0,
+    "measured_stage_ratio_r16_over_r4": 1.8509124955267817,
+    "verdict": "FIRES: the stage is only partially arithmetic-bound"
+  },
+  "bound_on_this_route": {
+    "best_possible_stage_us_at_rank_1": 79.6880357142792,
+    "best_possible_forward_us": 362.0870357143234,
+    "best_possible_speedup": 1.684191754606523,
+    "reading": "even at rank 1 this route cannot reach the 1.9x that clause 2's worst draw needs, because a floor in the stage does not shrink with the rank."
+  }
+}

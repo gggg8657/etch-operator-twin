@@ -425,6 +425,46 @@ SPECS.update({
 })
 
 
+
+# H25 -- the first cost attack in this repo aimed at a MEASURED bottleneck.
+# runs/specprop_profile.json times the stages of a 128x128 forward and finds
+# _coeffs_a at 243.1 us, 46.3% of the whole, against 15.4% for every transform
+# combined. That stage is one nn.Linear(64 -> 16384) carrying 98.0% of the
+# model's parameters, and at 2.10 MFLOP in 243.1 us it runs at 8.63 GFLOP/s --
+# ARITHMETIC-bound, which is what makes it different from every previous cost
+# attack here. torch.compile, the coarse spectral body and the state head all
+# failed because the cost was dispatch and the reasoning was arithmetic; here
+# the arithmetic reasoning is the right reasoning.
+#
+# PREDICTED, before the measurement, from the MAC counts in LowRankCoeffHead
+# (dense 1,048,576; rank-r 24,576r + 16,384r):
+#
+#   a_rank=4   6.4x fewer MACs in the stage -> stage ~38 us  -> forward ~320 us
+#   a_rank=8   3.2x fewer MACs              -> stage ~76 us  -> forward ~358 us
+#   a_rank=16  1.6x fewer MACs              -> stage ~152 us -> forward ~434 us
+#
+# i.e. 1.2-1.6x on the whole forward, NOT the 1.9x clause 2 needs on its own.
+# Stated in advance so that a smaller measured gain is not retold as a success:
+# this is a necessary part of the margin, not the whole of it.
+#
+# FALSIFIER for the arithmetic-bound claim: if a_rank=4 does not beat a_rank=16
+# by roughly the MAC ratio (4x in the stage), the stage is dispatch-bound after
+# all, the profile's attribution is wrong, and the whole premise of this row
+# dies with it.
+SPECS.update({
+    f"specprop_m4_ma64_r{r}_K10": dict(
+        build="from eot.operator import SpectralPropagator\n"
+              f"M = SpectralPropagator(cond_dim=7, modes=4, modes_a=64, "
+              f"a_rank={r})",
+        call="M(phi, cond)", n_apply=1,
+        note=f"additive coefficient head factorised at rank {r}. Encodes a "
+             "separability prior on the additive spectral response that "
+             "nothing has measured. Accuracy UNMEASURED at the time this row "
+             "was priced.")
+    for r in [4, 8, 16]
+})
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--rounds", type=int, default=16)

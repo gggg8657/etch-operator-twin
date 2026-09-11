@@ -1,0 +1,66 @@
+{
+  "question": "is the additive coefficient head arithmetic-bound, memory-bound, or overhead-bound at batch 1?",
+  "corrects": "my own claim, made earlier the same turn, that the stage is ARITHMETIC-bound because 2.10 MFLOP in 243.1 us is 8.63 GFLOP/s. That inference does not follow -- the same figure is equally consistent with streaming 4.26 MB of weights.",
+  "batching_is_a_diagnostic_not_a_claim": "the KPI is a per-wafer latency and every clause-2 number in this repo is batch 1. Batch appears here ONLY because it is the one knob that amortises weight streaming and per-call dispatch without amortising arithmetic, which is exactly what discriminates the three explanations. No speedup is claimed from it and none may be cited from this file.",
+  "reading_rule_registered_before_the_run": "flat per-sample cost => arithmetic-bound. Falling => not. Dense falling FASTER than rank-4 => weight streaming specifically, since dense carries 4.26 MB against rank-4's 0.40 MB.",
+  "protocol": {
+    "batches": [
+      1,
+      2,
+      4,
+      8,
+      16
+    ],
+    "inner_reps": 200,
+    "repeats": 3,
+    "threads": 1,
+    "estimator": "CPU-seconds per sample, median over reps then median over repeats, fresh subprocess per repeat"
+  },
+  "variants": {
+    "dense": {
+      "a_rank": 0,
+      "weights_mb": 4.261888,
+      "per_sample_us": {
+        "1": 201.03300000018365,
+        "2": 96.68350000002768,
+        "4": 89.01225000002012,
+        "8": 54.12825000000731,
+        "16": 34.767749999997655
+      },
+      "per_sample_speedup_vs_b1": {
+        "1": 1.0,
+        "2": 2.07928964094314,
+        "4": 2.258486893659448,
+        "8": 3.7140125535216173,
+        "16": 5.78216882024857
+      },
+      "amortisation_factor": 5.78216882024857
+    },
+    "rank4": {
+      "a_rank": 4,
+      "weights_mb": 0.401408,
+      "per_sample_us": {
+        "1": 62.96799999994107,
+        "2": 32.176499999980734,
+        "4": 20.95474999996849,
+        "8": 12.005124999991956,
+        "16": 9.832812499999122
+      },
+      "per_sample_speedup_vs_b1": {
+        "1": 1.0,
+        "2": 1.9569561636591541,
+        "4": 3.0049511447302284,
+        "8": 5.245093241426746,
+        "16": 6.403864611467644
+      },
+      "amortisation_factor": 6.403864611467644
+    }
+  },
+  "verdict": {
+    "arithmetic_bound": false,
+    "dense_amortisation": 5.78216882024857,
+    "rank4_amortisation": 6.403864611467644,
+    "dense_falls_faster_than_rank4": false,
+    "reading": "NOT arithmetic-bound: per-sample cost falls 5.78x (dense) and 6.40x (rank-4) from batch 1 to batch 16, where arithmetic alone predicts 1.00x. And rank-4 -- whose 0.40 MB of weights fit in cache -- amortises AT LEAST as much as dense, so weight streaming is not the whole story either: what dominates batch-1 cost is fixed per-call overhead, the same conclusion this repo reached for torch.compile, the coarse spectral body and the state head."
+  }
+}

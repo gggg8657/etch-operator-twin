@@ -83,18 +83,36 @@ def build_model(a, cond_dim):
     the construction lived inline in `main()` and nothing could reach it: the
     flag parsed, was recorded into args.json by `vars(a)`, and never met the
     constructor. A test against a COPY of this logic would not have caught it.
+
+    Every architecture-shaping constructor parameter of every model class must
+    appear here; `test_every_constructor_parameter_is_reachable_from_build_model`
+    fails otherwise. That test was added after `a_rank` was found on
+    `SpectralPropagator` with a cost script, a measured 1.59x, and no way to
+    train it -- the same defect as H22 arriving from the opposite direction,
+    and the earlier meta-test could not see it because it only checked flags
+    this function already mentioned.
+
+    Zero means "class default" for the integer widths, so no existing arm's
+    geometry changes and every trained checkpoint still loads.
     """
     if a.arch == "fno":
-        return EtchOperator(cond_dim=cond_dim, width=a.width,
-                            modes=a.modes, n_layers=a.layers)
+        kw = dict(cond_dim=cond_dim, width=a.width, modes=a.modes,
+                  n_layers=a.layers, norm=not a.no_norm)
+        if a.cond_ch:
+            kw["cond_ch"] = a.cond_ch
+        return EtchOperator(**kw)
     if a.arch == "specprop":
-        return SpectralPropagator(cond_dim=cond_dim, modes=a.modes,
-                                  modes_a=a.modes_a,
-                                  state_modes=a.state_modes)
-    return MultiScaleOperator(
-        cond_dim=cond_dim, width=a.width, modes=a.modes,
-        n_layers=a.layers, width_full=a.width_full, scale=a.scale,
-        n_local=a.n_local, act=a.act)
+        kw = dict(cond_dim=cond_dim, modes=a.modes, modes_a=a.modes_a,
+                  state_modes=a.state_modes, a_rank=a.a_rank)
+        if a.hidden:
+            kw["hidden"] = a.hidden
+        return SpectralPropagator(**kw)
+    kw = dict(cond_dim=cond_dim, width=a.width, modes=a.modes,
+              n_layers=a.layers, width_full=a.width_full, scale=a.scale,
+              n_local=a.n_local, act=a.act, norm=not a.no_norm)
+    if a.cond_ch:
+        kw["cond_ch"] = a.cond_ch
+    return MultiScaleOperator(**kw)
 
 
 def main():
@@ -131,6 +149,33 @@ def main():
     ap.add_argument("--cond", choices=("dt", "depth"), default="dt",
                     help="horizon conditioning channel: log(K*dt), or the "
                          "achieved etch depth from scripts/derive_depth.py")
+    ap.add_argument("--hidden", type=int, default=0,
+                    help="specprop only: width of the coefficient heads' "
+                         "bottleneck. 0 = the class default (64). This scales "
+                         "the dominant stage's MAC term linearly "
+                         "(runs/bandwidth_bound.json fits stage_us ~ "
+                         "3.17e-3*n_out + 1.26e-4*hidden*n_out, R^2 0.987), so "
+                         "it is the other lever on the same cost. Untested for "
+                         "accuracy; wired so that it CAN be tested.")
+    ap.add_argument("--cond-ch", type=int, default=0,
+                    help="fno/multiscale only: conditioning channels. 0 = the "
+                         "class default (24 for fno, 8 for multiscale).")
+    ap.add_argument("--no-norm", action="store_true",
+                    help="fno/multiscale only: drop the GroupNorm in each "
+                         "block. Default keeps it, which is what every "
+                         "existing checkpoint used.")
+    ap.add_argument("--a-rank", type=int, default=0,
+                    help="specprop only: factorise the additive coefficient "
+                         "head as a rank-r outer product instead of a dense "
+                         "hidden->2*(2*ma)*ma projection. 0 = dense, which is "
+                         "what every checkpoint before 2026-09-11 used. The "
+                         "dense head is 98.0%% of the model's parameters and "
+                         "46.3%% of its forward (runs/specprop_profile.json), "
+                         "and runs/rank_cost.json prices r=4 at 1.59x on the "
+                         "whole forward -- but NO accuracy has been measured "
+                         "for any rank, and a rank constraint asserts the "
+                         "additive spectral response is separable in the two "
+                         "frequency axes, which nothing has shown.")
     ap.add_argument("--state-modes", type=int, default=0,
                     help="specprop only: feed a state_modes x state_modes "
                          "spectral summary of the CURRENT field into the "

@@ -1,0 +1,81 @@
+{
+  "question": "which stage of a SpectralPropagator forward carries the cost that clause 2 needs 1.9x of?",
+  "dead_route_recorded_here": "codex's 'replace the full-grid erf-GELU with ReLU' is worth ZERO for this architecture: instrumenting every activation module during one 128x128 forward finds two GELUs, both on 64-element vectors. The 152.7 us erf-GELU figure belongs to the multiscale/FNO family. I gave codex that fact without saying which architecture it came from, so the bad premise is mine.",
+  "protocol": {
+    "grid": 128,
+    "inner_reps": 400,
+    "warmup": 20,
+    "repeats": 5,
+    "estimator": "CPU-seconds, one thread, fresh subprocess per repeat",
+    "stages_do_not_sum": "stage timings exclude inter-stage dispatch and each pays its own timing overhead, so they are not expected to sum to the whole. The shortfall is reported, not hidden."
+  },
+  "stages": {
+    "01_rfft2": {
+      "median_us": 31.362999999950958,
+      "min_us": 26.989999999837977,
+      "max_us": 32.197999999983296,
+      "pct_of_forward": 5.968731860949173
+    },
+    "02_zeros_like": {
+      "median_us": 3.275999999940993,
+      "min_us": 1.9199999998775752,
+      "max_us": 3.339999999907306,
+      "pct_of_forward": 0.623459668276245
+    },
+    "03_cond_a": {
+      "median_us": 0.8310000001454654,
+      "min_us": 0.43999999999044803,
+      "max_us": 0.8460000000543033,
+      "pct_of_forward": 0.15814865214822443
+    },
+    "04_coeffs_a": {
+      "median_us": 243.05599999996375,
+      "min_us": 228.94600000000764,
+      "max_us": 245.09799999994362,
+      "pct_of_forward": 46.25629216582963
+    },
+    "05_coeffs_h": {
+      "median_us": 44.5680000000781,
+      "min_us": 27.722000000007796,
+      "max_us": 45.61400000002713,
+      "pct_of_forward": 8.481791970782925
+    },
+    "06_hermitian": {
+      "median_us": 74.13000000000558,
+      "min_us": 51.63299999999538,
+      "max_us": 76.2209999998209,
+      "pct_of_forward": 14.107773263172765
+    },
+    "07_irfft2": {
+      "median_us": 49.333999999845446,
+      "min_us": 31.519999999840564,
+      "max_us": 49.497999999870146,
+      "pct_of_forward": 9.388815407569572
+    },
+    "08_add_residual": {
+      "median_us": 4.273000000054594,
+      "min_us": 2.355999999981151,
+      "max_us": 4.349999999986309,
+      "pct_of_forward": 0.8131999885917023
+    },
+    "98_whole_residual": {
+      "median_us": 509.53100000006305,
+      "min_us": 495.80699999984824,
+      "max_us": 529.2500000000366,
+      "pct_of_forward": 96.96948359042264
+    },
+    "99_whole_forward": {
+      "median_us": 525.455000000008,
+      "min_us": 450.5400000001103,
+      "max_us": 532.3269999999436,
+      "pct_of_forward": 100.0
+    }
+  },
+  "accounting": {
+    "whole_forward_us": 525.455000000008,
+    "whole_residual_us": 509.53100000006305,
+    "sum_of_stages_us": 450.83099999998484,
+    "unaccounted_us": 74.62400000002316,
+    "unaccounted_pct": 14.201787022679778
+  }
+}

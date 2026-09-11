@@ -417,8 +417,80 @@ def build_from_cfg(cfg: dict, cond_dim: int):
                                   modes_a=cfg.get("modes_a", 16),
                                   hermitian_closed=cfg.get("hermitian_closed",
                                                            False),
-                                  state_modes=cfg.get("state_modes", 0))
+                                  state_modes=cfg.get("state_modes", 0),
+                                  a_rank=cfg.get("a_rank", 0))
     raise ValueError(f"unknown arch {arch!r} in args.json")
+
+
+class LowRankCoeffHead(nn.Module):
+    """The additive head's output projection, factorised.
+
+    **Why this exists, and it is the first cost change in this repo aimed at a
+    MEASURED bottleneck rather than a guessed one.**
+    `runs/specprop_profile.json` times the stages of a 128x128 forward:
+
+        _coeffs_a       243.1 us   46.3% of the forward
+        _hermitian       74.1 us   14.1%
+        irfft2           49.3 us    9.4%
+        _coeffs_h        44.6 us    8.5%
+        rfft2            31.4 us    6.0%
+
+    All the transforms together are 15.4%. Nearly half the forward is one
+    `nn.Linear(hidden=64 -> 2*(2*ma)*ma = 16384)`, which is also **98.0% of the
+    model's parameters** (1,048,576 of 1,070,144).
+
+    **And unlike everything else this repo has tried to make faster, this stage
+    is arithmetic-bound.** 2.10 MFLOP in 243.1 us is 8.63 GFLOP/s, a credible
+    single-thread rate. The four previous cost attacks all failed because they
+    assumed arithmetic where the cost was dispatch -- torch.compile 2.0-3.3x
+    SLOWER, a coarse spectral body worth 2.26x of a predicted 16x, a state head
+    priced at 25-55 us and costing 87-135. Here the arithmetic reasoning is the
+    right reasoning, and a genuine FLOP reduction should translate. That is a
+    falsifiable claim about this stage and it is the point of the experiment.
+
+    **The factorisation.** The dense head emits a (2ma, ma) complex coefficient
+    field per sample. This emits rank-`r` factors instead and takes their outer
+    product:
+
+        U in R^{2ma x r},  V in R^{ma x r},  coeffs = U V^T,  per real/imag part
+
+    Cost, for `ma=64, hidden=64`:
+
+        dense   hidden -> 2*(2ma)*ma          = 1,048,576 MACs
+        rank-r  hidden -> 2*r*(2ma + ma)        =    24,576 r
+                plus outer products 2*(2ma)(ma)r =    16,384 r
+                                            r=8  =   327,680  (3.2x fewer)
+                                            r=4  =   163,840  (6.4x fewer)
+
+    **The prior this encodes, stated so it can be wrong.** A rank constraint on
+    the coefficient field says the additive spectral response is separable in
+    the two frequency axes. Nothing measured says it is. If the accuracy gives
+    out at every rank that is cheap enough to matter, the additive head's cost
+    is irreducible in this form and that is a real statement about the
+    architecture, not a null.
+
+    `a_rank=0` selects the dense head and is the default, so the five trained
+    checkpoints that depend on the 1,070,144 parameter count still load.
+    """
+
+    def __init__(self, in_dim, hidden, modes_a, rank):
+        super().__init__()
+        self.modes_a, self.rank = modes_a, rank
+        self.trunk = nn.Sequential(nn.Linear(in_dim, hidden), nn.GELU())
+        # One projection for both factors of both parts, so the stage is a
+        # single matmul rather than four small ones -- the dispatch lesson from
+        # H15 applies even when the arithmetic is what dominates.
+        self.proj = nn.Linear(hidden, 2 * rank * (2 * modes_a + modes_a))
+        self.out_features = 2 * (2 * modes_a) * modes_a   # what _coeffs expects
+
+    def forward(self, cond):
+        B = cond.shape[0]
+        ma, r = self.modes_a, self.rank
+        z = self.proj(self.trunk(cond))                    # (B, 2r(3ma))
+        z = z.view(B, 2, r, 3 * ma)
+        u, v = z[..., :2 * ma], z[..., 2 * ma:]            # (B,2,r,2ma),(B,2,r,ma)
+        # (B, 2, 2ma, ma), flattened to the layout _coeffs reshapes.
+        return torch.einsum("bpri,bprj->bpij", u, v).reshape(B, -1)
 
 
 class SpectralPropagator(nn.Module):
@@ -503,6 +575,7 @@ class SpectralPropagator(nn.Module):
         n_grid: int = 128,
         hermitian_closed: bool = False,
         state_modes: int = 0,
+        a_rank: int = 0,
     ):
         super().__init__()
         self.modes, self.modes_a, self.n_grid = modes, modes_a, n_grid
@@ -539,7 +612,14 @@ class SpectralPropagator(nn.Module):
         # a NONLINEAR dependence on phi.
         self.state_modes = state_modes
         self.state_dim = 2 * (2 * state_modes) * state_modes if state_modes else 0
-        self.a_head = nn.Sequential(
+        # a_rank=0 keeps the dense projection, which is the default and what
+        # every trained checkpoint in this repo carries. a_rank>0 factorises
+        # it; see LowRankCoeffHead for the measured reason and the prior it
+        # encodes.
+        self.a_rank = a_rank
+        self.a_head = LowRankCoeffHead(
+            cond_dim + self.state_dim, hidden, modes_a, a_rank
+        ) if a_rank else nn.Sequential(
             nn.Linear(cond_dim + self.state_dim, hidden), nn.GELU(),
             nn.Linear(hidden, 2 * (2 * modes_a) * modes_a),
         )
@@ -561,8 +641,15 @@ class SpectralPropagator(nn.Module):
         for head in (self.h_head, self.a_head):
             if head is None:
                 continue
-            nn.init.zeros_(head[-1].bias)
-            nn.init.normal_(head[-1].weight, std=1e-3)
+            # LowRankCoeffHead is not a Sequential and its output is a product
+            # of two factors, so a std=1e-3 on each would give a 1e-6 residual
+            # rather than the 1e-3 the dense head starts at. Initialise one
+            # factor at the same scale and leave the other at its default, so
+            # the product matches the dense head's starting magnitude.
+            last = head.proj if isinstance(head, LowRankCoeffHead) else head[-1]
+            nn.init.zeros_(last.bias)
+            nn.init.normal_(last.weight, std=1e-3 if last is not
+                            getattr(head, "proj", None) else 3.2e-2)
 
     def _coeffs(self, cond, m, head):
         """(B, 2m, m) complex coefficients from the recipe.

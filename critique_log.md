@@ -6347,3 +6347,117 @@ if the H22 screen moves the 8-seed comparison does not then have to wait for its
 own control. The anchor's three known seeds span 0.08606-0.08943, a range of
 0.00337, which is already the size of effects this repo has reported; three is
 a screen and not a verdict on either side of the comparison.
+
+## Turn 15, part 3 — the profile finds where the cost is, a factorisation takes 1.59x of it, and my explanation for why is wrong
+
+### Rung 4's cheaper half was void, and the bad premise was mine
+
+`codex` offered two routes to clause 2's missing margin. The first:
+
+> **Replace any remaining full-grid erf-GELU with ReLU and retrain or
+> distill.** Your isolated measurements imply a 139.5 µs saving per
+> replacement. One replacement would ideally yield **210.5 µs, or 1.66×
+> overall**.
+
+Worth **exactly zero** here. Instrumenting every activation module during one
+128x128 forward of `SpectralPropagator` finds two GELUs, both on **64-element**
+vectors, and their input size does not change when the grid goes 128 -> 256.
+There is no full-grid activation to replace.
+
+The 152.7 µs erf-GELU figure is a real measurement — of the multiscale/FNO
+family. I handed codex a list of "prior measured facts" without saying which
+architecture each belonged to, so its arithmetic was sound and the false
+premise was mine. `tests/test_no_full_grid_activation.py` pins it so the
+proposal cannot be made a third time.
+
+### The profile, which nobody in this repo had run
+
+`runs/specprop_profile.json`, stages of one forward, each timed in isolation on
+the tensors the real forward uses:
+
+| stage | median µs | % of forward |
+|---|---|---|
+| **`_coeffs_a`** | **243.1** | **46.3%** |
+| `_hermitian` | 74.1 | 14.1% |
+| `irfft2` | 49.3 | 9.4% |
+| `_coeffs_h` | 44.6 | 8.5% |
+| `rfft2` | 31.4 | 6.0% |
+| everything else | 8.4 | 1.6% |
+| unaccounted (inter-stage dispatch) | 74.6 | 14.2% |
+
+**Every FFT combined is 15.4%.** Nearly half the forward is one
+`nn.Linear(64 -> 16384)` — which is also **98.0% of the parameters**,
+1,048,576 of 1,070,144. Fifteen turns of clause-2 work had been attacking
+transforms, spatial mixing, activations and grid resolution, and the cost was
+in the coefficient head the whole time.
+
+### H25: factorise it. 1.59x, measured in one invocation
+
+`LowRankCoeffHead` emits rank-`r` factors and takes their outer product instead
+of the dense (2ma, ma) field. `a_rank=0` is the default and reproduces the
+1,070,144 parameter count exactly, so the trained checkpoints still load.
+
+`runs/rank_cost.json`, all rows in ONE invocation because this weekend
+established that between-invocation cost comparisons on this box are worthless:
+
+| a_rank | params | forward µs | stage µs | MAC reduction | stage time reduction | translation | vs dense |
+|---|---|---|---|---|---|---|---|
+| 0 (dense) | 1,070,144 | 609.8 | 327.4 | 1.00x | 1.00x | — | 1.00x |
+| 16 | 404,544 | 471.2 | 188.8 | 1.60x | 1.73x | 122% | **1.29x** |
+| 8 | 204,864 | 412.1 | 129.7 | 3.20x | 2.53x | 69% | **1.48x** |
+| 4 | 105,024 | 384.4 | 102.0 | 6.40x | 3.21x | 41% | **1.59x** |
+
+Registered predictions were 1.66x / 1.48x / 1.22x. Measured 1.59 / 1.48 / 1.29 —
+the closest this repo's cost predictions have ever come, and I said in advance
+that none of them is the 1.9x clause 2 needs, so the 1.59x is **a necessary
+part of the margin and not the margin**.
+
+**The bound matters more than the number.** Fitting
+`stage = floor + MACs/rate` over the three rank rows gives a **72.4 µs floor
+that does not shrink with the rank**, so even at rank 1 this route yields at
+most **1.68x**. The route is capped, and the cap is measured rather than
+asserted.
+
+### And then the falsifier fired, on me
+
+I registered: *if a_rank=4 does not beat a_rank=16 in the stage by roughly
+their 4x MAC ratio, the stage is not purely arithmetic-bound.* Measured stage
+ratio: **1.85x against a 4.00x MAC ratio.** The MAC-linear fit also
+mispredicts the dense stage by 21%.
+
+So the claim I had written an hour earlier — *"unlike everything else in this
+repo, this stage is ARITHMETIC-bound, 2.10 MFLOP in 243.1 µs is 8.63 GFLOP/s,
+a credible single-thread rate"* — **does not follow**. The same 243 µs is
+equally consistent with streaming the layer's **4.26 MB of fp32 weights**, and
+4.26 MB at ~17 GB/s is ~250 µs. I fitted a mechanism to one number that two
+mechanisms predict equally well.
+
+`runs/batch_diagnostic.json` settles it. Batch size is the one knob that
+amortises weight streaming and per-call dispatch **without** amortising
+arithmetic, so a flat per-sample curve confirms arithmetic and a falling one
+refutes it. Used as a diagnostic only — the KPI is a per-wafer latency, every
+clause-2 number here is batch 1, and no speedup may be cited from this file:
+
+| variant | weights | B=1 | B=2 | B=4 | B=8 | B=16 | amortisation |
+|---|---|---|---|---|---|---|---|
+| dense | 4.26 MB | 201.0 µs | 96.7 | 89.0 | 54.1 | 34.8 | **5.78x** |
+| rank-4 | 0.40 MB | 63.0 µs | 32.2 | 21.0 | 12.0 | 9.8 | **6.40x** |
+
+Arithmetic alone predicts **1.00x** in that last column. Both fall by more than
+five. **Neither stage is arithmetic-bound**, and rank-4 — whose 0.40 MB fits in
+cache — amortises *at least as much* as dense, so weight streaming is not the
+whole story either. What dominates batch-1 cost is **fixed per-call overhead**:
+the same conclusion this repo already reached for `torch.compile`, the coarse
+spectral body and the state head, and I had just written that this case was
+different.
+
+**What survives, and it is not nothing.** The 1.59x is measured and real
+whatever causes it; the 72.4 µs floor is measured; and the mechanism being
+overhead rather than arithmetic points at the *other* half of codex's answer,
+the one still live — *"an exact, specialized native CPU forward pass [...] it
+needs actual fused loops and reusable workspaces"*. Reducing per-call overhead
+is what that attacks, and it is now the indicated route rather than a guess.
+
+**What is not measured: whether any of these ranks can learn.** A rank
+constraint asserts the additive spectral response is separable in the two
+frequency axes and nothing has tested that. Queued behind H22.
