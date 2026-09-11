@@ -7080,3 +7080,93 @@ test to fail whenever an arm lands, and regenerate rather than investigate.**
 The alternative designs both cost something real — skipping while jobs run
 weakens the guard, and pinning the corpus to committed arms only would have
 missed exactly the staleness it was written to catch.
+
+## Turn 16, third addendum — H22's first seed lands, and the adversary's proposal makes the model worse
+
+Wave 1 of the re-launched H22 finished. This is the first accuracy ever
+measured for the state head, the sweep having trained the dense anchor the
+first time round.
+
+**Terminal-step rel-L2, test split, seed 1, paired against the same seed of
+the anchor:**
+
+| arm | params | terminal rel-L2 | vs anchor, same seed |
+|---|---|---|---|
+| `m4_ma64` (anchor, 6 seeds) | 1,070,144 | **0.08927** mean, range 0.00455 | — |
+| `m4_ma64_sm4` | 1,074,368 | 0.09358 | **+0.00534** |
+| `m4_ma64_sm8` | 1,087,040 | 0.09711 | **+0.00887** |
+| `m4_ma64_sm16` | 1,137,728 | 0.10312 | **+0.01489** |
+
+**The state head makes the model monotonically worse in the amount of state it
+is given.** The registered prediction was *"sm8 lands 0.05-0.075"*; it landed
+at **0.09711**. The registered falsifier was that sm8 would land *within* the
+anchor's seed spread, meaning the route is worth nothing — what happened is
+worse than the falsifier contemplated: sm8 and sm16 are outside the anchor's
+entire 6-seed range, on the wrong side.
+
+**This is one seed per arm. It is a screen, not a verdict**, and seeds 2 and 3
+are training. What makes it worth writing down before they land is that three
+independent arms order monotonically in the thing being varied, which a single
+seed's noise does not usually arrange.
+
+### Which explanation: it is both, and the training loss separates them
+
+| arm | final train loss | best val | gap |
+|---|---|---|---|
+| anchor | **0.081834** | 0.08606 | 0.00423 |
+| `sm4` | 0.086486 | 0.09068 | 0.00420 |
+| `sm8` | 0.084997 | 0.09464 | 0.00964 |
+| `sm16` | 0.083362 | 0.10042 | 0.01706 |
+
+* **Not purely overfitting: every state-head arm fits the TRAINING data worse
+  than the anchor** (0.0834-0.0865 against 0.0818). A model that was
+  memorising would fit train better, not worse.
+* **But the generalisation gap also grows monotonically with the summary
+  width** — 0.0042, 0.0042, 0.0096, 0.0171 — so there is an overfitting
+  component stacked on top of the worse fit.
+
+A mechanism consistent with both, stated so it can be tested rather than
+believed: the state summary enters as `2*(2s)*s` extra inputs to a 64-wide
+head — **32, 128 and 512 extra dimensions against the recipe's 7**. At `sm16`
+the conditioning vector is 98.7% spectral state and 1.3% recipe. The head has
+the same width and the same epochs, so the recipe pathway that was doing all
+the work is competing for capacity with a much larger input that carries
+little independent signal. That predicts the harm scales with
+`state_dim/(state_dim + 7)` — 0.82, 0.95, 0.99 — which is ordered correctly
+but compressed against a damage ratio of 1 : 1.7 : 2.8, so the fit is
+qualitative and I am not claiming the functional form.
+
+### The part I should say plainly
+
+This was `codex`'s rung-4 proposal, and two turns ago I wrote that it *"beats
+what I had"* and that my own registered fallback was *"strictly worse"*. The
+reasoning I gave for preferring it — that a nonlinearity after the truncation
+can write to every retained mode, where one before it is annihilated — is
+still correct as an argument about representable functions. **It was an
+argument about capacity and the binding constraint is not capacity.** The
+same mistake the repo already made three times: the dense model sits 2900x
+above its own oracle projection floor, so nothing here has ever been limited
+by what the architecture can represent, and I endorsed a capacity argument
+anyway because it was well made.
+
+Crediting an adversary's idea is right; adopting its framing is not the same
+thing as measuring it.
+
+### Where this leaves clause 1
+
+Every axis of the four-operation family is now measured and none reaches 0.05:
+
+| axis | best | status |
+|---|---|---|
+| `modes_a` (additive band) | 64 = the grid maximum | at the ceiling; 32 triples the error |
+| `modes` (multiplicative band) | 0.07282 at m64 | saturated: m16->m64 moves 0.0031 total for 1.9x the params |
+| nonlinearity via the state head | 0.09358 at sm4 | **worse than the anchor at every width** |
+| rank factorisation | [not measured] | cost-only so far; accuracy sweep queued |
+
+The best accuracy anywhere in the family is **0.07282**, 1.46x above the
+clause, and it costs 693.4 us (743.9x), failing clause 2 as well. **No
+configuration of this architecture meets both clauses, and the three axes that
+could have are now exhausted or measured harmful.** That is the frontier
+statement, and the remaining candidate is not another knob on this family —
+it is the FNO, which reaches 0.04717 and meets clause 1, at 25 field
+operations instead of 4.
