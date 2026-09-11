@@ -1,0 +1,187 @@
+{
+  "hypothesis": "H26: train.py's CPU burn is an idle intra-op pool woken by num_workers=0 collate, not work. Capping threads leaves epoch wall-clock unchanged and cuts cores used.",
+  "predictions_registered_before_run": {
+    "1_epoch_within_15pct_at_1_thread": true,
+    "2_cores_used_falls_with_cap": true,
+    "3_falsifier": "median epoch_s rises >15% from default to 1 thread"
+  },
+  "protocol": {
+    "arch": "--arch specprop --modes 4 --modes-a 64 --state-modes 0 --stride 10",
+    "epochs": 40,
+    "rounds": 3,
+    "device": "cuda:0",
+    "interleaved": true,
+    "cpu_seconds_source": "getrusage(RUSAGE_CHILDREN) delta per subprocess",
+    "ncpu": 192,
+    "loadavg_at_start": 329.89013671875,
+    "loadavg_at_end": 359.1923828125
+  },
+  "cells": [
+    {
+      "threads": 192,
+      "epoch_s_median": 0.14496858790516853,
+      "cores_used_median": 22.44486500378201,
+      "cpu_s_median": 2347.042777,
+      "wall_s_median": 105.66000410541892,
+      "n": 3,
+      "epoch_vs_default": 1.0,
+      "cores_vs_default": 1.0
+    },
+    {
+      "threads": 16,
+      "epoch_s_median": 0.14007261581718922,
+      "cores_used_median": 1.493729916377546,
+      "cpu_s_median": 27.04820300000024,
+      "wall_s_median": 18.095080718398094,
+      "n": 3,
+      "epoch_vs_default": 0.9662273589145944,
+      "cores_vs_default": 0.06655107598668333
+    },
+    {
+      "threads": 4,
+      "epoch_s_median": 0.14038438722491264,
+      "cores_used_median": 1.0446699070269982,
+      "cpu_s_median": 18.820206000000084,
+      "wall_s_median": 18.015457201749086,
+      "n": 3,
+      "epoch_vs_default": 0.9683779724525243,
+      "cores_vs_default": 0.04654382669937952
+    },
+    {
+      "threads": 1,
+      "epoch_s_median": 0.1441888716071844,
+      "cores_used_median": 0.9507367524468546,
+      "cpu_s_median": 17.75376099999985,
+      "wall_s_median": 18.705486450344324,
+      "n": 3,
+      "epoch_vs_default": 0.9946214810446097,
+      "cores_vs_default": 0.04235876456760392
+    }
+  ],
+  "raw": [
+    {
+      "threads_env": 192,
+      "wall_s": 105.66000410541892,
+      "cpu_s": 2208.265975,
+      "cores_used": 20.89973395038649,
+      "epoch_s_median": 0.1454673558473587,
+      "n_epochs_logged": 40,
+      "torch_threads_reported": null,
+      "round": 0
+    },
+    {
+      "threads_env": 16,
+      "wall_s": 18.0412859916687,
+      "cpu_s": 27.382413999999955,
+      "cores_used": 1.5177639782798686,
+      "epoch_s_median": 0.135913398116827,
+      "n_epochs_logged": 40,
+      "torch_threads_reported": null,
+      "round": 0
+    },
+    {
+      "threads_env": 4,
+      "wall_s": 18.015457201749086,
+      "cpu_s": 18.820206000000084,
+      "cores_used": 1.0446699070269982,
+      "epoch_s_median": 0.14038438722491264,
+      "n_epochs_logged": 40,
+      "torch_threads_reported": null,
+      "round": 0
+    },
+    {
+      "threads_env": 1,
+      "wall_s": 18.705486450344324,
+      "cpu_s": 17.75376099999985,
+      "cores_used": 0.9491205185777484,
+      "epoch_s_median": 0.14924340322613716,
+      "n_epochs_logged": 40,
+      "torch_threads_reported": null,
+      "round": 0
+    },
+    {
+      "threads_env": 192,
+      "wall_s": 113.034594129771,
+      "cpu_s": 2537.0462060000004,
+      "cores_used": 22.44486500378201,
+      "epoch_s_median": 0.14496858790516853,
+      "n_epochs_logged": 40,
+      "torch_threads_reported": null,
+      "round": 1
+    },
+    {
+      "threads_env": 16,
+      "wall_s": 18.095080718398094,
+      "cpu_s": 26.37312099999958,
+      "cores_used": 1.457474625862532,
+      "epoch_s_median": 0.14007261581718922,
+      "n_epochs_logged": 40,
+      "torch_threads_reported": null,
+      "round": 1
+    },
+    {
+      "threads_env": 4,
+      "wall_s": 17.51263826340437,
+      "cpu_s": 18.357762999999878,
+      "cores_used": 1.0482579908226357,
+      "epoch_s_median": 0.13037232495844364,
+      "n_epochs_logged": 40,
+      "torch_threads_reported": null,
+      "round": 1
+    },
+    {
+      "threads_env": 1,
+      "wall_s": 18.31460176035762,
+      "cpu_s": 17.41236499999985,
+      "cores_used": 0.9507367524468546,
+      "epoch_s_median": 0.1405477449297905,
+      "n_epochs_logged": 40,
+      "torch_threads_reported": null,
+      "round": 1
+    },
+    {
+      "threads_env": 192,
+      "wall_s": 100.03007178381085,
+      "cpu_s": 2347.042777,
+      "cores_used": 23.463371915522828,
+      "epoch_s_median": 0.14009735733270645,
+      "n_epochs_logged": 40,
+      "torch_threads_reported": null,
+      "round": 2
+    },
+    {
+      "threads_env": 16,
+      "wall_s": 18.107827059924603,
+      "cpu_s": 27.04820300000024,
+      "cores_used": 1.493729916377546,
+      "epoch_s_median": 0.14232097379863262,
+      "n_epochs_logged": 40,
+      "torch_threads_reported": null,
+      "round": 2
+    },
+    {
+      "threads_env": 4,
+      "wall_s": 18.24993785098195,
+      "cpu_s": 18.961030999999956,
+      "cores_used": 1.0389641408548547,
+      "epoch_s_median": 0.14434255473315716,
+      "n_epochs_logged": 40,
+      "torch_threads_reported": null,
+      "round": 2
+    },
+    {
+      "threads_env": 1,
+      "wall_s": 18.784686468541622,
+      "cpu_s": 17.946104000000112,
+      "cores_used": 0.9553581865768231,
+      "epoch_s_median": 0.1441888716071844,
+      "n_epochs_logged": 40,
+      "torch_threads_reported": null,
+      "round": 2
+    }
+  ],
+  "one_thread_slowdown_vs_default": 0.9946214810446097,
+  "falsifier_fired": false,
+  "cores_saved_per_process": 21.494128251335155,
+  "verdict": "CONFIRMED: the pool was idle; capping it is free"
+}

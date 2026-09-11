@@ -150,11 +150,24 @@ print(json.dumps({{"wall": time.perf_counter() - w0, "cpu": time.process_time() 
 _OP_BODY = '''
 import torch
 torch.set_num_threads(1)
-from eot.operator import EtchOperator
+from scripts.train import build_parser, build_model
 norm = json.load(open({norm!r}))
 args = json.load(open({args!r}))
-model = EtchOperator(cond_dim=len(norm["cond_keys"]), width=args["width"],
-                     modes=args["modes"], n_layers=args["layers"])
+# Rebuild through the SAME path training used, with the SAME defaults. This
+# body used to hardcode EtchOperator(width, modes, n_layers), so it could only
+# ever price the FNO: pointed at a `specprop` run it died in load_state_dict,
+# which is why clause 2's symmetric table never carried the architecture the
+# repo now rests that clause on. Runs older than --arch have no "arch" key and
+# were FNOs; the parser default is "fno", so an absent key reproduces them.
+a = build_parser().parse_args([])
+a.__dict__.update(args)
+model = build_model(a, len(norm["cond_keys"]))
+# Behaviour, not metadata: the run recorded the parameter count it actually
+# trained, so a rebuild that lands on another architecture is caught here
+# rather than silently timed.
+if args.get("params") and model.param_count() != args["params"]:
+    raise SystemExit("rebuilt {{}} params, args.json recorded {{}}".format(
+        model.param_count(), args["params"]))
 model.load_state_dict(torch.load({ckpt!r}, map_location="cpu"))
 model.eval()
 torch.manual_seed(0)

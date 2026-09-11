@@ -7170,3 +7170,157 @@ could have are now exhausted or measured harmful.** That is the frontier
 statement, and the remaining candidate is not another knob on this family —
 it is the FNO, which reaches 0.04717 and meets clause 1, at 25 field
 operations instead of 4.
+
+### H26, measured: CONFIRMED, and the falsifier did not fire
+
+`runs/thread_cost.json` — `specprop m4 ma64`, 40 epochs, 3 rounds, cells
+interleaved, fresh subprocess per cell, CPU seconds from
+`getrusage(RUSAGE_CHILDREN)`. Load average 329.9 -> 359.2 across the run.
+
+| threads | epoch (ms, median) | cores held | CPU-s per cell | epoch vs default |
+|---|---|---|---|---|
+| 192 (torch default) | 145.0 | **22.4** | **2347.0** | 1.000 |
+| 16 | 140.1 | 1.5 | 27.0 | 0.966 |
+| 4 | 140.4 | 1.0 | 18.8 | 0.968 |
+| 1 | 144.2 | 1.0 | 17.8 | **0.995** |
+
+One thread is **0.995x** the default's wall-clock — if anything faster, and well
+inside the 15% falsifier I registered. The same work costs **2347 CPU-seconds at
+192 threads and 17.8 at one**: a **132x** ratio, spent entirely on a pool with
+nothing to do. Prediction 1 holds, prediction 2 holds, the falsifier did not
+fire. **The pool was idle and capping it is free.**
+
+**Fix, in `scripts/train.py`:** pin the pool before torch sizes it, at
+`EOT_NUM_THREADS` (default **4**, not 1, so the eval path keeps headroom and
+4 x 3 concurrent arms stays inside the 48-core lease). `args.json` now records
+`torch_threads`, so any future run can be audited for what was actually in
+force rather than what the launcher intended. Three concurrent arms now hold
+~3 cores between them instead of ~67.
+
+Worth stating plainly, because it is the part that generalises: this was not a
+tuning oversight. **Every other timing script in this repo pins its pool** —
+`eot/solver.py`, `gen_data.py`, `bench_symmetric.py`, `bench_speed.py`,
+`batch_diagnostic.py`, `cnn_cost.py` — because each was written while someone
+was thinking about cost. `train.py` was written while someone was thinking
+about accuracy, and it is the script that runs hundreds of times.
+
+### A second defect, found on the way, and it is the more serious one
+
+`scripts/bench_symmetric.py` is the script that produces this repo's official
+clause-2 scoreboard. Its `_OP_BODY` **hardcoded** the architecture:
+
+```python
+model = EtchOperator(cond_dim=..., width=args["width"],
+                     modes=args["modes"], n_layers=args["layers"])
+```
+
+It never read `args["arch"]`. So it could only ever price the FNO. Pointed at a
+`specprop` run it dies in `load_state_dict` — I checked, rather than assuming,
+and it **fails loudly rather than silently mis-pricing**, which is the one piece
+of luck here. But the consequence stands: **clause 2's symmetric table has never
+contained the architecture this repo now rests clause 2 on**, and could not
+have.
+
+This is the same shape as H22 and as `a_rank`: a construction path that is a
+*copy* of the real one drifts from it silently. `build_model` exists precisely
+to be the single place a model is built, and this script did not use it.
+
+**Fix:** `build_parser()` extracted from `train.py:main()` so other scripts
+recover the real defaults, and `_OP_BODY` now rebuilds through `build_model`
+with `args.json` layered over those defaults. Runs older than the `--arch` flag
+have no `arch` key and were FNOs; the parser default is `"fno"`, so an absent
+key reproduces them — the legacy arm is pinned, not reinterpreted.
+
+The guard is a **behaviour** check, not a metadata one: the rebuilt model's
+`param_count()` must equal the `params` the run recorded when it trained.
+**Sabotage-verified** — forcing `arch: "fno"` onto specprop's `args.json` makes
+it refuse with `rebuilt 1082201 params, args.json recorded 1070144`. Note how
+close those are: **1.1% apart**. A sanity check on order of magnitude would have
+passed it. This repo's rule earns its keep again — verify the guard by breaking
+the thing it guards.
+
+Control that the fix did not move the baseline: the legacy FNO arm re-prices at
+**2.61x warm / 5.89x cold** against the published **2.14x / 9.58x**, inside the
+harness's own 1.37x invocation spread.
+
+### And then the measurement that matters: specprop under the symmetric protocol
+
+`runs/speed_symmetric_specprop.json` — 8 rounds, both sides **verified**
+single-threaded (`cpu_over_wall` 0.95–1.00 on every row), same seeded recipe
+stream, one-time cost paid on both sides or neither. Load 379.2–401.9.
+
+| side | marginal_warm | cold_single_wafer |
+|---|---|---|
+| ViennaPS, 1 thread | 0.2589 CPU-s/wafer | 0.6044 CPU-s/wafer |
+| `specprop m4_ma64` | 0.369 ms | 2.090 ms |
+| **speedup** | **701.1x** | **289.2x** |
+
+**Both readings are short of 1000x.** Not by the factor of 95 the FNO was short
+by — the architecture work is real and moved the clause by ~270x — but short.
+
+**This contradicts the ~980–1255x that `WEEKEND.md` and this log have been
+headlining for the same architecture, and I am not going to quote the one that
+passes.** The gap is **1.40x**, and it decomposes into two pieces rather than
+one:
+
+* the solver denominator: **0.5158** CPU-s in `clock_matched_speedup.json`
+  against **0.2589** here, **1.99x**;
+* the operator: **526 µs** there against **369 µs** here, **1.43x**.
+
+The 0.5158 denominator sits **above every one of the eight warm wafers priced
+here** (0.098–0.369) and **inside the cold range** (0.436–0.757), while its
+protocol block reports `warmup_wafers_discarded: 1`, i.e. it claims to be warm.
+Two readings are consistent with that and I have not separated them: the two
+scripts price **different wafer populations** — `clock_matched` uses "the test
+split's own recipes and dt values", `bench_symmetric` a seeded stream, and
+`solver_drift.json` puts the recipe-to-recipe spread at ~4x, comfortably enough
+to explain 1.99x — or the discard is not achieving warmth. **I am not asserting
+which, and it is not a detail:** it is the whole distance between `NOT MET` and
+`PASS` on the binding clause of this project.
+
+Until it is separated, the reading I will quote is the symmetric one, because
+`bench_symmetric.py` is the script this repo wrote *specifically* to stop a cold
+solver being divided by a warm operator, and it is the one whose two sides are
+verified against the same wafers. That the alternative protocol is the one that
+passes is exactly why it does not get the benefit of the doubt.
+
+### The denominator gap is explained, and the explanation is worse for the clause than the gap was
+
+`data/test.npz` carries a per-wafer `dt`. Over its 250 wafers:
+**min 0.0639, median 0.2802, mean 0.3544, max 1.0000.** `bench_symmetric.py`
+prices every wafer at a **fixed `--dt 0.2`**.
+
+A wafer is `n_steps * dt` of simulated etching, so the two scripts do not price
+the same amount of physics: 2.0 time units per wafer here, a mean of 3.54 across
+the test split. **mean(dt)/0.2 = 1.772**, against the **1.99x** denominator gap I
+measured — close enough, with recipe-to-recipe spread covering the remainder,
+that I am no longer looking for a second cause.
+
+So neither denominator is a mistake. They answer different questions. But that
+is not the end of it, and the part that matters is this:
+
+**For `K10` the operator performs ONE application per wafer regardless of `dt`.**
+Its cost is set by tensor shape. The solver's cost is set by how long it
+simulates. So the ratio is a function of a protocol parameter the operator does
+not pay for: **choose a larger `dt` and clause 2 improves, with nothing about
+either implementation having changed.**
+
+That is a bigger problem than a factor of 1.99, because it means "≥1000x" is not
+a property of this operator until the wafer's simulated duration is fixed and
+stated. And it cuts against the reading I would prefer: the test split's mean
+`dt` is **1.77x** the fixed 0.2, so the protocol that produces the ~980x
+headline is the one that grants the operator the longer free ride.
+
+**H27, registered before the run:** speedup is approximately linear in `dt`.
+
+1. Solver CPU-s per wafer is ~linear in `dt` (slope > 0.8 on a log-log fit).
+2. Operator CPU-s per wafer is **flat** in `dt`, within 15%.
+3. Therefore speedup is ~linear in `dt`, and the `dt` at which it crosses 1000x
+   is a property of the protocol, not of the operator.
+4. **Falsifier:** if operator cost moves with `dt` by more than 15%, or the
+   solver's log-log slope is under 0.8, the ratio is not the simple free ride I
+   am describing and this framing is wrong.
+
+Cells `dt ∈ {0.1, 0.2, 0.4, 0.8}`, the same seeded recipe stream
+`bench_symmetric` uses, both sides through **the same functions** that produced
+`speed_symmetric_specprop.json` rather than a second copy of them.

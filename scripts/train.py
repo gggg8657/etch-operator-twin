@@ -13,12 +13,30 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import time
 from pathlib import Path
 
 import numpy as np
 import torch
 from torch.utils.data import ConcatDataset, DataLoader
+
+# Cap the intra-op pool BEFORE torch sizes it. This was the one script in the
+# repo that did not: `eot/solver.py`, `gen_data.py`, `bench_symmetric.py`,
+# `bench_speed.py`, `batch_diagnostic.py` and `cnn_cost.py` all pin it, and
+# train.py inherited a 192-wide pool from the core count. With
+# `--num-workers 0` every `PairDataset.__getitem__` runs in this process, and
+# its small CPU tensor ops woke all 192 threads ~96 times per batch at an
+# epoch length of 0.145 s. `runs/thread_cost.json` measured the result: 22.4
+# cores held per process and 2347 CPU-seconds spent, to do work that one
+# thread does in 17.8 CPU-seconds at 0.995x the wall-clock. Three concurrent
+# arms therefore sat ~67 cores deep in a 48-core lease while GPU 0 read 0-1%.
+# 4 rather than 1 because it costs nothing measurable here and leaves headroom
+# for the eval path; (4 threads x 3 concurrent arms) stays inside the lease.
+_THREADS = int(os.environ.get("EOT_NUM_THREADS", "4"))
+os.environ.setdefault("OMP_NUM_THREADS", str(_THREADS))
+os.environ.setdefault("MKL_NUM_THREADS", str(_THREADS))
+torch.set_num_threads(_THREADS)
 
 import sys
 
@@ -115,7 +133,16 @@ def build_model(a, cond_dim):
     return MultiScaleOperator(**kw)
 
 
-def main():
+def build_parser():
+    """The parser, extracted so other scripts can recover a run's DEFAULTS.
+
+    `scripts/bench_symmetric.py` has to rebuild a trained model from its
+    `args.json` in a fresh subprocess. Older run directories predate several
+    architecture flags, so their `args.json` is missing keys that
+    `build_model` reads; reconstructing from a hand-written default dict would
+    be a second copy of this list, and a copy is exactly what let H22 train
+    nine arms with `--state-modes` dropped. One parser, one set of defaults.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data")
     ap.add_argument("--run", default="runs/base")
@@ -247,7 +274,11 @@ def main():
     # exhausted /dev/shm and killed a run with a DataLoader bus error. 0 keeps
     # indexing in process, where it is a slice of an in-memory array anyway.
     ap.add_argument("--num-workers", type=int, default=0)
-    a = ap.parse_args()
+    return ap
+
+
+def main():
+    a = build_parser().parse_args()
 
     torch.manual_seed(a.seed)
     np.random.seed(a.seed)
@@ -317,7 +348,9 @@ def main():
                                                   else {str(k): q.starts for k, q
                                                         in zip(strides, parts)}),
                                   "applications_per_wafer": len(va_traj.times),
-                                  "gpu": torch.cuda.get_device_name(device)}, indent=2))
+                                  "gpu": torch.cuda.get_device_name(device),
+                                  "torch_threads": torch.get_num_threads()},
+                                 indent=2))
     logf = (run / "log.jsonl").open("a")
     best = float("inf")
     t_start = time.perf_counter()
