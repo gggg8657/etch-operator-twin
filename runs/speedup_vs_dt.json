@@ -16,8 +16,8 @@
     "n_steps_per_wafer": 10,
     "grid_delta": 0.2,
     "run": "runs/specprop/m4_ma64_s7",
-    "loadavg_start": 391.41748046875,
-    "loadavg_end": 376.1337890625
+    "loadavg_start": 129.001953125,
+    "loadavg_end": 127.22265625
   },
   "test_split_dt": {
     "n": 250,
@@ -30,48 +30,54 @@
     {
       "dt": 0.1,
       "sim_time_per_wafer": 1.0,
-      "solver_cpu_s": 0.12902856300000004,
+      "solver_cpu_s": 0.348879092,
       "solver_single_threaded": true,
-      "operator_cpu_s": 0.0005230419999999736,
-      "operator_single_threaded": false,
-      "speedup_cpu": 246.6887228941587,
+      "operator_cpu_s": 0.0003301765000000012,
+      "operator_single_threaded": true,
+      "speedup_cpu": 1056.6442251341289,
       "applications_per_wafer": 1
     },
     {
       "dt": 0.2,
       "sim_time_per_wafer": 2.0,
-      "solver_cpu_s": 0.285126137,
+      "solver_cpu_s": 0.5696293075000003,
       "solver_single_threaded": true,
-      "operator_cpu_s": 0.0003573975000000784,
+      "operator_cpu_s": 0.0003301765000000012,
       "operator_single_threaded": true,
-      "speedup_cpu": 797.7843633487572,
+      "speedup_cpu": 1725.2266817898858,
       "applications_per_wafer": 1
     },
     {
       "dt": 0.4,
       "sim_time_per_wafer": 4.0,
-      "solver_cpu_s": 0.5937130500000001,
+      "solver_cpu_s": 1.0492967835,
       "solver_single_threaded": true,
-      "operator_cpu_s": 0.00038864300000007734,
+      "operator_cpu_s": 0.0003301765000000012,
       "operator_single_threaded": true,
-      "speedup_cpu": 1527.6566154539819,
+      "speedup_cpu": 3177.987480938214,
       "applications_per_wafer": 1
     },
     {
       "dt": 0.8,
       "sim_time_per_wafer": 8.0,
-      "solver_cpu_s": 1.6235349829999999,
+      "solver_cpu_s": 3.1601705925,
       "solver_single_threaded": true,
-      "operator_cpu_s": 0.0003875269999999986,
+      "operator_cpu_s": 0.0003301765000000012,
       "operator_single_threaded": true,
-      "speedup_cpu": 4189.475786203298,
+      "speedup_cpu": 9571.155404760753,
       "applications_per_wafer": 1
     }
   ],
-  "solver_loglog_slope": 1.2018293818948187,
-  "operator_loglog_slope": -0.11769739171059176,
-  "operator_spread_over_dt": 1.4634741429356914,
-  "dt_where_speedup_crosses_1000x": 0.25773813129456524,
+  "solver_loglog_slope": 1.041893769073058,
+  "operator_loglog_slope": null,
+  "operator_slope_note": "not measured: the operator is timed once and reused for every dt cell, so a slope computed here would be identically zero by construction and would be circular evidence for the dt-independence it is meant to test. The structural argument is that operator_run is never passed dt.",
+  "operator_cells_void_not_single_threaded": 0,
+  "operator_measured_once": true,
+  "operator_rounds": 32,
+  "operator_round_spread": 10.98667954826151,
+  "operator_cpu_over_wall": 1.0013755465034433,
+  "operator_median_used_for_crossing": 0.0003301765000000012,
+  "dt_where_speedup_crosses_1000x": 0.10792008076891277,
   "dt_fixed_in_bench_symmetric": 0.2,
   "interpretation": "speedup is a function of the simulated duration a wafer is defined to represent; quoting it without stating dt is not a property of the operator"
 }

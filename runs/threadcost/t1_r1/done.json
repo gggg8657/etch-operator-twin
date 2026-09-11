@@ -1,0 +1,29 @@
+{
+  "finished": 1789101970.4066846,
+  "pid": 1140391,
+  "argv": [
+    "scripts/train.py",
+    "--run",
+    "/home/dongjukim/Documents/workspace/etch-operator-twin/runs/threadcost/t1_r1",
+    "--epochs",
+    "40",
+    "--device",
+    "cuda:0",
+    "--seed",
+    "1",
+    "--arch",
+    "specprop",
+    "--modes",
+    "4",
+    "--modes-a",
+    "64",
+    "--state-modes",
+    "0",
+    "--stride",
+    "10"
+  ],
+  "epochs": 40,
+  "seed": 1,
+  "best_val_roll_band": 0.23353593170642853,
+  "train_wall_s": 6.7990659810602665
+}
