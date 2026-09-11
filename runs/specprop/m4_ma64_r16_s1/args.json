@@ -1,0 +1,48 @@
+{
+  "data": "data",
+  "run": "runs/specprop/m4_ma64_r16_s1",
+  "epochs": 800,
+  "batch": 32,
+  "lr": 0.002,
+  "width": 64,
+  "modes": 4,
+  "layers": 4,
+  "arch": "specprop",
+  "cond": "dt",
+  "hidden": 0,
+  "cond_ch": 0,
+  "no_norm": false,
+  "a_rank": 16,
+  "state_modes": 0,
+  "modes_a": 64,
+  "scale": 4,
+  "width_full": 8,
+  "n_local": 1,
+  "act": "gelu",
+  "rollout_steps": 0,
+  "stride": 10,
+  "strides": null,
+  "eval_stride": 10,
+  "overlap_pairs": false,
+  "band_weight": 0.0,
+  "blind": false,
+  "init_from": null,
+  "seed": 1,
+  "force": false,
+  "device": "cuda:0",
+  "num_workers": 0,
+  "params": 404544,
+  "n_train_pairs": 900,
+  "trained_strides": [
+    10
+  ],
+  "pairs_per_stride": [
+    900
+  ],
+  "pair_starts": [
+    0
+  ],
+  "applications_per_wafer": 1,
+  "gpu": "NVIDIA H100 NVL",
+  "torch_threads": 4
+}

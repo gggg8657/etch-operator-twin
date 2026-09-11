@@ -1,0 +1,43 @@
+{
+  "data": "data",
+  "run": "runs/shrink/w8m4L2_K10_s8",
+  "epochs": 800,
+  "batch": 32,
+  "lr": 0.002,
+  "width": 8,
+  "modes": 4,
+  "layers": 2,
+  "arch": "fno",
+  "cond": "dt",
+  "state_modes": 0,
+  "modes_a": 16,
+  "scale": 4,
+  "width_full": 8,
+  "n_local": 1,
+  "act": "gelu",
+  "rollout_steps": 0,
+  "stride": 10,
+  "strides": null,
+  "eval_stride": 10,
+  "overlap_pairs": false,
+  "band_weight": 0.0,
+  "blind": false,
+  "init_from": null,
+  "seed": 8,
+  "force": false,
+  "device": "cuda:0",
+  "num_workers": 0,
+  "params": 10897,
+  "n_train_pairs": 900,
+  "trained_strides": [
+    10
+  ],
+  "pairs_per_stride": [
+    900
+  ],
+  "pair_starts": [
+    0
+  ],
+  "applications_per_wafer": 1,
+  "gpu": "NVIDIA H100 NVL"
+}

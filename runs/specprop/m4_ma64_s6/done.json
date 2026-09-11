@@ -1,0 +1,29 @@
+{
+  "finished": 1789101190.8073924,
+  "pid": 182159,
+  "argv": [
+    "scripts/train.py",
+    "--run",
+    "runs/specprop/m4_ma64_s6",
+    "--epochs",
+    "800",
+    "--device",
+    "cuda:0",
+    "--seed",
+    "6",
+    "--stride",
+    "10",
+    "--arch",
+    "specprop",
+    "--modes",
+    "4",
+    "--modes-a",
+    "64",
+    "--state-modes",
+    "0"
+  ],
+  "epochs": 800,
+  "seed": 6,
+  "best_val_roll_band": 0.08830682878692944,
+  "train_wall_s": 1954.328092802316
+}

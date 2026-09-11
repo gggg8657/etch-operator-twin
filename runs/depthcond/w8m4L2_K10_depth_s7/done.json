@@ -1,0 +1,29 @@
+{
+  "finished": 1789088050.0697863,
+  "pid": 3949534,
+  "argv": [
+    "scripts/train.py",
+    "--run",
+    "runs/depthcond/w8m4L2_K10_depth_s7",
+    "--epochs",
+    "800",
+    "--device",
+    "cuda:0",
+    "--seed",
+    "7",
+    "--stride",
+    "10",
+    "--width",
+    "8",
+    "--modes",
+    "4",
+    "--layers",
+    "2",
+    "--cond",
+    "depth"
+  ],
+  "epochs": 800,
+  "seed": 7,
+  "best_val_roll_band": 0.036339519309500856,
+  "train_wall_s": 2563.278814382851
+}
