@@ -23,3 +23,9 @@ $PY scripts/report.py \
                   runs/design_Tfree_dtinit_random.json \
   --design-restart-curve runs/design_Tfree_restartcurve.json \
   --out RESULTS.md "$@"
+
+# The paper draft's status block is generated from the same run JSONs, so it
+# goes stale exactly when RESULTS.md does. Regenerating it here means the
+# normal reporting flow keeps tests/test_paper_status.py passing instead of
+# that test firing every time a sweep lands an arm.
+$PY scripts/paper_status.py
