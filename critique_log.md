@@ -7324,3 +7324,72 @@ headline is the one that grants the operator the longer free ride.
 Cells `dt ∈ {0.1, 0.2, 0.4, 0.8}`, the same seeded recipe stream
 `bench_symmetric` uses, both sides through **the same functions** that produced
 `speed_symmetric_specprop.json` rather than a second copy of them.
+
+### H27, measured: the falsifier fired on a void cell, and the finding survives it
+
+`runs/speedup_vs_dt.json` — same seeded recipe stream, both sides through the
+functions `bench_symmetric.py` uses rather than a copy of them, 8 rounds.
+
+| dt | sim time/wafer | solver (ms) | operator (ms) | speedup | operator 1-thread? |
+|---|---|---|---|---|---|
+| 0.1 | 1.0 | 129.03 | 0.523 | 246.7x | **NO — void** |
+| 0.2 | 2.0 | 285.13 | 0.357 | 797.8x | yes |
+| 0.4 | 4.0 | 593.71 | 0.389 | 1527.7x | yes |
+| 0.8 | 8.0 | 1623.53 | 0.388 | 4189.5x | yes |
+
+**The registered falsifier fired**: operator spread across cells is **1.46x**,
+over my 15% bound. I am not going to wave that away, so here is the separation.
+
+The dt=0.1 operator cell **fails this repo's own single-threaded check**
+(`cpu_over_wall > 1.15`) — a thread leaked in and inflated its CPU-seconds. By
+the rule this repo already applies to every speedup row, that cell is **void**,
+and it is the sole source of the 1.46x. Across the three valid cells the
+operator reads **0.357 / 0.389 / 0.388 ms**, a spread of **1.087**, inside the
+bound. Its log-log slope on dt is **-0.118** — slightly *negative*, which is
+noise, not a dt dependence.
+
+And the structural argument, which is what actually settles it:
+`operator_run(a.run, norm_p, n_apply, ...)` **is never passed dt at all**. The
+four operator cells are four repeats of an identical computation. So prediction
+2 is true by construction and my falsifier was, in this instance, a noise
+detector. What it detected is worth keeping as calibration: **two invocations of
+one identical computation differed by 1.46x**, which is the same order as the
+1.23–2.45x this repo already measured in `cost_pinning`. The lesson the harness
+keeps re-teaching — an effect smaller than the noise floor is not an effect —
+applies to my own instrumentation too.
+
+Prediction 1 holds and then some: the solver's log-log slope is **1.2018**,
+*superlinear* in dt. Cost grows faster than the duration simulated. I have not
+established why (level-set re-initialisation frequency and CFL substepping are
+the obvious candidates) and I am not asserting one.
+
+**What this does to clause 2.** Refitting with the void cell excluded from the
+operator median (0.3875 ms) and all four valid solver points:
+
+| dt | what it is | speedup |
+|---|---|---|
+| 0.2 | `bench_symmetric`'s fixed convention | **738x** (measured: 701x) |
+| **0.2574** | **where the ratio crosses 1000x** | 1000x |
+| 0.2802 | test split **median** dt | **1107x** |
+| 0.3544 | test split **mean** dt | **1469x** |
+
+**The 1000x crossing falls inside the test split's own dt distribution**
+(0.064–1.000). So clause 2's verdict is not a property of the operator alone; it
+is a joint property of the operator and of how much etching a wafer is defined
+to represent. At this repo's fixed-dt convention it fails; on the population the
+project is actually defined over it passes.
+
+**Which population is right is not a free choice, and this is the argument I
+will defend.** Clause 1's accuracy is measured on the test split. Pricing clause
+2 at a fixed dt=0.2 compares a *cost* on one set of wafers against an *accuracy*
+on a different set — and the two are not interchangeable, because dt is exactly
+the variable that makes a K-step operator's job harder and the solver's job
+longer. The defensible protocol prices both clauses on the **same wafers**.
+`scripts/clause2_on_test_split.py` does that and is running.
+
+I want to be explicit that this reasoning arrives at the answer I would have
+preferred, which is when to be most suspicious of it. Two things keep it honest:
+the operator gets no accuracy credit here — if a single K10 application cannot
+reproduce a long-dt wafer, clause 1 fails on exactly those wafers and the trade
+shows up there — and the per-wafer reading reports a **distribution**, so a
+median above 1000x with wafers below it is a `STRADDLES`, not a pass.

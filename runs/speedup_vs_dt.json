@@ -1,0 +1,77 @@
+{
+  "hypothesis": "H27: clause 2's ratio is ~linear in dt, because a K-step operator applied once per wafer costs the same whatever duration that wafer represents, while the solver pays for the duration.",
+  "predictions_registered_before_run": {
+    "1_solver_loglog_slope_gt_0.8": true,
+    "2_operator_flat_within_15pct": false,
+    "3_falsifier": "operator moves >15% with dt, or solver slope < 0.8"
+  },
+  "falsifier_fired": true,
+  "protocol": {
+    "estimator": "median CPU-seconds per wafer, solver / operator",
+    "both_sides": "the same functions bench_symmetric.py uses, imported",
+    "solver_reading": "marginal_warm: long-lived process, 1 wafer discarded",
+    "operator_reading": "warm, 3 untimed rollouts",
+    "recipe_stream": "seeded 4242, identical across dt cells",
+    "rounds": 8,
+    "n_steps_per_wafer": 10,
+    "grid_delta": 0.2,
+    "run": "runs/specprop/m4_ma64_s7",
+    "loadavg_start": 391.41748046875,
+    "loadavg_end": 376.1337890625
+  },
+  "test_split_dt": {
+    "n": 250,
+    "min": 0.06391078233718872,
+    "median": 0.2802140712738037,
+    "mean": 0.3544155955314636,
+    "max": 1.0
+  },
+  "cells": [
+    {
+      "dt": 0.1,
+      "sim_time_per_wafer": 1.0,
+      "solver_cpu_s": 0.12902856300000004,
+      "solver_single_threaded": true,
+      "operator_cpu_s": 0.0005230419999999736,
+      "operator_single_threaded": false,
+      "speedup_cpu": 246.6887228941587,
+      "applications_per_wafer": 1
+    },
+    {
+      "dt": 0.2,
+      "sim_time_per_wafer": 2.0,
+      "solver_cpu_s": 0.285126137,
+      "solver_single_threaded": true,
+      "operator_cpu_s": 0.0003573975000000784,
+      "operator_single_threaded": true,
+      "speedup_cpu": 797.7843633487572,
+      "applications_per_wafer": 1
+    },
+    {
+      "dt": 0.4,
+      "sim_time_per_wafer": 4.0,
+      "solver_cpu_s": 0.5937130500000001,
+      "solver_single_threaded": true,
+      "operator_cpu_s": 0.00038864300000007734,
+      "operator_single_threaded": true,
+      "speedup_cpu": 1527.6566154539819,
+      "applications_per_wafer": 1
+    },
+    {
+      "dt": 0.8,
+      "sim_time_per_wafer": 8.0,
+      "solver_cpu_s": 1.6235349829999999,
+      "solver_single_threaded": true,
+      "operator_cpu_s": 0.0003875269999999986,
+      "operator_single_threaded": true,
+      "speedup_cpu": 4189.475786203298,
+      "applications_per_wafer": 1
+    }
+  ],
+  "solver_loglog_slope": 1.2018293818948187,
+  "operator_loglog_slope": -0.11769739171059176,
+  "operator_spread_over_dt": 1.4634741429356914,
+  "dt_where_speedup_crosses_1000x": 0.25773813129456524,
+  "dt_fixed_in_bench_symmetric": 0.2,
+  "interpretation": "speedup is a function of the simulated duration a wafer is defined to represent; quoting it without stating dt is not a property of the operator"
+}
